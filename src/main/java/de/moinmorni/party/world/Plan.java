@@ -21,6 +21,10 @@ import org.bukkit.block.data.type.Wall;
  */
 public final class Plan {
 
+    /** Deko-Tier (steht still, nimmt keinen Schaden), z. B. eine Kuh auf der Weide. */
+    public record Creature(double x, double y, double z, String type, float yaw) {
+    }
+
     /** Banner mit Muster (Muster brauchen den fertigen Block). */
     public record Banner(int x, int y, int z, List<Pattern> patterns) {
     }
@@ -33,6 +37,7 @@ public final class Plan {
 
     private final Map<Long, BlockData> blocks = new LinkedHashMap<>();
     private final List<Banner> banners = new ArrayList<>();
+    private final List<Creature> creatures = new ArrayList<>();
     private int minX = Integer.MAX_VALUE;
     private int minY = Integer.MAX_VALUE;
     private int minZ = Integer.MAX_VALUE;
@@ -127,6 +132,14 @@ public final class Plan {
 
     public List<Banner> banners() {
         return banners;
+    }
+
+    public void creature(double x, double y, double z, String type, float yaw) {
+        creatures.add(new Creature(x, y, z, type, yaw));
+    }
+
+    public List<Creature> creatures() {
+        return creatures;
     }
 
     public void forEach(BiConsumer<Long, BlockData> action) {

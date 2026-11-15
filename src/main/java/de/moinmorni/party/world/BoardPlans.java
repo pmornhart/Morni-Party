@@ -4,6 +4,7 @@ import de.moinmorni.party.board.BoardId;
 import de.moinmorni.party.board.BoardLayout;
 import de.moinmorni.party.board.Field;
 import de.moinmorni.party.board.FieldType;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -16,6 +17,10 @@ public final class BoardPlans {
     private static final int EDGE = 7;
     private static final double PATH = 2.3;
     private static final double PATH_CORE = 1.2;
+    /** Schloss: ab diesem Anteil der Höhe beginnt die Burg (darunter Schlossgarten). */
+    private static final double CASTLE = 0.42;
+    /** Schloss: Höhe einer Terrassenstufe. */
+    private static final int STEP = 3;
 
     private BoardPlans() {
     }
@@ -170,6 +175,11 @@ public final class BoardPlans {
             return tops[x + size][z + size];
         }
 
+        /** Höhe des nächsten Wegpunkts (nur in der Nähe des Wegs sinnvoll). */
+        int pathHeight(int x, int z) {
+            return (int) Math.round(pathY[x + size][z + size]);
+        }
+
         int lowestNeighbour(int x, int z) {
             int low = top(x, z);
             for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -201,6 +211,10 @@ public final class BoardPlans {
                 case SCHLOSS -> 0.4;
                 case GOLDSTOLLEN -> 1.0;
             };
+            if (layout.id() == BoardId.SCHLOSS && base >= s.height() * CASTLE) {
+                // Burg: Terrassen mit senkrechten Mauern statt glattem Hang
+                return (int) (Math.round(base / STEP) * STEP);
+            }
             double far = Math.min(1, Math.max(0, (dist[x + size][z + size] - PATH) / 3));
             double noise = Math.sin(x * 0.31 + z * 0.17) * 0.6 + Math.sin(x * 0.13 - z * 0.29) * 0.8
                     + Math.cos((x + z) * 0.21) * 0.5;
@@ -232,17 +246,24 @@ public final class BoardPlans {
                 yield depth <= 2 && !steep ? "dirt" : Decor.rock(r, depth);
             }
             case SCHLOSS -> {
-                boolean castle = top >= h * 0.42;
+                boolean castle = top >= h * CASTLE;
                 if (surface && path) {
-                    yield castle ? (r.nextInt(4) == 0 ? "cracked_stone_bricks" : "stone_bricks")
+                    yield castle ? (r.nextInt(5) == 0 ? "polished_andesite" : "stone_bricks")
                             : dist <= PATH_CORE ? "gravel" : "dirt_path";
                 }
-                if (surface) {
-                    yield castle ? (r.nextInt(6) == 0 ? "smooth_quartz" : "calcite") : "grass_block[snowy=false]";
+                if (castle && surface) {
+                    // Terrassen: Rasen im Burghof, weiße Mauerkrone an der Kante
+                    yield steep ? "smooth_quartz" : r.nextInt(9) == 0 ? "moss_block" : "grass_block[snowy=false]";
                 }
-                if (castle || steep) {
-                    yield r.nextInt(7) == 0 ? "mossy_stone_bricks" : r.nextInt(9) == 0 ? "cracked_stone_bricks"
-                            : "stone_bricks";
+                if (castle) {
+                    // Mauern: weißer Stein mit einem Band aus Steinziegeln
+                    yield Math.floorMod(y, STEP) == 0 ? "stone_bricks" : r.nextInt(8) == 0 ? "polished_diorite" : "calcite";
+                }
+                if (surface) {
+                    yield "grass_block[snowy=false]";
+                }
+                if (steep) {
+                    yield r.nextInt(5) == 0 ? "mossy_stone_bricks" : "stone_bricks";
                 }
                 yield depth <= 2 ? "dirt" : Decor.rock(r, depth);
             }
@@ -272,6 +293,10 @@ public final class BoardPlans {
 
     private static void decorate(Plan p, BoardId id, Random r, int x, int top, int z, double dist, double h,
             Terrain t) {
+        if (id == BoardId.SCHLOSS) {
+            castleColumn(p, r, x, top, z, dist, h, t);
+            return;
+        }
         if (dist <= PATH + 0.7) {
             return;
         }
@@ -290,19 +315,7 @@ public final class BoardPlans {
                 }
             }
             case SCHLOSS -> {
-                boolean castle = top >= h * 0.42;
-                if (castle && dist < 3.6 && t.outerSide(x, z) && t.top(x, z) >= t.lowestNeighbour(x, z)) {
-                    p.setIfEmpty(x, top + 1, z, "stone_brick_wall");
-                    return;
-                }
-                if (!castle && !steep && dist < 3.8 && t.outerSide(x, z)) {
-                    p.setIfEmpty(x, top + 1, z, "azalea_leaves[persistent=true]");
-                    return;
-                }
-                if (!castle && !steep && r.nextInt(14) == 0 && Math.hypot(x, z) < t.island - 2) {
-                    p.setIfEmpty(x, top + 1, z, Decor.pick(r, "red_tulip", "white_tulip", "pink_tulip",
-                            "lily_of_the_valley", "short_grass"));
-                }
+                // eigene Methode (castleColumn)
             }
             case GOLDSTOLLEN -> {
                 if (!steep && dist > 3 && r.nextInt(60) == 0) {
@@ -310,6 +323,56 @@ public final class BoardPlans {
                             "dead_bush"));
                 }
             }
+        }
+    }
+
+    /** Schloss, je Säule: Brustwehr am Weg, Zinnen an den Terrassenkanten, Hecken und Blumen im Garten. */
+    private static void castleColumn(Plan p, Random r, int x, int top, int z, double dist, double h, Terrain t) {
+        boolean castle = top >= h * CASTLE || (dist <= 4 && t.pathHeight(x, z) >= h * CASTLE);
+        boolean steep = top - t.lowestNeighbour(x, z) >= 3;
+        boolean edge = Math.hypot(x, z) > t.island - 2;
+        if (dist <= PATH) {
+            return;
+        }
+        if (castle && dist <= 3.4 && t.outerSide(x, z)) {
+            // Brustwehr außen am Weg: Mauer bis über den Weg, oben Zinnen
+            int wy = t.pathHeight(x, z);
+            for (int y = top + 1; y <= wy + 1; y++) {
+                p.set(x, y, z, Math.floorMod(y, STEP) == 0 ? "stone_bricks" : "calcite");
+            }
+            p.set(x, Math.max(top, wy + 1), z, "smooth_quartz");
+            if (Math.floorMod(x + z, 2) == 0) {
+                p.set(x, Math.max(top, wy + 1) + 1, z, "polished_diorite");
+            }
+            return;
+        }
+        if (castle && steep && dist > 3.6 && !edge && Math.floorMod(x + 2 * z, 3) != 0) {
+            p.setIfEmpty(x, top + 1, z, "diorite_wall");
+            return;
+        }
+        if (castle && !steep && dist > 4.5 && !edge) {
+            int roll = r.nextInt(70);
+            if (roll == 0) {
+                p.setIfEmpty(x, top + 1, z, "potted_red_tulip");
+            } else if (roll == 1) {
+                p.setIfEmpty(x, top + 1, z, "azalea_leaves[persistent=true]");
+            } else if (roll < 6) {
+                p.setIfEmpty(x, top + 1, z, Decor.pick(r, "short_grass", "lily_of_the_valley", "white_tulip"));
+            }
+            return;
+        }
+        if (castle || steep || edge) {
+            return;
+        }
+        // Schlossgarten: Hecken beidseits des Wegs, Blumenbeete
+        if (dist < 3.8) {
+            p.setIfEmpty(x, top + 1, z, "azalea_leaves[persistent=true]");
+            return;
+        }
+        if (Math.floorMod(x * 3 + z * 7, 23) < 3) {
+            p.setIfEmpty(x, top + 1, z, Decor.pick(r, "red_tulip", "white_tulip", "pink_tulip", "orange_tulip"));
+        } else if (r.nextInt(18) == 0) {
+            p.setIfEmpty(x, top + 1, z, Decor.pick(r, "lily_of_the_valley", "short_grass", "cornflower", "allium"));
         }
     }
 
@@ -409,21 +472,112 @@ public final class BoardPlans {
 
     private static void castle(Plan p, BoardLayout layout, Terrain t, Random r) {
         BoardLayout.Shape s = layout.shape();
-        int top = t.top(0, 0);
-        // Bergfried: runder Turm in der Mitte mit blauem Kegeldach
-        int rad = 3;
-        for (int x = -rad; x <= rad; x++) {
-            for (int z = -rad; z <= rad; z++) {
-                double d = Math.hypot(x, z);
-                if (d > rad + 0.4) {
+        double line = s.height() * CASTLE;
+        keep(p, t.top(0, 0));
+        List<BoardLayout.Sample> sm = layout.samples();
+        // Ecktürme außen an der Burgmauer, in gleichen Abständen entlang des Wegs
+        for (int i = 0; i < sm.size(); i += 230) {
+            BoardLayout.Sample a = sm.get(i);
+            if (a.y() < line + 1 || a.r() < s.inner() + 6) {
+                continue;
+            }
+            double out = (a.r() + 5.5) / a.r();
+            int cx = (int) Math.round(a.x() * out);
+            int cz = (int) Math.round(a.z() * out);
+            if (free(layout, t, cx, cz, 2.5)) {
+                tower(p, t, cx, cz, (int) Math.round(a.y()) + 7, 2, i / 230);
+            }
+        }
+        // Torhaus, wo der Weg vom Garten in die Burg führt
+        for (int i = 0; i < sm.size() - 40; i++) {
+            if (sm.get(i).y() >= line - 1 && fieldDistance(layout, sm.get(i)) > 4.5) {
+                gatehouse(p, t, sm.get(i - 1 < 0 ? 0 : i - 1), sm.get(Math.min(sm.size() - 1, i + 20)));
+                break;
+            }
+        }
+        // Rosenbögen über dem Gartenweg
+        for (int i = 60; i < sm.size(); i += 150) {
+            BoardLayout.Sample a = sm.get(i);
+            if (a.y() >= line - 3 || fieldDistance(layout, a) < 4.5) {
+                continue;
+            }
+            arch(p, a, sm.get(Math.min(sm.size() - 1, i + 15)));
+        }
+        // Zwei Brunnen und Formschnitt-Bäumchen im Garten
+        fountain(p, t, layout, s.outer() - 9, s.angle() - 0.5);
+        fountain(p, t, layout, s.outer() - 8, s.angle() + 2.2);
+        for (int k = 0; k < 14; k++) {
+            double a = s.angle() + k * 0.45;
+            double rr = s.outer() - 4 - (k % 3) * 6;
+            int[] c = polar(rr, a);
+            if (Math.abs(c[0]) <= t.size && Math.abs(c[1]) <= t.size && t.trail(c[0], c[1]) > 4.5
+                    && t.top(c[0], c[1]) < line - 2 && t.top(c[0], c[1]) - t.lowestNeighbour(c[0], c[1]) < 2) {
+                int y = t.top(c[0], c[1]);
+                p.set(c[0], y + 1, c[1], "oak_log[axis=y]");
+                p.set(c[0], y + 2, c[1], "oak_log[axis=y]");
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        for (int dy = 3; dy <= 4; dy++) {
+                            if (Math.abs(dx) + Math.abs(dz) + (dy == 4 ? 1 : 0) <= 2) {
+                                p.setIfEmpty(c[0] + dx, y + dy, c[1] + dz, k % 2 == 0
+                                        ? "flowering_azalea_leaves[persistent=true]" : "azalea_leaves[persistent=true]");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Abstand zum nächsten Feld. */
+    private static double fieldDistance(BoardLayout layout, BoardLayout.Sample a) {
+        double best = 99;
+        for (Field f : layout.fields()) {
+            best = Math.min(best, Math.hypot(f.x() - a.x(), f.z() - a.z()));
+        }
+        return best;
+    }
+
+    /** Ist hier im Umkreis {@code radius} kein Weg und kein Feld? */
+    private static boolean free(BoardLayout layout, Terrain t, int cx, int cz, double radius) {
+        for (int dx = (int) -Math.ceil(radius); dx <= Math.ceil(radius); dx++) {
+            for (int dz = (int) -Math.ceil(radius); dz <= Math.ceil(radius); dz++) {
+                int x = cx + dx;
+                int z = cz + dz;
+                if (Math.hypot(dx, dz) > radius + 0.4) {
                     continue;
                 }
-                for (int y = top - 2; y <= top + 12; y++) {
-                    boolean shell = d > rad - 0.6;
+                if (Math.abs(x) > t.size || Math.abs(z) > t.size || !t.inside(x, z) || t.trail(x, z) <= PATH + 0.8) {
+                    return false;
+                }
+            }
+        }
+        for (Field f : layout.fields()) {
+            if (Math.hypot(f.x() - cx, f.z() - cz) < radius + 3) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Bergfried: runder weißer Turm mit Zinnenkranz, blauem Kegeldach und Fahnen. */
+    private static void keep(Plan p, int top) {
+        int rad = 4;
+        int height = 18;
+        for (int x = -rad - 1; x <= rad + 1; x++) {
+            for (int z = -rad - 1; z <= rad + 1; z++) {
+                double d = Math.hypot(x, z);
+                if (d > rad + 0.5) {
+                    continue;
+                }
+                boolean shell = d > rad - 0.6;
+                for (int y = top - 3; y <= top + height; y++) {
                     if (shell) {
-                        boolean window = (y - top) % 5 == 3 && (x == 0 || z == 0);
-                        p.set(x, y, z, window ? "light_blue_stained_glass_pane" : "calcite");
-                    } else if (y == top) {
+                        int rel = y - top;
+                        boolean window = rel % 6 == 4 && (x == 0 || z == 0);
+                        p.set(x, y, z, window ? "light_blue_stained_glass_pane"
+                                : rel % 6 == 0 ? "stone_bricks" : (x + y + z) % 7 == 0 ? "polished_diorite" : "calcite");
+                    } else if (y == top || y == top + height) {
                         p.set(x, y, z, "polished_diorite");
                     } else {
                         p.clear(x, y, z);
@@ -431,47 +585,198 @@ public final class BoardPlans {
                 }
             }
         }
-        for (int layer = 0; layer <= 6; layer++) {
-            double rr = rad + 1 - layer * 0.65;
-            for (int x = -rad - 1; x <= rad + 1; x++) {
-                for (int z = -rad - 1; z <= rad + 1; z++) {
-                    if (Math.hypot(x, z) <= rr + 0.3) {
-                        p.set(x, top + 13 + layer, z, layer % 2 == 0 ? "blue_terracotta" : "light_blue_terracotta");
+        // Tor zum Bergfried (zum Ziel hin offen)
+        for (int y = top + 1; y <= top + 3; y++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                p.clear(rad, y, dz);
+            }
+        }
+        // Zinnenkranz auf Kragsteinen
+        for (int a = 0; a < 360; a += 8) {
+            int x = (int) Math.round(Math.cos(Math.toRadians(a)) * (rad + 1));
+            int z = (int) Math.round(Math.sin(Math.toRadians(a)) * (rad + 1));
+            p.set(x, top + height, z, "smooth_quartz");
+            p.set(x, top + height - 1, z, "quartz_stairs[facing=" + face(x, z) + ",half=top,shape=straight]");
+            if ((a / 8) % 2 == 0) {
+                p.set(x, top + height + 1, z, "polished_diorite");
+            }
+        }
+        // Kegeldach (blau) mit Spitze
+        int roofBase = top + height + 2;
+        for (int layer = 0; layer <= 9; layer++) {
+            double rr = rad + 0.5 - layer * 0.5;
+            for (int x = -rad; x <= rad; x++) {
+                for (int z = -rad; z <= rad; z++) {
+                    double d = Math.hypot(x, z);
+                    if (d <= rr + 0.3 && (d > rr - 1.1 || layer == 0)) {
+                        p.set(x, roofBase + layer, z, layer % 3 == 2 ? "light_blue_terracotta" : "blue_terracotta");
                     }
                 }
             }
         }
-        p.set(0, top + 20, 0, "lightning_rod");
-        p.banner(rad + 1, top + 10, 0, Decor.bannerBlock(2, true, "east"), Decor.bannerPatterns(2));
-        p.banner(-rad - 1, top + 10, 0, Decor.bannerBlock(0, true, "west"), Decor.bannerPatterns(0));
-        // Brunnen im Schlossgarten
-        int[] c = polar(s.outer() - 9, s.angle() - 0.5);
-        int floor = (int) Math.round(layout.terrainHeight(s.outer() - 9));
+        p.fill(0, roofBase + 10, 0, 0, roofBase + 12, 0, "spruce_fence");
+        p.banner(0, roofBase + 13, 0, Decor.bannerBlock(2, false, "4"), Decor.bannerPatterns(2));
+        // Fahnen an allen vier Seiten
+        String[][] sides = {{"east", String.valueOf(rad + 1), "0"}, {"west", String.valueOf(-rad - 1), "0"},
+            {"south", "0", String.valueOf(rad + 1)}, {"north", "0", String.valueOf(-rad - 1)}};
+        for (String[] f : sides) {
+            int x = Integer.parseInt(f[1]);
+            int z = Integer.parseInt(f[2]);
+            p.banner(x, top + height - 3, z, Decor.bannerBlock(2, true, f[0]), Decor.bannerPatterns(2));
+            p.banner(x, top + 8, z, Decor.bannerBlock(2, true, f[0]), Decor.bannerPatterns(2));
+        }
+    }
+
+    /** Blickrichtung nach außen (für Treppen und Wandbanner). */
+    private static String face(int x, int z) {
+        if (Math.abs(x) >= Math.abs(z)) {
+            return x > 0 ? "west" : "east";
+        }
+        return z > 0 ? "north" : "south";
+    }
+
+    private static String outward(int x, int z) {
+        if (Math.abs(x) >= Math.abs(z)) {
+            return x > 0 ? "east" : "west";
+        }
+        return z > 0 ? "south" : "north";
+    }
+
+    /** Runder Eckturm: Mauer vom Hang bis über den Weg, Zinnen, blaues Spitzdach, weiß-blaue Fahne. */
+    private static void tower(Plan p, Terrain t, int cx, int cz, int topY, int rad, int n) {
+        int base = topY;
+        for (int x = -rad; x <= rad; x++) {
+            for (int z = -rad; z <= rad; z++) {
+                if (Math.hypot(x, z) <= rad + 0.5) {
+                    base = Math.min(base, t.top(cx + x, cz + z) - 2);
+                }
+            }
+        }
+        for (int x = -rad - 1; x <= rad + 1; x++) {
+            for (int z = -rad - 1; z <= rad + 1; z++) {
+                double d = Math.hypot(x, z);
+                if (d <= rad + 0.5) {
+                    for (int y = base; y <= topY; y++) {
+                        boolean window = d > rad - 0.6 && (topY - y) % 5 == 3 && (x == 0 || z == 0);
+                        p.set(cx + x, y, cz + z, window ? "light_blue_stained_glass_pane"
+                                : Math.floorMod(y, 6) == 0 ? "stone_bricks" : "calcite");
+                    }
+                }
+                if (d > rad + 0.5 && d <= rad + 1.5) {
+                    p.set(cx + x, topY, cz + z, "smooth_quartz");
+                    if (Math.floorMod(x + z, 2) == 0) {
+                        p.set(cx + x, topY + 1, cz + z, "polished_diorite");
+                    }
+                }
+            }
+        }
+        for (int layer = 0; layer <= 6; layer++) {
+            double rr = rad + 1 - layer * 0.5;
+            for (int x = -rad - 1; x <= rad + 1; x++) {
+                for (int z = -rad - 1; z <= rad + 1; z++) {
+                    if (Math.hypot(x, z) <= rr + 0.2) {
+                        p.set(cx + x, topY + 1 + layer, cz + z, layer % 3 == 1 ? "light_blue_terracotta" : "blue_terracotta");
+                    }
+                }
+            }
+        }
+        p.fill(cx, topY + 8, cz, cx, topY + 9, cz, "spruce_fence");
+        p.banner(cx, topY + 10, cz, Decor.bannerBlock(2, false, String.valueOf((n * 5) % 16)), Decor.bannerPatterns(2));
+        String dir = outward(cx, cz);
+        int ox = "east".equals(dir) ? rad + 1 : "west".equals(dir) ? -rad - 1 : 0;
+        int oz = "south".equals(dir) ? rad + 1 : "north".equals(dir) ? -rad - 1 : 0;
+        p.banner(cx + ox, topY - 2, cz + oz, Decor.bannerBlock(2, true, dir), Decor.bannerPatterns(2));
+        p.set(cx + ox, topY - 4, cz + oz, "lantern[hanging=false]");
+    }
+
+    /** Torhaus über dem Weg: zwei Türme, Bogen mit Fallgitter, Fahnen. */
+    private static void gatehouse(Plan p, Terrain t, BoardLayout.Sample a, BoardLayout.Sample b) {
+        double tx = b.x() - a.x();
+        double tz = b.z() - a.z();
+        double len = Math.hypot(tx, tz);
+        double nx = -tz / len;
+        double nz = tx / len;
+        int y = (int) Math.round(a.y());
+        for (int side : new int[] {-1, 1}) {
+            int cx = (int) Math.round(a.x() + nx * 4.2 * side);
+            int cz = (int) Math.round(a.z() + nz * 4.2 * side);
+            int base = y;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    base = Math.min(base, t.top(cx + dx, cz + dz) - 2);
+                }
+            }
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int yy = base; yy <= y + 8; yy++) {
+                        p.set(cx + dx, yy, cz + dz, Math.floorMod(yy, 4) == 0 ? "stone_bricks" : "calcite");
+                    }
+                    if ((dx + dz) % 2 == 0) {
+                        p.set(cx + dx, y + 9, cz + dz, "polished_diorite");
+                    }
+                }
+            }
+            Decor.towerRoof(p, cx, y + 10, cz, 1, "dark_prismarine_stairs", "dark_prismarine", 2);
+        }
+        // Bogen über dem Weg (Durchgang 4 Blöcke hoch)
+        for (double k = -3.4; k <= 3.4; k += 0.25) {
+            int x = (int) Math.round(a.x() + nx * k);
+            int z = (int) Math.round(a.z() + nz * k);
+            p.set(x, y + 5, z, "stone_bricks");
+            p.set(x, y + 6, z, "calcite");
+            p.set(x, y + 7, z, Math.abs(k) % 1.0 < 0.5 ? "polished_diorite" : "smooth_quartz");
+            if (Math.abs(k) < 2.6) {
+                p.set(x, y + 4, z, "iron_bars");
+            }
+        }
+        String dir = Math.abs(tx) >= Math.abs(tz) ? (tx > 0 ? "west" : "east") : (tz > 0 ? "north" : "south");
+        int bx = (int) Math.round(a.x() - tx / len * 1.0);
+        int bz = (int) Math.round(a.z() - tz / len * 1.0);
+        p.banner(bx, y + 6, bz, Decor.bannerBlock(2, true, dir), Decor.bannerPatterns(2));
+    }
+
+    /** Rosenbogen über dem Gartenweg. */
+    private static void arch(Plan p, BoardLayout.Sample a, BoardLayout.Sample b) {
+        double tx = b.x() - a.x();
+        double tz = b.z() - a.z();
+        double len = Math.hypot(tx, tz);
+        double nx = -tz / len;
+        double nz = tx / len;
+        int y = (int) Math.round(a.y());
+        for (int side : new int[] {-1, 1}) {
+            int x = (int) Math.round(a.x() + nx * 3.1 * side);
+            int z = (int) Math.round(a.z() + nz * 3.1 * side);
+            p.fill(x, y + 1, z, x, y + 3, z, "birch_fence");
+            p.set(x, y + 4, z, "flowering_azalea_leaves[persistent=true]");
+        }
+        for (double k = -2.8; k <= 2.8; k += 0.3) {
+            int x = (int) Math.round(a.x() + nx * k);
+            int z = (int) Math.round(a.z() + nz * k);
+            p.set(x, y + 5, z, Math.abs(k) < 1.5 ? "flowering_azalea_leaves[persistent=true]"
+                    : "azalea_leaves[persistent=true]");
+        }
+    }
+
+    /** Brunnen im Schlossgarten. */
+    private static void fountain(Plan p, Terrain t, BoardLayout layout, double rr, double angle) {
+        int[] c = polar(rr, angle);
+        int floor = (int) Math.round(layout.terrainHeight(rr));
         foundation(p, t, c[0] - 3, c[1] - 3, c[0] + 3, c[1] + 3, floor, "stone_bricks");
         for (int x = -3; x <= 3; x++) {
             for (int z = -3; z <= 3; z++) {
-                boolean rim = Math.max(Math.abs(x), Math.abs(z)) == 3;
-                p.set(c[0] + x, floor, c[1] + z, rim ? "polished_diorite" : "gravel");
-                if (Math.max(Math.abs(x), Math.abs(z)) == 2) {
+                int ring = Math.max(Math.abs(x), Math.abs(z));
+                p.set(c[0] + x, floor, c[1] + z, ring == 3 ? "polished_diorite" : "gravel");
+                if (ring == 2) {
                     p.set(c[0] + x, floor + 1, c[1] + z, "quartz_slab[type=bottom]");
-                } else if (Math.max(Math.abs(x), Math.abs(z)) < 2) {
+                } else if (ring < 2) {
                     p.set(c[0] + x, floor + 1, c[1] + z, "water");
                 }
             }
         }
         p.fill(c[0], floor + 1, c[1], c[0], floor + 3, c[1], "quartz_pillar[axis=y]");
         p.set(c[0], floor + 4, c[1], "sea_lantern");
-        // Laubengang (Rosenbögen) entlang des unteren Wegs
-        for (int i = 0; i < layout.samples().size(); i += 220) {
-            BoardLayout.Sample sm = layout.samples().get(i);
-            if (sm.y() >= s.height() * 0.42) {
-                continue;
-            }
-            int bx = (int) Math.round(sm.x() * (sm.r() + 3) / sm.r());
-            int bz = (int) Math.round(sm.z() * (sm.r() + 3) / sm.r());
-            int by = t.top(bx, bz);
-            p.fill(bx, by + 1, bz, bx, by + 3, bz, "birch_fence");
-            p.set(bx, by + 4, bz, "flowering_azalea_leaves[persistent=true]");
+        for (int[] d : new int[][] {{-3, -3}, {3, 3}, {-3, 3}, {3, -3}}) {
+            Decor.lanternPost(p, c[0] + d[0], floor + 1, c[1] + d[1], "birch_fence");
         }
     }
 

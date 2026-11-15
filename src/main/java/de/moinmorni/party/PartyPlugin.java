@@ -77,8 +77,10 @@ public final class PartyPlugin extends JavaPlugin {
             layouts.put(b, l);
             boardPlans.put(b, BoardPlans.build(l));
         }
+        Map<MiniType, Plan> arenaBuild = new EnumMap<>(MiniType.class);
         for (MiniType t : MiniType.values()) {
             arenaPlans.put(t, t.plan());
+            arenaBuild.put(t, t.fullPlan());
         }
 
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
@@ -93,7 +95,7 @@ public final class PartyPlugin extends JavaPlugin {
         }
 
         construction = new Construction(this, world);
-        construction.ensure(settings.tables(), boardPlans, arenaPlans, false, () -> {
+        construction.ensure(settings.tables(), boardPlans, arenaBuild, false, () -> {
             ready = true;
             getLogger().info("Morni Party ist bereit: " + settings.tables() + " Tische, " + BoardId.values().length
                     + " Spielbretter, " + MiniType.values().length + " Minispiele.");
@@ -261,7 +263,11 @@ public final class PartyPlugin extends JavaPlugin {
         games.closeAll();
         Map<BoardId, Plan> boardPlans = new EnumMap<>(BoardId.class);
         layouts.forEach((b, l) -> boardPlans.put(b, BoardPlans.build(l)));
-        construction.ensure(settings.tables(), boardPlans, arenaPlans, true, () -> {
+        Map<MiniType, Plan> arenaBuild = new EnumMap<>(MiniType.class);
+        for (MiniType t : MiniType.values()) {
+            arenaBuild.put(t, t.fullPlan());
+        }
+        construction.ensure(settings.tables(), boardPlans, arenaBuild, true, () -> {
             ready = true;
             done.run();
         });

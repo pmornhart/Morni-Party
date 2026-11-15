@@ -32,7 +32,7 @@ import org.bukkit.scheduler.BukkitTask;
 public final class Construction {
 
     /** Bau-Version: erhöhen, wenn sich Festplatz, Bretter oder Plätze ändern – dann wird beim nächsten Start neu gebaut. */
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     private static final long BUDGET_NANOS = 25_000_000L;
     private static final int CHECK_EVERY = 256;
     private static final int HUB_RANGE = 200;
@@ -182,8 +182,30 @@ public final class Construction {
                     banner.update(true, false);
                 }
             }
+            for (Plan.Creature c : plan.creatures()) {
+                spawnCreature(c, ox, oy, oz);
+            }
             return true;
         };
+    }
+
+    /** Deko-Tier: steht still, ist unverwundbar und still, bleibt erhalten. */
+    private void spawnCreature(Plan.Creature c, int ox, int oy, int oz) {
+        org.bukkit.entity.EntityType type = org.bukkit.Registry.ENTITY_TYPE.get(org.bukkit.NamespacedKey.minecraft(c.type()));
+        if (type == null) {
+            return;
+        }
+        org.bukkit.Location l = new org.bukkit.Location(world, ox + c.x(), oy + c.y(), oz + c.z(), c.yaw(), 0f);
+        world.spawnEntity(l, type, org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CUSTOM, e -> {
+            e.setPersistent(true);
+            e.setInvulnerable(true);
+            e.setSilent(true);
+            e.addScoreboardTag("morniparty_deko");
+            if (e instanceof org.bukkit.entity.LivingEntity le) {
+                le.setAI(false);
+                le.setRemoveWhenFarAway(false);
+            }
+        });
     }
 
     private Job clearJob(int[] b) {

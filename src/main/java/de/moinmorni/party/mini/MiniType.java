@@ -81,6 +81,15 @@ public enum MiniType {
         return p;
     }
 
+    /** Bauplan mit Kulisse rundherum (nur beim Bau; vor jeder Runde wird nur {@link #plan()} neu gelegt). */
+    public Plan fullPlan() {
+        Plan p = new Plan();
+        MiniDecor.build(this, p);
+        builder.accept(p);
+        p.connect();
+        return p;
+    }
+
     public static MiniType parse(String s) {
         if (s == null) {
             return null;
