@@ -68,7 +68,7 @@ public abstract class MiniRun {
         this.rng = s.rng();
         this.audience = s.audience();
         this.score = new Scoring(s.type().kind());
-        this.duration = (int) Math.round(s.type().seconds() * s.factor() * SECOND);
+        this.duration = (int) Math.round(s.type().seconds() * (s.type().scaled() ? s.factor() : 1.0) * SECOND);
         players.forEach(p -> score.join(p.getUniqueId()));
     }
 

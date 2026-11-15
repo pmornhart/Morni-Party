@@ -18,8 +18,8 @@ public enum MiniType {
     HEISSE_BREZN(Material.BREAD, 75, Scoring.Kind.SURVIVAL, HeisseBrezn::new, HeisseBrezn::build),
     TRACHTENFARBEN(Material.LIME_WOOL, 60, Scoring.Kind.SURVIVAL, TrachtenFarben::new, TrachtenFarben::build),
     GIPFELKOENIG(Material.GOLD_BLOCK, 40, Scoring.Kind.POINTS, GipfelKoenig::new, GipfelKoenig::build),
-    KUHGLOCKE(Material.BELL, 45, Scoring.Kind.POINTS, KuhGlocke::new, KuhGlocke::build),
-    SCHAEFCHEN(Material.WHITE_WOOL, 50, Scoring.Kind.POINTS, Schaefchen::new, Schaefchen::build),
+    KUHGLOCKE(Material.BELL, 60, Scoring.Kind.POINTS, KuhGlocke::new, KuhGlocke::build),
+    SCHAEFCHEN(Material.WHITE_WOOL, 60, Scoring.Kind.POINTS, Schaefchen::new, Schaefchen::build),
     HOLZHACKER(Material.IRON_AXE, 35, Scoring.Kind.POINTS, HolzHacker::new, HolzHacker::build),
     REMPELEI(Material.STICK, 60, Scoring.Kind.SURVIVAL, Rempelei::new, Rempelei::build),
     SCHEIBENSCHIESSEN(Material.TARGET, 35, Scoring.Kind.POINTS, ScheibenSchiessen::new, ScheibenSchiessen::build);
@@ -50,6 +50,14 @@ public enum MiniType {
     /** Längste Dauer in Sekunden (ohne Faktor). */
     public int seconds() {
         return seconds;
+    }
+
+    /**
+     * Wird die Dauer mit dem Faktor aus der config.yml verkürzt? Spiele mit festen Runden (Kuhglocke, Schäfchen
+     * zählen) enden von selbst – ihre Dauer ist nur die Obergrenze.
+     */
+    public boolean scaled() {
+        return this != KUHGLOCKE && this != SCHAEFCHEN;
     }
 
     public Scoring.Kind kind() {

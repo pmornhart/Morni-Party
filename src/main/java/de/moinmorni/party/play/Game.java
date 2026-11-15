@@ -1358,9 +1358,17 @@ public final class Game {
                 .append(kind.id()).append("\",\"phase\":\"").append(phase.name().toLowerCase(java.util.Locale.ROOT))
                 .append("\",\"round\":").append(engine.round()).append(",\"rounds\":").append(engine.rounds())
                 .append(",\"stand\":").append(engine.stand()).append(",\"current\":\"").append(engine.current().name())
-                .append("\",\"mini\":\"").append(mini == null ? "" : mini.type().id()).append("\",\"fields\":\"");
+                .append("\",\"mini\":\"").append(mini == null ? "" : mini.type().id()).append("\",\"miniAt\":");
+        if (mini == null) {
+            b.append("null");
+        } else {
+            int[] o = Places.mini(table, mini.type());
+            b.append('[').append(o[0]).append(',').append(o[1]).append(',').append(o[2]).append(']');
+        }
+        int[] bo = origin;
+        b.append(",\"boardAt\":[").append(bo[0]).append(',').append(bo[1]).append(',').append(bo[2]).append("],\"fields\":\"");
         for (Field f : layout.fields()) {
-            b.append(f.type().name().charAt(0));
+            b.append(f.type() == FieldType.GEGENSTAND ? 'I' : f.type().name().charAt(0));
         }
         b.append("\",\"players\":[");
         List<PartyPlayer> all = engine.players();

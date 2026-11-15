@@ -13,7 +13,6 @@ import java.util.UUID;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerMoveEvent;
 
 /**
  * Bergsprint: ein Wettlauf den Almweg hinauf, über Heuballen und kleine Stufen. Wer zuerst durchs Ziel läuft, gewinnt;
@@ -117,13 +116,23 @@ final class BergSprint extends MiniRun {
         // Laufen genügt
     }
 
+    /** Jeden zweiten Tick: wer ist wie weit? (Auch nach einem Sprung oder Teleport, nicht nur beim Laufen.) */
     @Override
-    public void onMove(Player p, PlayerMoveEvent e) {
+    protected void onTick() {
+        if (ticks % 2 != 0) {
+            return;
+        }
+        for (Player p : alivePlayers()) {
+            progress(p);
+        }
+    }
+
+    private void progress(Player p) {
         UUID u = p.getUniqueId();
         if (finished.contains(u) || !score.has(u)) {
             return;
         }
-        double z = e.getTo().getZ() - oz;
+        double z = p.getLocation().getZ() - oz;
         if (z >= GOAL_Z) {
             finished.add(u);
             order++;
