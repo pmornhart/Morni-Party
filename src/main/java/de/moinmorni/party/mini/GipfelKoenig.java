@@ -40,7 +40,7 @@ final class GipfelKoenig extends MiniRun {
                 }
             }
         }
-        de.moinmorni.party.world.Decor.island(p, RADIUS, 9, new java.util.Random(2), "dirt", 1);
+        de.moinmorni.party.world.Decor.island(p, RADIUS, 9, new java.util.Random(2), "grass_block[snowy=false]", 1);
         for (int a = 0; a < 360; a += 3) {
             int x = (int) Math.round(Math.cos(Math.toRadians(a)) * (RADIUS + 1));
             int z = (int) Math.round(Math.sin(Math.toRadians(a)) * (RADIUS + 1));

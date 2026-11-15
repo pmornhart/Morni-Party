@@ -448,7 +448,9 @@ async function part1() {
   const target = g2.players.find((p) => p.name !== t1);
   await cmd(`mparty feld ${target.name} 20`);
   await sleep(300);
+  await phase((x) => x.phase === 'turn' && x.current === t1, 5000);
   win = await openWithItem(tb, 1);
+  if (!win) win = await openWithItem(tb, 1);
   const targetMenu = nextWindow(tb);
   await click(tb, 2);
   // Ziel-Menü: der Erste in der Liste

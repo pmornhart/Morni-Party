@@ -46,7 +46,7 @@ final class HeisseBrezn extends MiniRun {
                 p.set(c[0], 3, c[1], "barrier");
             }
         }
-        de.moinmorni.party.world.Decor.island(p, HALF + 1, 7, new java.util.Random(6), "dirt", 1);
+        de.moinmorni.party.world.Decor.island(p, HALF + 1, 7, new java.util.Random(6), "grass_block[snowy=false]", 1);
         // Wirtshaus-Ecken: Fässer und Laternen
         for (int sx : new int[] {-HALF, HALF}) {
             for (int sz : new int[] {-HALF, HALF}) {

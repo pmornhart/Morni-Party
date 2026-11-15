@@ -84,7 +84,7 @@ final class Schaefchen extends MiniRun {
         // Stall im Hintergrund
         p.fill(-3, 1, PEN + 2, 3, 3, PEN + 3, "spruce_planks");
         p.fill(-3, 4, PEN + 2, 3, 4, PEN + 3, "dark_oak_slab[type=bottom]");
-        Decor.island(p, PEN + 4, 6, r, "dirt", 1);
+        Decor.island(p, PEN + 4, 6, r, "grass_block[snowy=false]", 1);
     }
 
     @Override

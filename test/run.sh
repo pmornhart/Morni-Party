@@ -80,7 +80,7 @@ warten:
   automatisch-mitspielen: false
 edelweiss-jagd-runden: [2, 8]
 zug:
-  wuerfel-sekunden: 8
+  wuerfel-sekunden: 12
   menue-sekunden: 8
   schritt-ticks: 3
 minispiele:

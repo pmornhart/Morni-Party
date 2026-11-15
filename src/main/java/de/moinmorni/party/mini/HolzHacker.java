@@ -60,7 +60,7 @@ final class HolzHacker extends MiniRun {
                 p.set(c[0], 3, c[1], "barrier");
             }
         }
-        Decor.island(p, HALF + 1, 7, r, "dirt", 1);
+        Decor.island(p, HALF + 1, 7, r, "grass_block[snowy=false]", 1);
         for (int[] c : new int[][] {{-HALF - 4, 0}, {HALF + 4, 0}, {0, HALF + 4}, {0, -HALF - 4}}) {
             p.fill(c[0] - 2, -1, c[1] - 2, c[0] + 2, 0, c[1] + 2, "grass_block[snowy=false]");
             Decor.spruce(p, c[0], 1, c[1], 8, r);

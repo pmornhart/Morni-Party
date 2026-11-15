@@ -47,7 +47,7 @@ final class KuhGlocke extends MiniRun {
             }
         }
         // Tafel: 11 × 5 Wolle (rot), daneben die große Glocke
-        de.moinmorni.party.world.Decor.island(p, 10, 7, new java.util.Random(8), "dirt", 1);
+        de.moinmorni.party.world.Decor.island(p, 10, 7, new java.util.Random(8), "grass_block[snowy=false]", 1);
         signal(p, "red_wool");
         p.fill(-7, 1, 6, -7, 7, 6, "spruce_log[axis=y]");
         p.fill(7, 1, 6, 7, 7, 6, "spruce_log[axis=y]");

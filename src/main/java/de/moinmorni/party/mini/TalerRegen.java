@@ -52,7 +52,7 @@ final class TalerRegen extends MiniRun {
                 p.set(HALF + 1, h, i, "barrier");
             }
         }
-        Decor.island(p, HALF + 1, 7, r, "dirt", 1);
+        Decor.island(p, HALF + 1, 7, r, "grass_block[snowy=false]", 1);
         for (int[] c : new int[][] {{-HALF - 4, -HALF - 4}, {HALF + 4, HALF + 4}, {-HALF - 4, HALF + 4}, {HALF + 4, -HALF - 4}}) {
             p.fill(c[0] - 2, -1, c[1] - 2, c[0] + 2, 0, c[1] + 2, "grass_block[snowy=false]");
             Decor.spruce(p, c[0], 1, c[1], 7, r);

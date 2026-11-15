@@ -51,7 +51,7 @@ final class ScheibenSchiessen extends MiniRun {
                 p.set(HALF + 2, y, z, "barrier");
             }
         }
-        de.moinmorni.party.world.Decor.island(p, HALF + 2, 8, new java.util.Random(9), "dirt", 1);
+        de.moinmorni.party.world.Decor.island(p, HALF + 2, 8, new java.util.Random(9), "grass_block[snowy=false]", 1);
         // Dach über dem Stand
         for (int x = -HALF - 1; x <= HALF + 1; x++) {
             for (int z = -7; z <= -2; z++) {
