@@ -155,6 +155,7 @@ public final class PartyPlugin extends JavaPlugin {
         w.setGameRule(GameRules.ENTITY_DROPS, false);
         w.setGameRule(GameRules.FALL_DAMAGE, false);
         w.setGameRule(GameRules.KEEP_INVENTORY, true);
+        w.setGameRule(GameRules.LOCATOR_BAR, false);
         w.setTime(6000L);
         w.setStorm(false);
         w.setThundering(false);

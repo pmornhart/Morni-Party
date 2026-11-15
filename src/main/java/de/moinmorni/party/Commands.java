@@ -37,10 +37,7 @@ final class Commands implements TabExecutor {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        // „/execute as <spieler> run …“ (z. B. aus einem NPC oder Befehlsblock): so tun, als hätte der Spieler getippt.
-        CommandSender s = sender instanceof org.bukkit.command.ProxiedCommandSender proxied
-                && proxied.getCallee() instanceof Player callee ? callee : sender;
+    public boolean onCommand(CommandSender s, Command cmd, String label, String[] args) {
         String lang = lang(s);
         switch (cmd.getName()) {
             case "mitspielen" -> {

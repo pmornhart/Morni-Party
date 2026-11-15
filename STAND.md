@@ -26,3 +26,26 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
 ## Stand (15.11.2026)
 
 - Version 0.1.0 (erster Stand, Branch `claude/erster-stand`, noch nicht veröffentlicht): alles oben Genannte.
+- Geprüft: 37 Unit-Tests (Brett, Spielregeln beider Spielarten, Felder, Stand, Laden, Gegenstände, Duell, Runden,
+  Gehen, Minispiel-Taler, Warteschlange mit Partys, Abstimmung, Wertung der Minispiele, Texte samt Prüfung, dass jeder
+  Schlüssel im Quelltext einen Text hat). Gegen Paper-API 26.3 gebaut, übersetzt auch gegen 26.1.
+- Echter Test (`test/run.sh`, Paper 26.1.2 + ViaVersion/ViaBackwards 5.12.2, offline, Port 25770, vier Test-Spieler
+  mit mineflayer): **111/111** in drei Partien – Festplatz (Knöpfe, Sprache, Party bringt Bert mit, Abstimmung,
+  Countdown), Edelweiß-Jagd auf Schloss Weißenstein (Edelweiß-Stand, Doppelwürfel, Krämerladen, Würfelduell,
+  Platztausch, Würfeln nach Zeitablauf, Zuschauen, Kuhglocke, Schäfchen zählen, Siegerehrung, Netzwerk-Statistik,
+  /stats), Gipfelrennen auf dem Almsommer zu viert (Bergsprint, Bröckelboden, Dora geht mittendrin, Anna erreicht das
+  Gipfelkreuz), Edelweiß-Jagd mit 8 Runden im Goldstollen (Talerregen, Pfeilhagel, Heiße Brezn, Trachtenfarben,
+  Gipfelkönig, Holzhacker, Rempelei, Scheibenschießen, /top). Kein Fehler im Server-Log außer Mojang-429 für
+  Spielerköpfe im Offline-Test.
+- Bilder mit echtem Client 26.3 (über ViaVersion, nur lokal): Festplatz, alle drei Bretter, mehrere Minispiel-Plätze,
+  Partie mit Seitenleiste als Zuschauer.
+- Nicht echt geprüft: Bedrock (Geyser) – Menüs und Antippen sind dafür gebaut; echte Spieler (Steuerung,
+  Gleichgewicht der Minispiele, Tempo); Netzwerk mit echtem Hub; Paper 26.3 als Server (nur gebaut); mehr als ein
+  Tisch gleichzeitig.
+
+## Offen
+
+- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann erstes Release v0.1.0).
+- Einstellungen (Rundenzahlen, Zeiten, Regeln, Minispiel-Auswahl) im Panel des Netzwerks (Einstellungs-Katalog) –
+  gehört ins Netzwerk-Repo; Lobby-Figur „Morni Party“ verbindet über `MODE_REPOS`, sobald es ein Release gibt.
+- Ideen: Brettfiguren als eigene Modelle statt der Spieler selbst, Bedrock-Formulare (Floodgate) statt Truhen.
