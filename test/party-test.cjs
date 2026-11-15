@@ -382,9 +382,10 @@ async function part1() {
   await sleep(300);
   win = await openWithItem(cur, 1);
   check('Rucksack öffnet sich', win && /Rucksack|backpack/.test(plain(win.title)), win && plain(win.title));
-  check('Doppelwürfel im Rucksack', win && win.slots[2]?.name === 'quartz_block', win && win.slots[2]?.name);
+  const dSlot = win ? win.slots.findIndex((it, i) => i < 9 && it?.name === 'quartz_block') : -1;
+  check('Doppelwürfel im Rucksack', dSlot >= 0, win && win.slots.slice(0, 9).map((it) => it?.name).join(','));
   clear(anna, bert, carl);
-  await click(cur, 2);
+  await click(cur, dSlot);
   check('Doppelwürfel eingesetzt (Chat)', await waitFor(() => sees(anna, /(zwei Würfel|two dice)/), 2000), anna.chats.join(' | '));
   await use(cur, 0);
   after = await phase((x) => x.current !== second, 30000);
@@ -451,8 +452,10 @@ async function part1() {
   await phase((x) => x.phase === 'turn' && x.current === t1, 5000);
   win = await openWithItem(tb, 1);
   if (!win) win = await openWithItem(tb, 1);
+  // Der Platztausch (Enderperle) – vorher Gefundenes liegt davor im Rucksack
+  const tSlot = win ? win.slots.findIndex((it, i) => i < 9 && it?.name === 'ender_pearl') : 2;
   const targetMenu = nextWindow(tb);
-  await click(tb, 2);
+  await click(tb, tSlot);
   // Ziel-Menü: der Erste in der Liste
   const tw = await targetMenu;
   check('Platztausch: Menü „Wen trifft es?“', tw && /Wen trifft es|Who is it for/.test(plain(tw.title)), tw && plain(tw.title));

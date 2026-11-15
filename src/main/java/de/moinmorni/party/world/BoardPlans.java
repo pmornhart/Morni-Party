@@ -609,7 +609,7 @@ public final class BoardPlans {
                 for (int z = -rad; z <= rad; z++) {
                     double d = Math.hypot(x, z);
                     if (d <= rr + 0.3 && (d > rr - 1.1 || layer == 0)) {
-                        p.set(x, roofBase + layer, z, layer % 3 == 2 ? "light_blue_terracotta" : "blue_terracotta");
+                        p.set(x, roofBase + layer, z, layer % 3 == 2 ? "light_blue_concrete" : "blue_concrete");
                     }
                 }
             }
@@ -675,7 +675,7 @@ public final class BoardPlans {
             for (int x = -rad - 1; x <= rad + 1; x++) {
                 for (int z = -rad - 1; z <= rad + 1; z++) {
                     if (Math.hypot(x, z) <= rr + 0.2) {
-                        p.set(cx + x, topY + 1 + layer, cz + z, layer % 3 == 1 ? "light_blue_terracotta" : "blue_terracotta");
+                        p.set(cx + x, topY + 1 + layer, cz + z, layer % 3 == 1 ? "light_blue_concrete" : "blue_concrete");
                     }
                 }
             }
