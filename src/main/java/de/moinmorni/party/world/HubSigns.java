@@ -110,11 +110,6 @@ public final class HubSigns {
         return c;
     }
 
-    /** Neu Angekommene sollen sofort ihre Sprache sehen. */
-    public void show(Player p) {
-        update();
-    }
-
     public void remove() {
         for (Sign s : signs) {
             s.de().remove();

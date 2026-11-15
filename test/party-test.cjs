@@ -638,8 +638,10 @@ async function playMini(id, g, list) {
           await sleep(1000);
         } else if (id === 'holzhacker') {
           for (const b of list.slice(0, 2)) {
-            const log = b.findBlock({ matching: (bl) => bl.name === 'oak_log' && bl.position.y === oy + 1, maxDistance: 20 });
-            if (!log) continue;
+            const id = b.registry.blocksByName.oak_log.id;
+            const spots = b.findBlocks({ matching: id, maxDistance: 20, count: 40 }).filter((v) => v.y === oy + 1);
+            if (spots.length === 0) continue;
+            const log = { position: spots[Math.floor(Math.random() * spots.length)] };
             await tp(b, log.position.x + 0.5, oy + 1, log.position.z - 0.7);
             await sleep(300);
             for (let i = 0; i < 3; i++) {

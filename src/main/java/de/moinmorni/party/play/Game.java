@@ -923,8 +923,11 @@ public final class Game {
 
     private ItemStack head(PartyPlayer o, Component name, List<Component> lore) {
         ItemStack head = Items.named(Material.PLAYER_HEAD, 1, name, lore);
-        head.editMeta(org.bukkit.inventory.meta.SkullMeta.class,
-                meta -> meta.setOwningPlayer(plugin.getServer().getOfflinePlayer(o.uuid())));
+        // Nur das Profil der Person, die gerade da ist (mit Skin) – keine Abfrage bei Mojang.
+        Player online = plugin.getServer().getPlayer(o.uuid());
+        if (online != null) {
+            head.editMeta(org.bukkit.inventory.meta.SkullMeta.class, meta -> meta.setPlayerProfile(online.getPlayerProfile()));
+        }
         return head;
     }
 

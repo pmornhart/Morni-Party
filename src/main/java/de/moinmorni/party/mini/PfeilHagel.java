@@ -38,6 +38,7 @@ final class PfeilHagel extends MiniRun {
                 }
             }
         }
+        de.moinmorni.party.world.Decor.island(p, HALF + 1, 8, new java.util.Random(4), null, 0);
         // Zielscheiben-Türme an den Ecken
         for (int sx : new int[] {-HALF - 1, HALF + 1}) {
             for (int sz : new int[] {-HALF - 1, HALF + 1}) {

@@ -193,6 +193,10 @@ public final class PartyPlugin extends JavaPlugin {
         return sidebar;
     }
 
+    public HubSigns signs() {
+        return signs;
+    }
+
     public BoardLayout layout(BoardId id) {
         return layouts.get(id);
     }

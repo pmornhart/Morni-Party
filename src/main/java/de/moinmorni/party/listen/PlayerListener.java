@@ -68,6 +68,7 @@ public final class PlayerListener implements Listener {
             String lang = plugin.lang(p);
             plugin.lobby().giveItems(p);
             plugin.lobby().refresh(p);
+            plugin.signs().update();
             Ui.title(p, Texts.text(lang, "join.title"), Texts.text(lang, "join.subtitle"), 2500);
             p.sendMessage(Texts.msg(lang, "join.welcome"));
             if (!plugin.ready()) {

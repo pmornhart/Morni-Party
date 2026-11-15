@@ -66,18 +66,23 @@ public final class BoardPlans {
                 }
                 int top = t.top(x, z);
                 int from = Math.min(top - 3, t.lowestNeighbour(x, z) - 1);
-                if (Math.hypot(x, z) > t.island - 2.5) {
-                    from = Math.min(from, -8);
+                double d = Math.hypot(x, z);
+                if (d > t.island - 2.5) {
+                    from = Math.min(from, Math.min(top - 3, -4));
                 }
                 double dist = t.trail(x, z);
                 for (int y = from; y <= top; y++) {
                     p.set(x, y, z, block(id, r, y, top, dist, h, t, x, z));
                 }
+                // Unterseite: Fels läuft nach unten spitz zu (die Insel schwebt)
+                double f = Math.max(0, 1 - (d / t.island) * (d / t.island));
+                int below = 1 + (int) Math.round(9 * Math.sqrt(f)) + r.nextInt(2);
+                for (int y = from - below; y < from; y++) {
+                    p.setIfEmpty(x, y, z, Decor.rock(r, from - y + 6));
+                }
                 decorate(p, id, r, x, top, z, dist, h, t);
             }
         }
-        // Unterseite: Fels läuft nach unten spitz zu (die Insel schwebt)
-        Decor.island(p, (int) t.island - 3, 10, r, null, 0);
         for (Field f : layout.fields()) {
             pad(p, f.x(), f.y(), f.z(), f.type(), border(id));
         }

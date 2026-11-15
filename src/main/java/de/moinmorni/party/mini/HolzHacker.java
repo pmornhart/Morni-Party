@@ -55,7 +55,7 @@ final class HolzHacker extends MiniRun {
         }
         for (int i = -HALF - 1; i <= HALF + 1; i++) {
             for (int[] c : new int[][] {{i, -HALF - 1}, {i, HALF + 1}, {-HALF - 1, i}, {HALF + 1, i}}) {
-                p.set(c[0], 1, c[1], "oak_log[axis=y]");
+                p.set(c[0], 1, c[1], "spruce_log[axis=y]");
                 p.set(c[0], 2, c[1], "barrier");
                 p.set(c[0], 3, c[1], "barrier");
             }
@@ -115,7 +115,7 @@ final class HolzHacker extends MiniRun {
     public void onBlockDamage(Player p, BlockDamageEvent e) {
         e.setCancelled(true);
         Block b = e.getBlock();
-        if (b.getType() != Material.OAK_LOG || b.getY() != oy + 1 || !score.alive(p.getUniqueId())) {
+        if (b.getType() != Material.OAK_LOG || b.getY() != oy + 1 || !onStump(b) || !score.alive(p.getUniqueId())) {
             return;
         }
         int last = lastHit.getOrDefault(p.getUniqueId(), -HIT_GAP);
@@ -134,6 +134,15 @@ final class HolzHacker extends MiniRun {
             point(p, 1);
             waiting.add(1);
         }
+    }
+
+    private boolean onStump(Block b) {
+        for (int[] s : STUMPS) {
+            if (b.getX() == ox + s[0] && b.getZ() == oz + s[1]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
