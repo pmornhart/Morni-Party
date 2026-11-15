@@ -1,0 +1,40 @@
+name: MorniParty
+version: '${project.version}'
+main: de.moinmorni.party.PartyPlugin
+api-version: '1.21'
+description: Morni Party für das MoinMorni-Netzwerk – Brettspiel für 2–8 mit Edelweiß, Talern und zwölf Minispielen.
+authors: [MoinMorni]
+website: https://moinmorni.net
+# Läuft mit dem Netzwerk-Plugin (Sprache, Party, Statistik) und auch allein.
+softdepend: [MoinMorni]
+
+commands:
+  mitspielen:
+    description: Für die nächste Partie anmelden
+    usage: /mitspielen
+    aliases: [spielen, play]
+  verlassen:
+    description: Warteschlange, Partie oder Zuschauen verlassen
+    usage: /verlassen
+    aliases: [leave, raus]
+  zuschauen:
+    description: Einer laufenden Partie zuschauen
+    usage: /zuschauen [spieler]
+    aliases: [spectate, spec]
+  stats:
+    description: Statistik ansehen
+    usage: /stats [spieler]
+    aliases: [statistik]
+  top:
+    description: Bestenliste
+    usage: /top
+    aliases: [bestenliste, rangliste]
+  mparty:
+    description: Verwaltung von Morni Party
+    usage: /mparty <info|zustand|start|stopp|wuerfel|taler|edelweiss|feld|stand|gegenstand|minispiel|neubauen|neuladen>
+    permission: moinmorni.party.admin
+
+permissions:
+  moinmorni.party.admin:
+    description: Morni Party verwalten und im Kreativmodus in der Party-Welt bauen
+    default: op
