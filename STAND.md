@@ -26,6 +26,12 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
 ## Stand (15.11.2026)
 
 - Version 0.1.0 (erster Stand, Branch `claude/erster-stand`, noch nicht veröffentlicht): alles oben Genannte.
+- Bau-Version 2 (15.11. abends): Schloss Weißenstein als echte Burg – Terrassen mit weißen Mauern und Zinnen,
+  Brustwehr außen am Weg, Ecktürme mit blauen Spitzdächern und weiß-blauen Fahnen, Bergfried (Zinnenkranz, Kegeldach,
+  Banner), Torhaus mit Fallgitter, Schlossgarten mit Hecken, Rosenbögen, zwei Brunnen, Tulpenbeeten, Formschnitt.
+  Weg, Felder und Standplätze unverändert. Kulissen um alle zwölf Minispiel-Plätze (`mini/MiniDecor`, nur beim Bau;
+  vor jeder Runde wird nur die Spielfläche neu gelegt), Deko-Tiere im Bauplan (Kühe auf der Almweide, ohne KI).
+  Neubau eines Tischs: 640 859 Blöcke. Echter Test danach wieder 111/111, Bilder mit Client 26.3 (nur lokal).
 - Geprüft: 37 Unit-Tests (Brett, Spielregeln beider Spielarten, Felder, Stand, Laden, Gegenstände, Duell, Runden,
   Gehen, Minispiel-Taler, Warteschlange mit Partys, Abstimmung, Wertung der Minispiele, Texte samt Prüfung, dass jeder
   Schlüssel im Quelltext einen Text hat). Gegen Paper-API 26.3 gebaut, übersetzt auch gegen 26.1.
