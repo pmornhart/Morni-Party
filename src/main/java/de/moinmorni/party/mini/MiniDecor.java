@@ -35,6 +35,10 @@ final class MiniDecor {
             case MAIBAUMKRAXELN -> village(p, r);
             case EISSTOCKSCHIESSEN -> frozenLake(p, r);
             case MURMELTIER -> marmotMeadow(p, r);
+            case GOLDWASCHEN -> goldCamp(p, r);
+            case SCHUHPLATTLER -> festTent(p, r);
+            case BRUECKENBAU -> gorgeBridge(p, r);
+            case SCHNEEBALLSCHLACHT -> winterField(p, r);
         }
     }
 
@@ -946,5 +950,219 @@ final class MiniDecor {
         Decor.mountain(p, -8, 46, -14, 16, 48, r);
         Decor.mountain(p, -40, 22, -14, 12, 34, r);
         Decor.mountain(p, 38, 30, -14, 13, 36, r);
+    }
+    /** Goldwaschen: Bergbach mit Wasserfall, Waschrinne, Zelte der Goldsucher, Lore mit Schienen, Fichten. */
+    private static void goldCamp(Plan p, Random r) {
+        int h = GoldWaschen.HALF;
+        // Der Bach fließt von einem Felsen links herab und weiter nach rechts
+        for (int x = -32; x <= 34; x++) {
+            if (Math.abs(x) <= h + 1) {
+                continue;
+            }
+            int bed = x < 0 ? (x < -24 ? 6 : 0) : 0;
+            for (int z = -GoldWaschen.STREAM - 4; z <= GoldWaschen.STREAM + 4; z++) {
+                boolean water = Math.abs(z) <= GoldWaschen.STREAM;
+                p.setIfEmpty(x, bed - 1, z, water ? "gravel" : "dirt");
+                p.setIfEmpty(x, bed, z, water ? "water" : r.nextInt(4) == 0 ? "coarse_dirt" : GRASS);
+                for (int k = 2; k <= 4 + r.nextInt(2); k++) {
+                    p.setIfEmpty(x, bed - k, z, Decor.rock(r, k + 2));
+                }
+            }
+        }
+        // Fels mit Wasserfall
+        for (int x = -32; x <= -25; x++) {
+            for (int z = -8; z <= 8; z++) {
+                for (int y = 0; y <= 10 - Math.abs(z) / 2 + (x + 32) / 3; y++) {
+                    p.setIfEmpty(x, y, z, Decor.rock(r, 3));
+                }
+            }
+        }
+        for (int y = 1; y <= 6; y++) {
+            for (int z = -GoldWaschen.STREAM; z <= GoldWaschen.STREAM; z++) {
+                p.set(-24, y, z, "water");
+            }
+        }
+        ring(p, h + 3, 30, 0, GRASS, r);
+        // Waschrinne (Holz) am Ufer
+        for (int x = 14; x <= 20; x++) {
+            p.set(x, 1, -5, "spruce_trapdoor[facing=north,half=bottom,open=false]");
+            p.set(x, 1, -4, "spruce_slab[type=bottom]");
+            p.set(x, 1, -3, "spruce_trapdoor[facing=south,half=bottom,open=false]");
+        }
+        p.fill(14, 1, -6, 14, 2, -6, "spruce_fence");
+        // Zelte
+        for (int[] c : new int[][] {{-16, 9}, {-9, 14}, {16, 10}}) {
+            for (int dz = -2; dz <= 2; dz++) {
+                for (int i = 0; i <= 2; i++) {
+                    p.set(c[0] - 2 + i, 1 + i, c[1] + dz, "white_wool");
+                    p.set(c[0] + 2 - i, 1 + i, c[1] + dz, "white_wool");
+                }
+            }
+            p.set(c[0], 1, c[1] - 3, "campfire[lit=true]");
+        }
+        // Schienen mit Lore und Erzkisten
+        for (int x = -20; x <= -12; x++) {
+            p.set(x, 1, -12, "rail[shape=east_west]");
+        }
+        p.set(-12, 1, -11, "chest[facing=north]");
+        p.set(-11, 1, -11, "raw_gold_block");
+        p.set(-20, 1, -11, "barrel[facing=up]");
+        p.creature(-16.5, 1, -11.5, "minecart", 90);
+        for (int k = 0; k < 20; k++) {
+            double a = Math.toRadians(r.nextInt(360));
+            int x = (int) Math.round(Math.cos(a) * (18 + r.nextInt(10)));
+            int z = (int) Math.round(Math.sin(a) * (18 + r.nextInt(10)));
+            if (Math.abs(z) < 7 || (z < -12 && Math.abs(x) < 8)) {
+                continue;
+            }
+            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
+        }
+        flowers(p, -30, -30, 30, 30, 0, 8, r);
+        Decor.mountain(p, -36, 6, -14, 15, 44, r);
+        Decor.mountain(p, 10, 50, -14, 17, 46, r);
+    }
+
+    /** Schuhplattler: Festzelt mit weiß-blauem Dach, Musikbühne, Bänken und Girlanden. */
+    private static void festTent(Plan p, Random r) {
+        int h = SchuhPlattler.HALF + 2;
+        ring(p, h + 1, 28, 0, GRASS, r);
+        pad(p, -h - 1, -h - 1, h + 1, h + 1, 0, "spruce_planks", r);
+        // Pfosten und Zeltdach (hoch genug für den Blick der Zuschauer)
+        for (int x = -h; x <= h; x += h) {
+            for (int z = -h; z <= h; z += h) {
+                if (x == 0 && z == 0) {
+                    continue;
+                }
+                p.fill(x, 1, z, x, 10, z, "stripped_spruce_log[axis=y]");
+            }
+        }
+        for (int x = -h - 1; x <= h + 1; x++) {
+            for (int z = -h - 1; z <= h + 1; z++) {
+                int y = 11 + (h + 1 - Math.max(Math.abs(x), Math.abs(z))) / 3;
+                p.set(x, y, z, Math.floorMod(x, 4) < 2 ? "light_blue_wool" : "white_wool");
+            }
+        }
+        // Bühne hinten
+        for (int x = -6; x <= 6; x++) {
+            for (int z = h + 2; z <= h + 6; z++) {
+                p.set(x, 1, z, "spruce_planks");
+                if (z == h + 6) {
+                    p.fill(x, 2, z, x, 6, z, "spruce_planks");
+                }
+            }
+        }
+        p.set(-3, 2, h + 4, "note_block");
+        p.set(0, 2, h + 4, "jukebox");
+        p.set(3, 2, h + 4, "note_block");
+        p.set(-2, 2, h + 3, "spruce_stairs[facing=south,half=bottom,shape=straight]");
+        p.set(2, 2, h + 3, "spruce_stairs[facing=south,half=bottom,shape=straight]");
+        p.banner(0, 5, h + 5, Decor.bannerBlock(2, true, "north"), Decor.bannerPatterns(2));
+        // Bänke links und rechts
+        for (int side : new int[] {-1, 1}) {
+            int x = side * (h + 4);
+            for (int z = -8; z <= 8; z++) {
+                p.set(x, 1, z, "spruce_fence");
+                p.set(x, 2, z, "spruce_slab[type=bottom]");
+                p.set(x - 1, 1, z, "spruce_stairs[facing=east,half=bottom,shape=straight]");
+                p.set(x + 1, 1, z, "spruce_stairs[facing=west,half=bottom,shape=straight]");
+            }
+            p.set(x, 3, 0, "lantern[hanging=false]");
+        }
+        String[] colours = {"red", "yellow", "lime", "light_blue", "white", "orange"};
+        bunting(p, -h, -h, h, -h, 9, colours);
+        bunting(p, -h, h, h, h, 9, colours);
+        flowers(p, -28, -28, 28, 28, 0, 10, r);
+        Decor.mountain(p, 0, 52, -14, 17, 44, r);
+        Decor.mountain(p, -40, 30, -14, 13, 36, r);
+    }
+
+    /** Brückenbau: tiefe Schlucht mit Felswänden, Fluss weit unten, Wasserfall, Bäume an den Kanten. */
+    private static void gorgeBridge(Plan p, Random r) {
+        int side = BrueckenBau.SIDE;
+        // Felswände unter beiden Ufern bis hinunter zum Fluss
+        for (int x = -side - 12; x <= side + 12; x++) {
+            for (int z = BrueckenBau.START_Z - 14; z <= BrueckenBau.END_Z + 14; z++) {
+                boolean gorge = z > BrueckenBau.EDGE_Z && z < BrueckenBau.FAR_Z;
+                if (gorge) {
+                    if (Math.abs(x) > side + 1) {
+                        // Felsen links und rechts neben den Spuren
+                        int top = 2 + (int) Math.round(Math.sin(z * 0.6 + x) * 2);
+                        for (int y = -30; y <= top; y++) {
+                            p.setIfEmpty(x, y, z, y == top ? GRASS : Decor.rock(r, top - y + 2));
+                        }
+                    } else {
+                        p.setIfEmpty(x, -30, z, "gravel");
+                        p.setIfEmpty(x, -29, z, "water");
+                    }
+                    continue;
+                }
+                int depth = 30 - (z < 0 ? Math.max(0, BrueckenBau.START_Z - 8 - z) : Math.max(0, z - BrueckenBau.END_Z - 8));
+                for (int y = 0; y >= -depth; y--) {
+                    p.setIfEmpty(x, y, z, y == 0 ? (r.nextInt(5) == 0 ? "coarse_dirt" : GRASS) : Decor.rock(r, -y));
+                }
+            }
+        }
+        // Wasserfall an der Seite
+        for (int y = -28; y <= 2; y++) {
+            for (int z = 3; z <= 5; z++) {
+                p.set(side + 2, y, z, "water");
+            }
+        }
+        for (int k = 0; k < 14; k++) {
+            int x = -side - 10 + r.nextInt(2 * side + 20);
+            int z = r.nextBoolean() ? BrueckenBau.START_Z - 4 - r.nextInt(8) : BrueckenBau.END_Z + 3 + r.nextInt(8);
+            if (z < BrueckenBau.START_Z - 3 && Math.abs(x) < 8) {
+                continue;
+            }
+            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
+        }
+        flag(p, -side - 2, 1, BrueckenBau.FAR_Z, 6, 4);
+        flag(p, side + 2, 1, BrueckenBau.FAR_Z, 6, 12);
+        Decor.mountain(p, 0, BrueckenBau.END_Z + 36, -16, 18, 50, r);
+    }
+
+    /** Schneeballschlacht: Winterwiese mit Schneemännern, Iglu, verschneiten Fichten und einem Rodelschlitten. */
+    private static void winterField(Plan p, Random r) {
+        int h = SchneeballSchlacht.HALF;
+        ring(p, h + 3, 28, 0, "snow_block", r);
+        for (int[] c : new int[][] {{-17, -6}, {17, 7}, {-8, 18}, {9, -18}}) {
+            p.fill(c[0] - 1, 1, c[1] - 1, c[0] + 1, 1, c[1] + 1, "snow_block");
+            p.set(c[0], 2, c[1], "snow_block");
+            p.set(c[0], 3, c[1], "snow_block");
+            p.set(c[0], 4, c[1], "black_carpet");
+            p.set(c[0] - 1, 3, c[1], "dark_oak_fence");
+            p.set(c[0] + 1, 3, c[1], "dark_oak_fence");
+        }
+        // Iglu
+        int ix = 18;
+        int iz = -12;
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                for (int dy = 0; dy <= 4; dy++) {
+                    double d = Math.sqrt(dx * dx + dz * dz + dy * dy * 1.4);
+                    if (d <= 4.2 && d >= 3.2) {
+                        p.set(ix + dx, 1 + dy, iz + dz, "packed_ice");
+                    }
+                }
+            }
+        }
+        p.set(ix - 4, 1, iz, "air");
+        p.set(ix - 4, 2, iz, "air");
+        // Schlitten
+        p.set(-18, 1, 12, "spruce_slab[type=bottom]");
+        p.set(-17, 1, 12, "spruce_slab[type=bottom]");
+        p.set(-16, 1, 12, "spruce_stairs[facing=west,half=bottom,shape=straight]");
+        for (int k = 0; k < 22; k++) {
+            double a = Math.toRadians(r.nextInt(360));
+            int x = (int) Math.round(Math.cos(a) * (19 + r.nextInt(8)));
+            int z = (int) Math.round(Math.sin(a) * (19 + r.nextInt(8)));
+            if (z < -14 && Math.abs(x) < 8) {
+                continue;
+            }
+            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
+        }
+        Decor.mountain(p, -6, 50, -14, 17, 48, r);
+        Decor.mountain(p, 38, 26, -14, 13, 36, r);
+        Decor.mountain(p, -40, 24, -14, 12, 34, r);
     }
 }

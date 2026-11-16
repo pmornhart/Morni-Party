@@ -57,6 +57,13 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
   Klickflächen). Neue Wertungsart **Rennen** in `Scoring` (Ankunft, sonst Strecke; Bergsprint nutzt sie jetzt,
   Ergebniszeile „im Ziel nach 4,5 s“ / „46 Blöcke weit“). Bau-Version 3. 48 Unit-Tests, echt 135/136 (der eine Fehlschlag:
   Trachtenfarben-Prüfung war zu streng – Carl stand zufällig richtig; Prüfung angepasst).
+- **Paket 2** (16.11.): Goldwaschen (Kies-/Sandhaufen auswaschen, Goldkorn 1 / Goldklumpen 3, Glitzern als Hinweis),
+  Schuhplattler (Rhythmus im Dreivierteltakt mit eigener Melodie aus Notenblock-Klängen, Ansage einen Takt vorher,
+  Bewertung in `mini/Takt`: genau ±2 Ticks = 2, ±6 = 1, falsche Bewegung = 0), Brückenbau (eigene Spur je Person,
+  echtes Bretter-Setzen nur auf Brückenhöhe, Fallen = zurück an den Start), Schneeballschlacht (Schneewehen anklicken,
+  Treffer mit Rückstoß, danach 1,5 s geschützt). Gefunden beim echten Test: ein abgefangener Linksklick verhindert im
+  Überlebensmodus das Abbau-Ereignis – Klick-Minispiele werten den Linksklick jetzt selbst aus. Bau-Version 4.
+  54 Unit-Tests; echt Partie 5 alle vier Minispiele (Goldwaschen nach der Korrektur 6/6).
 
 ## Offen
 

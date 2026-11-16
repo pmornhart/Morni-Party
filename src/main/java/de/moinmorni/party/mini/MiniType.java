@@ -28,7 +28,11 @@ public enum MiniType {
     MAIBAUMKRAXELN(Material.LADDER, 45, Scoring.Kind.RACE, MaibaumKraxeln::new, MaibaumKraxeln::build),
     EISSTOCKSCHIESSEN(Material.POLISHED_ANDESITE_SLAB, 75, Scoring.Kind.POINTS, false, EisstockSchiessen::new,
             EisstockSchiessen::build),
-    MURMELTIER(Material.RABBIT_HIDE, 40, Scoring.Kind.POINTS, MurmelTier::new, MurmelTier::build);
+    MURMELTIER(Material.RABBIT_HIDE, 40, Scoring.Kind.POINTS, MurmelTier::new, MurmelTier::build),
+    GOLDWASCHEN(Material.GOLD_NUGGET, 40, Scoring.Kind.POINTS, GoldWaschen::new, GoldWaschen::build),
+    SCHUHPLATTLER(Material.NOTE_BLOCK, 50, Scoring.Kind.POINTS, SchuhPlattler::new, SchuhPlattler::build),
+    BRUECKENBAU(Material.OAK_PLANKS, 60, Scoring.Kind.RACE, BrueckenBau::new, BrueckenBau::build),
+    SCHNEEBALLSCHLACHT(Material.SNOW_BLOCK, 45, Scoring.Kind.POINTS, SchneeballSchlacht::new, SchneeballSchlacht::build);
 
     private final Material icon;
     private final int seconds;

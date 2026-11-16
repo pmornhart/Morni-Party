@@ -76,6 +76,10 @@ Jedes Brett hat 36 Felder auf einem Spiralweg:
 | Maibaumkraxeln | Rennen | An Leitern und Ranken den Maibaum hinauf zum Kranz; Stücke brechen weg und wachsen nach. | Dorfplatz mit Häusern, Zwiebelturm, Wirtsgarten und Wimpeln |
 | Eisstockschießen | Punkte | Drei Würfe für alle gleichzeitig: Kraftbalken, Punkte nach Abstand zur Daube (5/3/2/1); Stöcke stoßen sich weg. | Zugefrorener Bergsee mit Stockschützenhütte und Glühweinstand |
 | Murmeltier-Klopfen | Punkte | Auf herausschauende Murmeltiere hauen (golden = 3); Steinbrocken kosten einen Punkt. | Bergwiese mit Felsbrocken, Almrosen und Murmeltierbauten |
+| Goldwaschen | Punkte | Kies- und Sandhaufen am Bach auswaschen (Schlag/Rechtsklick); Goldkorn 1, Goldklumpen 3, wo es glitzert, lohnt es sich. | Goldsucher-Lager am Bergbach mit Wasserfall, Waschrinne, Zelten und Lore |
+| Schuhplattler | Punkte | Im Dreivierteltakt: Springen, Ducken, Klatschen (Klick) oder Stillstehen auf den nächsten Stampfer – genau = 2, knapp = 1. | Festzelt mit weiß-blauem Dach, Musikbühne und Bänken |
+| Brückenbau | Rennen | Mit Brettern eine eigene Brücke über die Schlucht bauen; wer fällt, fängt am Start wieder an (die Brücke bleibt). | Tiefe Schlucht mit Felswänden, Fluss und Wasserfall |
+| Schneeballschlacht | Punkte | Jeder gegen jeden, Schneebälle aus den Schneewehen holen; Treffer = Punkt, Getroffene leuchten kurz und sind so lange sicher. | Winterwiese mit Schneemännern, Iglu und verschneiten Fichten |
 
 Wertung: **Punkte** – wer die meisten hat; **Überleben** – wer am längsten dabei bleibt; **Rennen** – wer zuerst
 ankommt, danach alle anderen nach der geschafften Strecke.
@@ -122,8 +126,9 @@ Bert spricht Englisch, Anna und Bert sind eine Party, alle Meldungen landen in `
 Paper-26.1.2-Server ein (offline, Port 25770, RCON 25870) und schickt vier Test-Spieler durch drei Partien
 (`test/party-test.cjs`): Edelweiß-Jagd auf Schloss Weißenstein, Gipfelrennen auf dem Almsommer und eine lange
 Edelweiß-Jagd im Goldstollen – dabei kommt jedes der zwölf ersten Minispiele einmal dran. Partie 4 spielt die neuen
-Minispiele (Paket 1: Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen). `PARTS=1,2` spielt nur
-einen Teil, `ONLY=lawinenhang,murmeltier` nur diese Minispiele aus Partie 4.
+Minispiele (Paket 1: Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen), Partie 5 Paket 2
+(Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht). `PARTS=1,2` spielt nur einen Teil,
+`ONLY=lawinenhang,murmeltier` nur diese Minispiele aus den Partien 4 bis 6.
 
 ## Einstellungen
 

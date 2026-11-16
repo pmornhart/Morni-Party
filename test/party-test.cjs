@@ -860,7 +860,6 @@ function playNew(id, g, list, seen) {
           const wantStone = b === carl && !seen.stone;
           const t = ents(b, wantStone ? 'interaction' : 'rabbit', 30)
             .sort((p, q) => p.position.distanceTo(b.entity.position) - q.position.distanceTo(b.entity.position))[0];
-          if (process.env.DEBUG && b === anna) console.log(`  ${b.username}: ${ents(b, 'rabbit', 30).length} Murmeltiere, ${ents(b, 'interaction', 30).length} Steine, Ziel ${t?.name} ${t?.position}`, (await cmd('execute if entity @e[type=minecraft:rabbit]', 'execute if entity @e[type=minecraft:interaction]')).join(' '));
           if (t) {
             if (t.position.distanceTo(b.entity.position) > 2.5) {
               await tpTo(b, t.position.x + 1.3, oy + 1, t.position.z + 0.2);
@@ -880,7 +879,8 @@ function playNew(id, g, list, seen) {
       run(async () => {
         const ids = ['gravel', 'sand'].map((n) => b.registry.blocksByName[n].id);
         while (!stop) {
-          const spots = b.findBlocks({ matching: ids, maxDistance: 20, count: 60 }).filter((v) => v.y === oy + 1);
+          // Kies und Sand gibt es auch im Bachbett – nur die Haufen oben auf der Wiese zählen
+          const spots = b.findBlocks({ matching: ids, maxDistance: 20, count: 2000 }).filter((v) => v.y === oy + 1);
           if (spots.length === 0) {
             await sleep(300);
             continue;

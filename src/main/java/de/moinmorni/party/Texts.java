@@ -624,6 +624,63 @@ public final class Texts {
                 "<em>Whacking hammer</em>");
         t("mini.murmeltier.stone", "<red>Autsch, ein Stein! −1 Punkt</red>",
                 "<red>Ouch, a rock! −1 point</red>");
+        // ---------- Neue Minispiele (Paket 2) ----------
+        t("mini.goldwaschen", "<au>Goldwaschen</au>",
+                "<au>Gold Panning</au>");
+        t("mini.goldwaschen.desc", "<gray>Am Bach liegen Kies- und Sandhaufen. Schlag drauf (oder Rechtsklick) und wasch sie aus – in manchen steckt Gold! Wo es kurz glitzert, lohnt es sich.</gray>",
+                "<gray>Gravel and sand piles lie along the stream. Hit one (or right-click) to pan it – some hide gold! Where it sparkles for a moment, it's worth a look.</gray>");
+        t("mini.goldwaschen.item", "<au>Waschpfanne</au>",
+                "<au>Gold pan</au>");
+        t("mini.goldwaschen.item.lore", "<gray>Auf einen Kies- oder Sandhaufen schlagen</gray>",
+                "<gray>Hit a gravel or sand pile</gray>");
+        t("mini.goldwaschen.big", "<au><b>Ein Goldklumpen! +3</b></au>",
+                "<au><b>A gold nugget! +3</b></au>");
+        t("mini.goldwaschen.empty", "<gray>Nur Kies …</gray>",
+                "<gray>Just gravel …</gray>");
+        t("mini.schuhplattler", "<au>Schuhplattler</au>",
+                "<au>Schuhplattler (Slap Dance)</au>");
+        t("mini.schuhplattler.desc", "<gray>Tanz im Takt! Angesagt wird Springen, Ducken, Klatschen (klicken) oder Stillstehen – mach es genau auf den nächsten Stampfer. Ganz genau gibt 2 Punkte.</gray>",
+                "<gray>Dance to the beat! The call is jump, duck, clap (click) or stand still – do it right on the next stomp. Spot on gives 2 points.</gray>");
+        t("mini.schuhplattler.item", "<em>Hutfeder</em>",
+                "<em>Hat feather</em>");
+        t("mini.schuhplattler.item.lore", "<gray>Klicken = Klatschen</gray>",
+                "<gray>Click = clap</gray>");
+        t("mini.schuhplattler.move.jump", "<au><b>↑ Springen!</b></au>",
+                "<au><b>↑ Jump!</b></au>");
+        t("mini.schuhplattler.move.duck", "<aqua><b>↓ Ducken!</b></aqua>",
+                "<aqua><b>↓ Duck!</b></aqua>");
+        t("mini.schuhplattler.move.clap", "<em><b>✦ Klatschen!</b></em>",
+                "<em><b>✦ Clap!</b></em>");
+        t("mini.schuhplattler.move.still", "<white><b>■ Stillstehen!</b></white>",
+                "<white><b>■ Stand still!</b></white>");
+        t("mini.schuhplattler.onone", "<gray>auf den nächsten Stampfer</gray>",
+                "<gray>on the next stomp</gray>");
+        t("mini.schuhplattler.now", "<au><b>♪ Jetzt! ♪</b></au>",
+                "<au><b>♪ Now! ♪</b></au>");
+        t("mini.schuhplattler.perfect", "<au><b>Perfekt! +2</b></au> <gray>(Punkte: <n>)</gray>",
+                "<au><b>Perfect! +2</b></au> <gray>(points: <n>)</gray>");
+        t("mini.schuhplattler.good", "<em>Gut! +1</em> <gray>(Punkte: <n>)</gray>",
+                "<em>Good! +1</em> <gray>(points: <n>)</gray>");
+        t("mini.schuhplattler.miss", "<gray>Daneben …</gray>",
+                "<gray>Missed …</gray>");
+        t("mini.brueckenbau", "<au>Brückenbau</au>",
+                "<au>Bridge Builders</au>");
+        t("mini.brueckenbau.desc", "<gray>Bau dir mit den Brettern eine Brücke über die Schlucht – an die Kante setzen, draufsteigen, weiter! Wer zuerst drüben ist, gewinnt. Runterfallen heißt: zurück an den Start.</gray>",
+                "<gray>Build a bridge across the gorge with your planks – place them at the edge, step on, keep going! First across wins. Fall down and you're back at the start.</gray>");
+        t("mini.brueckenbau.item", "<em>Bretter</em>",
+                "<em>Planks</em>");
+        t("mini.brueckenbau.fell", "<aqua>Hinuntergefallen – zurück an den Start. Deine Brücke steht noch!</aqua>",
+                "<aqua>You fell – back to the start. Your bridge is still there!</aqua>");
+        t("mini.schneeballschlacht", "<au>Schneeballschlacht</au>",
+                "<au>Snowball Fight</au>");
+        t("mini.schneeballschlacht.desc", "<gray>Jeder gegen jeden! Hol dir Schneebälle an den Schneewehen (anklicken) und triff die anderen – jeder Treffer ist ein Punkt. Wer getroffen wurde, leuchtet kurz und ist so lange sicher.</gray>",
+                "<gray>Everyone against everyone! Grab snowballs from the snowdrifts (click them) and hit the others – every hit is a point. Whoever got hit glows briefly and is safe for that moment.</gray>");
+        t("mini.schneeballschlacht.grab", "<aqua>Schneebälle: <n></aqua>",
+                "<aqua>Snowballs: <n></aqua>");
+        t("mini.schneeballschlacht.full", "<gray>Deine Taschen sind voll.</gray>",
+                "<gray>Your pockets are full.</gray>");
+        t("mini.schneeballschlacht.hit", "<aqua>Getroffen von <white><name></white>!</aqua>",
+                "<aqua>Hit by <white><name></white>!</aqua>");
         t("colour.red", "<red><b>Rot</b></red>",
                 "<red><b>Red</b></red>");
         t("colour.yellow", "<yellow><b>Gelb</b></yellow>",
