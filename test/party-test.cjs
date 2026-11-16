@@ -352,7 +352,7 @@ async function part1() {
 
   let win = await openWithItem(anna, 2);
   check('Karte öffnet „Welches Spielbrett?“', win && plain(win.title).includes('Welches Spielbrett'), win && plain(win.title));
-  check('Drei Bretter zur Wahl', win && [11, 13, 15].every((s) => win.slots[s]) &&
+  check('Sechs Bretter zur Wahl', win && [11, 13, 15, 20, 22, 24].every((s) => win.slots[s]) &&
     plain(win.slots[13].customName).includes('Schloss Weißenstein'), win && plain(win.slots[13]?.customName));
   await click(anna, 13);
   check('Stimme für Schloss Weißenstein', await waitFor(() => sees(anna, /Deine Stimme: Schloss Weißenstein/), 2000));

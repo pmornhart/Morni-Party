@@ -149,7 +149,10 @@ Auszeichnungen am Ende.
   „+1 coin“ – in Ergebniszeilen, Zwischenstand, Siegerehrung, Bestenliste, `/stats`, Auszeichnungen, Würfel-Titel und
   Glück/Pech (`Texts.count` + MiniMessage-Auswahl `<points_pl:'0#Punkte|1#Punkt|1<Punkte'/>`, geprüft in `TextsTest`).
   config.yml mit Abschnitt `huettenaufstieg` und Erklärungen; Duellfelder im echten Test umgangen, wo ein
-  festgelegtes Minispiel kommen soll (`safeDie`).
+  festgelegtes Minispiel kommen soll (`safeDie`). Behoben (beim echten Test gesehen): in der Seilschaft bekam eine
+  Seilschaft für eine Auszeichnung zwei Edelweiß, wenn beide vorn lagen (2 gegen 2 gewinnen beide dieselben
+  Minispiele) – jetzt eins je Seilschaft; Namen in Auszeichnung und Siegerehrung nach Seilschaften („Anna & Bert,
+  Carl & Dora“ statt „Anna & Carl & Bert & Dora“).
 - Gesamttest (16.11. nachmittags, Paper 26.1.2, vier Test-Spieler): Partien 2–11, 13 und 15 **203/204**, Server-Log
   ohne Fehler; der eine Fehlschlag war eine zu früh geprüfte Siegerehrung der Seilschaft (erst kommen die
   Auszeichnungen – der Test wartet jetzt). Partien 1, 12 und 14 davor einzeln grün. Gefunden: seit das Duellfeld ein
@@ -163,7 +166,12 @@ Auszeichnungen am Ende.
   `groupId` `net.morni`, CI prüft `net/morni/api/`. Test-Netzwerk heißt „MorniNet“ (`plugins/MorniNet/`, Jar
   `MorniNet-FakeNetwork.jar`; `run.sh` entfernt alte Test-Jars, damit nie zwei Netzwerk-Plugins laden). Spielerdaten
   und Einstellungen liegen weiter in `plugins/MorniParty/` – nichts muss umziehen. Version bleibt 0.1.0 (noch nicht
-  veröffentlicht). Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter
+  veröffentlicht). Danach: 129 Unit-Tests grün, `-Ppaper-26.1 compile` grün, echter Test Partien 1, 3, 7, 9, 12, 14,
+  15 **169/169** (Server-Log ohne Fehler, „Mit dem Netzwerk morni.net verbunden“, Sprache/Party/Statistik über
+  `net.morni.api.MorniNet`), `git grep -i "moin.\?morni"` findet nichts.
+- Bilder (nur lokal, `~/mm-cache/bilder-party-mehr/`): Tatzelwurm-Kampf mit echtem Client 26.3 (`tatzelwurm-spiel`,
+  `tatzelwurm-spiel2`: Katzenkopf bricht aus dem Wurmloch, leuchtende Schuppen, Lebensleiste) und die Kapelle am
+  Königssee mit den überarbeiteten Zwiebeltürmen (`brett-koenigssee-*`). Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter
   `~/mm-cache/bilder-party-mehr/`.
 
 ## Offen

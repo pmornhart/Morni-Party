@@ -1,13 +1,16 @@
 package net.morni.party.game;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import net.morni.party.board.BoardLayout;
 import net.morni.party.board.FieldType;
@@ -769,8 +772,13 @@ public final class Engine {
         }
         List<Awards.Award> out = Awards.pick(active(), enabled);
         for (Awards.Award a : out) {
+            // eine Seilschaft bekommt je Auszeichnung ein Edelweiß, auch wenn beide vorn liegen (2 gegen 2 gewinnen sie
+            // dieselben Minispiele)
+            Set<Purse> paid = Collections.newSetFromMap(new IdentityHashMap<>());
             for (PartyPlayer p : a.winners()) {
-                p.purse.edelweiss++;
+                if (paid.add(p.purse)) {
+                    p.purse.edelweiss++;
+                }
             }
         }
         return out;

@@ -459,7 +459,7 @@ public final class Game {
         for (int i = 0; i < list.size(); i++) {
             var a = list.get(i);
             later(SECOND + i * AWARD_TICKS, () -> {
-                String names = String.join(roped() ? " & " : ", ", a.winners().stream().map(PartyPlayer::name).toList());
+                String names = teamNames(a.winners());
                 for (Player x : audience()) {
                     String lang = plugin.lang(x);
                     Component title = Texts.text(lang, "award." + a.type().id());
@@ -1808,6 +1808,18 @@ public final class Game {
         miniBars.clear();
     }
 
+    /** Namen für Ansagen: in der Seilschaft je Seilschaft „Anna & Bert“, mehrere durch Komma, sonst „Anna, Bert“. */
+    private String teamNames(java.util.Collection<PartyPlayer> who) {
+        if (!roped()) {
+            return String.join(", ", who.stream().map(PartyPlayer::name).toList());
+        }
+        Map<Integer, List<String>> byTeam = new java.util.LinkedHashMap<>();
+        for (PartyPlayer p : who) {
+            byTeam.computeIfAbsent(p.team(), k -> new ArrayList<>()).add(p.name());
+        }
+        return String.join(", ", byTeam.values().stream().map(l -> String.join(" & ", l)).toList());
+    }
+
     private String names(List<UUID> list) {
         return String.join(" + ", list.stream().map(u -> engine.player(u).map(PartyPlayer::name).orElse("?")).toList());
     }
@@ -1961,7 +1973,7 @@ public final class Game {
         List<List<PartyPlayer>> places = engine.places();
         List<PartyPlayer> winners = places.isEmpty() || (wurm() && (wurmResult == null || !wurmResult.won())) ? List.of()
                 : places.getFirst();
-        String names = String.join(roped() ? " & " : ", ", winners.stream().map(PartyPlayer::name).toList());
+        String names = teamNames(winners);
         for (Player a : audience()) {
             String lang = plugin.lang(a);
             a.sendMessage(Texts.msg(lang, "end.header"));

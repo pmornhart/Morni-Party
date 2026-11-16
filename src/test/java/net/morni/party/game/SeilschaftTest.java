@@ -117,6 +117,22 @@ class SeilschaftTest {
     }
 
     @Test
+    void anAwardGivesTheRopeTeamOneEdelweiss() {
+        List<PartyPlayer> ps = players();
+        Engine e = roped(ps);
+        // 2 gegen 2: beide aus einer Seilschaft gewinnen dieselben Minispiele
+        ps.get(0).minigamesWon = 3;
+        ps.get(1).minigamesWon = 3;
+        ps.get(2).minigamesWon = 1;
+        ps.get(3).minigamesWon = 1;
+        List<Awards.Award> got = e.awards(List.of(Awards.Type.MINISPIEL_MEISTER));
+        assertEquals(List.of(ps.get(0), ps.get(1)), got.getFirst().winners());
+        assertEquals(1, ps.get(0).edelweiss(), "ein Edelweiß für die Seilschaft, nicht zwei");
+        assertEquals(1, ps.get(1).edelweiss());
+        assertEquals(0, ps.get(2).edelweiss());
+    }
+
+    @Test
     void luckSkipsThePartner() {
         List<PartyPlayer> ps = players();
         Engine e = roped(ps);
