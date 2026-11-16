@@ -1,12 +1,12 @@
 name: MorniParty
 version: '${project.version}'
-main: de.moinmorni.party.PartyPlugin
+main: net.morni.party.PartyPlugin
 api-version: '1.21'
-description: Morni Party für das MoinMorni-Netzwerk – Brettspiel für 2–8 mit Edelweiß, Talern und vielen Minispielen.
-authors: [MoinMorni]
-website: https://moinmorni.net
+description: Morni Party für das Netzwerk morni.net – Brettspiel für 2–8 mit Edelweiß, Talern und vielen Minispielen.
+authors: [morni.net]
+website: https://morni.net
 # Läuft mit dem Netzwerk-Plugin (Sprache, Party, Statistik) und auch allein.
-softdepend: [MoinMorni]
+softdepend: [MorniNet]
 
 commands:
   mitspielen:
@@ -32,9 +32,9 @@ commands:
   mparty:
     description: Verwaltung von Morni Party
     usage: /mparty <info|zustand|start|stopp|wuerfel|taler|edelweiss|feld|stand|gegenstand|minispiel|neubauen|neuladen>
-    permission: moinmorni.party.admin
+    permission: morninet.party.admin
 
 permissions:
-  moinmorni.party.admin:
+  morninet.party.admin:
     description: Morni Party verwalten und im Kreativmodus in der Party-Welt bauen
     default: op

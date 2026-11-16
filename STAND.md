@@ -1,6 +1,6 @@
 # Stand – Morni Party
 
-**Was es ist:** Der Brettspiel-Modus des MoinMorni-Netzwerks (Paper-Plugin `MorniParty`, Java 25, Paper 26.x).
+**Was es ist:** Der Brettspiel-Modus des Netzwerks morni.net (Paper-Plugin `MorniParty`, Java 25, Paper 26.x).
 Entscheidungen von Philip (14.11.2026): Brettspiel für 2–8, würfeln, Taler sammeln, Edelweiß (Siegwährung) am
 wandernden Stand kaufen, Ereignisfelder (Glück, Pech, Duell, Laden, Gegenstand), Gegenstände (u. a. Doppelwürfel,
 Tausch, Talerklau, Schild), nach jeder Runde ein Minispiel; Spielarten Gipfelrennen und Edelweiß-Jagd (10/15/20
@@ -11,7 +11,7 @@ Auszeichnungen am Ende.
 
 ## Aufbau
 
-- `src/main/java/de/moinmorni/party/`: `PartyPlugin` (Start, Welt, Aufgaben), `Settings` (config.yml), `Texts` (de/en),
+- `src/main/java/net/morni/party/`: `PartyPlugin` (Start, Welt, Aufgaben), `Settings` (config.yml), `Texts` (de/en),
   `Ui`, `Items`, `Commands`.
 - `board/` (ohne Minecraft): `BoardId`, `FieldType`, `Field`, `BoardLayout` (Spiralweg mit 36 Feldern, Höhe des Geländes).
 - `game/` (ohne Minecraft): `Engine` (alle Spielregeln), `PartyPlayer`, `Purse` (Beutel, in der Seilschaft geteilt),
@@ -27,7 +27,7 @@ Auszeichnungen am Ende.
   Königssee, Wiesn, Wintersonnwend), `HubSigns`,
   `Construction` (baut nur bei neuer Bau-Version oder anderer Zahl Tische).
 - `data/`: `PlayerStats`, `Store` (YAML im Hintergrund, Rangliste). `net/`: `Network`, `Connected`, `Standalone`.
-- `src/api/java/de/moinmorni/api/MoinMorni.java`: Kopie der Netzwerk-Schnittstelle (nicht in der Jar).
+- `src/api/java/net/morni/api/MorniNet.java`: Kopie der Netzwerk-Schnittstelle (nicht in der Jar).
 - `test/`: `run.sh` (echter Server), `party-test.cjs` (mineflayer), `rcon.cjs`, `fake-network/` (Test-Netzwerk).
 
 ## Stand (15.11.2026)
@@ -156,7 +156,14 @@ Auszeichnungen am Ende.
   Minispiel startet, verschob ein Duell im Test das festgelegte Minispiel der Runde – die Würfel im Test meiden
   Duellfelder jetzt (`safeDie`); die Statistik-Datei wird relativ zum Stand vor Partie 2 geprüft.
 - Unit-Tests: 129 (u. a. Teams, Seil, Gamsrevier, Seilschaft, Modi, Hüttenaufstieg, Turnierbaum, Tatzelwurm-Regeln,
-  neue Bretter, Auszeichnungen, Einzahl/Mehrzahl). Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter
+  neue Bretter, Auszeichnungen, Einzahl/Mehrzahl).
+- **Umbenannt in morni.net (16.11.2026)** (Philip): Paket `net.morni.party` (vorher unter `de.`), Netzwerk-Schnittstelle
+  `net.morni.api.MorniNet` als byte-gleiche Kopie, `softdepend: [MorniNet]`, Plugin sucht das Netzwerk-Plugin
+  „MorniNet“, Verwaltungsrecht `morninet.party.admin`, Texte „morni.net“ (Seitenleiste, Zurück in die Lobby),
+  `groupId` `net.morni`, CI prüft `net/morni/api/`. Test-Netzwerk heißt „MorniNet“ (`plugins/MorniNet/`, Jar
+  `MorniNet-FakeNetwork.jar`; `run.sh` entfernt alte Test-Jars, damit nie zwei Netzwerk-Plugins laden). Spielerdaten
+  und Einstellungen liegen weiter in `plugins/MorniParty/` – nichts muss umziehen. Version bleibt 0.1.0 (noch nicht
+  veröffentlicht). Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter
   `~/mm-cache/bilder-party-mehr/`.
 
 ## Offen

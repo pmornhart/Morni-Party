@@ -14,10 +14,10 @@
 - Commits mit Stichpunkten `- Neu:` / `- Behoben:` / `- Verbessert:` / `- Entfernt:`.
 - Keine fremden Marken, Figuren, Namen, Texte oder Grafiken (nichts von Mojang, Nintendo, Hypixel, Cytooxien oder anderen
   Servern): nur Spielmechanik als Vorbild, eigene Namen, eigene Bretter, eigene Minispiele.
-- Die Netzwerk-Schnittstelle `src/api/java/de/moinmorni/api/MoinMorni.java` ist eine Kopie aus `pmornhart/moinmorni.net`
-  (`plugins/moinmorni-network/src/main/java/de/moinmorni/api/MoinMorni.java`) und muss **genau gleich** bleiben. Sie wird
+- Die Netzwerk-Schnittstelle `src/api/java/net/morni/api/MorniNet.java` ist eine Kopie aus `pmornhart/morni.net`
+  (`plugins/morninet-network/src/main/java/net/morni/api/MorniNet.java`) und muss **genau gleich** bleiben. Sie wird
   nur mitübersetzt und kommt **nicht** in die Jar (die echten Klassen bringt das Netzwerk-Plugin mit).
-- Morni Party muss auch ohne Netzwerk laufen (`softdepend: [MoinMorni]`; nur `net/Connected` kennt die Netzwerk-Klassen).
+- Morni Party muss auch ohne Netzwerk laufen (`softdepend: [MorniNet]`; nur `net/Connected` kennt die Netzwerk-Klassen).
 - Paper 26.x, Java 25. Der Code muss auch gegen Paper 26.1 übersetzen (`mvn -Ppaper-26.1 compile`, läuft in der CI).
 - Spielregeln gehören in `game/Engine` (ohne Minecraft, mit Tests), Anzeige und Ablauf in `play/Game`.
 - Neue Version: `<version>` in `pom.xml` erhöhen und `docs/releases/v<version>.md` anlegen; ein Push auf `main` baut das

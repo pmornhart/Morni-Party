@@ -1,6 +1,6 @@
 # Morni Party
 
-Der Brettspiel-Modus des Minecraft-Netzwerks **MoinMorni** (moinmorni.net): ein Spieleabend für **2 bis 8** –
+Der Brettspiel-Modus des Minecraft-Netzwerks **morni.net**: ein Spieleabend für **2 bis 8** –
 würfeln, über das Spielbrett ziehen, Taler sammeln, am wandernden Stand **Edelweiß** kaufen, und nach jeder Runde ein
 kurzes **Minispiel** für alle. Ein Paper-Plugin für Paper 26.x (Java 25). Es läuft im Netzwerk und auch ganz allein.
 
@@ -132,11 +132,11 @@ Alle Menüs sind Truhen und gehen auch mit Bedrock (Geyser); auf Bedrock reicht 
 | `/verlassen` | Warteschlange, Partie oder Zuschauen verlassen (auch `/leave`) |
 | `/zuschauen [spieler]` | einer Partie zuschauen (ohne Namen: Menü) |
 | `/stats [spieler]` · `/top` | Statistik und Bestenliste |
-| `/mparty …` | Verwaltung (`moinmorni.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `wurm <leben>`, `neubauen`, `neuladen` |
+| `/mparty …` | Verwaltung (`morninet.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `wurm <leben>`, `neubauen`, `neuladen` |
 
 ## Im Netzwerk
 
-Das Netzwerk-Plugin („MoinMorni“) stellt die Schnittstelle `de.moinmorni.api.MoinMorni` bereit; Morni Party nutzt
+Das Netzwerk-Plugin („MorniNet“) stellt die Schnittstelle `net.morni.api.MorniNet` bereit; Morni Party nutzt
 sie, wenn sie da ist (`softdepend`): Sprache, Party, Statistik, Zustand für Lobby-Figur und Webseite, zurück zur Lobby.
 Ohne Netzwerk: deutsche Texte, Statistik nur lokal, „zur Lobby“ trennt die Verbindung mit einem Hinweis.
 
