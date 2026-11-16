@@ -149,7 +149,8 @@ Statistik nach jeder Partie (`stats("party", …)`, nur wer bis zum Schluss dabe
 Zustand: `waiting` (keine Partie) oder `running`, dazu die Spielerzahl.
 
 Bei jedem Push auf `main` baut GitHub ein Release mit `Morni-Party.jar` (Version aus `pom.xml`); das Netzwerk holt sich
-das neueste.
+das neueste. Aktuell ist **0.2.0** (neue Spielarten, Bretter und Minispiele, Umbenennung in morni.net) – was sich je
+Version geändert hat, steht in `docs/releases/`.
 
 ## Bauen und testen
 

@@ -32,7 +32,9 @@ Auszeichnungen am Ende.
 
 ## Stand (15.11.2026)
 
-- Version 0.1.0 (erster Stand, Branch `claude/erster-stand`, noch nicht veröffentlicht): alles oben Genannte.
+- Version 0.1.0 (erster Stand, Branch `claude/erster-stand`): alles oben Genannte – **veröffentlicht** am 16.11. früh
+  (PR #1, Release v0.1.0). Alles ab Paket 1 (Branch `claude/mehr-minispiele`) ist **Version 0.2.0**
+  (`docs/releases/v0.2.0.md`).
 - Bau-Version 2 (15.11. abends): Schloss Weißenstein als echte Burg – Terrassen mit weißen Mauern und Zinnen,
   Brustwehr außen am Weg, Ecktürme mit blauen Spitzdächern und weiß-blauen Fahnen, Bergfried (Zinnenkranz, Kegeldach,
   Banner), Torhaus mit Fallgitter, Schlossgarten mit Hecken, Rosenbögen, zwei Brunnen, Tulpenbeeten, Formschnitt.
@@ -158,25 +160,26 @@ Auszeichnungen am Ende.
   Auszeichnungen – der Test wartet jetzt). Partien 1, 12 und 14 davor einzeln grün. Gefunden: seit das Duellfeld ein
   Minispiel startet, verschob ein Duell im Test das festgelegte Minispiel der Runde – die Würfel im Test meiden
   Duellfelder jetzt (`safeDie`); die Statistik-Datei wird relativ zum Stand vor Partie 2 geprüft.
-- Unit-Tests: 129 (u. a. Teams, Seil, Gamsrevier, Seilschaft, Modi, Hüttenaufstieg, Turnierbaum, Tatzelwurm-Regeln,
-  neue Bretter, Auszeichnungen, Einzahl/Mehrzahl).
+- Unit-Tests: 130 (u. a. Teams, Seil, Gamsrevier, Seilschaft, Modi, Hüttenaufstieg, Turnierbaum, Tatzelwurm-Regeln,
+  neue Bretter, Auszeichnungen, Einzahl/Mehrzahl). Echt nach dem Seilschaft-Fix: Partien 1 und 9 **90/90**.
 - **Umbenannt in morni.net (16.11.2026)** (Philip): Paket `net.morni.party` (vorher unter `de.`), Netzwerk-Schnittstelle
   `net.morni.api.MorniNet` als byte-gleiche Kopie, `softdepend: [MorniNet]`, Plugin sucht das Netzwerk-Plugin
   „MorniNet“, Verwaltungsrecht `morninet.party.admin`, Texte „morni.net“ (Seitenleiste, Zurück in die Lobby),
   `groupId` `net.morni`, CI prüft `net/morni/api/`. Test-Netzwerk heißt „MorniNet“ (`plugins/MorniNet/`, Jar
   `MorniNet-FakeNetwork.jar`; `run.sh` entfernt alte Test-Jars, damit nie zwei Netzwerk-Plugins laden). Spielerdaten
-  und Einstellungen liegen weiter in `plugins/MorniParty/` – nichts muss umziehen. Version bleibt 0.1.0 (noch nicht
-  veröffentlicht). Danach: 129 Unit-Tests grün, `-Ppaper-26.1 compile` grün, echter Test Partien 1, 3, 7, 9, 12, 14,
-  15 **169/169** (Server-Log ohne Fehler, „Mit dem Netzwerk morni.net verbunden“, Sprache/Party/Statistik über
-  `net.morni.api.MorniNet`), `git grep -i "moin.\?morni"` findet nichts.
-- Bilder (nur lokal, `~/mm-cache/bilder-party-mehr/`): Tatzelwurm-Kampf mit echtem Client 26.3 (`tatzelwurm-spiel`,
-  `tatzelwurm-spiel2`: Katzenkopf bricht aus dem Wurmloch, leuchtende Schuppen, Lebensleiste) und die Kapelle am
-  Königssee mit den überarbeiteten Zwiebeltürmen (`brett-koenigssee-*`). Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter
-  `~/mm-cache/bilder-party-mehr/`.
+  und Einstellungen liegen weiter in `plugins/MorniParty/` – nichts muss umziehen. Kommt mit Version 0.2.0; die
+  Release-Notes von v0.1.0 bleiben, wie sie veröffentlicht wurden (dort steht noch der alte Name). Danach:
+  Unit-Tests und `-Ppaper-26.1 compile` grün, echter Test Partien 1, 3, 7, 9, 12, 14, 15 **169/169** (Server-Log ohne
+  Fehler, „Mit dem Netzwerk morni.net verbunden“, Sprache/Party/Statistik über `net.morni.api.MorniNet`).
+- Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter `~/mm-cache/bilder-party-mehr/`, dazu
+  der Tatzelwurm-Kampf (`tatzelwurm-spiel`, `tatzelwurm-spiel2`: Katzenkopf bricht aus dem Wurmloch, leuchtende
+  Schuppen, Lebensleiste) und die Kapelle am Königssee mit den überarbeiteten Zwiebeltürmen (`brett-koenigssee-*`).
 
 ## Offen
 
-- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann erstes Release v0.1.0).
+- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann Release v0.2.0).
 - Einstellungen (Rundenzahlen, Zeiten, Regeln, Minispiel-Auswahl) im Panel des Netzwerks (Einstellungs-Katalog) –
-  gehört ins Netzwerk-Repo; Lobby-Figur „Morni Party“ verbindet über `MODE_REPOS`, sobald es ein Release gibt.
+  gehört ins Netzwerk-Repo; neu seit 0.2.0: `minispiel-marathon`, `seilschaft`, `schnelle-partie`, `bergduell`,
+  `huettenaufstieg`, `auszeichnungen`, `regeln.team-taler/team-unentschieden-taler/einzel-taler/einzel-faktor` und
+  die neuen Namen in `minispiele.auswahl`.
 - Ideen: Brettfiguren als eigene Modelle statt der Spieler selbst, Bedrock-Formulare (Floodgate) statt Truhen.
