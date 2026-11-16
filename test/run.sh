@@ -8,7 +8,7 @@
 #   PARTS=1,2 test/run.sh             # nur Partie 1 und 2 (3 = die restlichen acht Minispiele, 4–6 = neue Minispiele,
 #                                     # 7–14 = Spielarten, 15 = neue Bretter – Liste oben in party-test.cjs)
 #
-# Erwartet (Vorgaben für die Sandbox von morni.net, alles per Umgebungsvariable änderbar):
+# Erwartet (Vorgaben für die MoinMorni-Sandbox, alles per Umgebungsvariable änderbar):
 #   PARTY_JAVA    Java 25 (Ordner; sonst die JDK 25 aus dem Cache, sonst JAVA_HOME)
 #   PAPER_JAR     Paper 26.1.2 (mineflayer kann bis 26.1)
 #   TEMPLATE      ein schon einmal gestarteter Paper-26.1.2-Ordner (libraries/, cache/, versions/ werden kopiert,
@@ -39,7 +39,7 @@ build -DskipTests package
 build -f test/fake-network/pom.xml package
 
 echo "== Server einrichten: $SERVER"
-mkdir -p "$SERVER/plugins/MorniParty" "$SERVER/plugins/MorniNet"
+mkdir -p "$SERVER/plugins/MorniParty" "$SERVER/plugins/MoinMorni"
 if [ -d "$TEMPLATE" ] && [ ! -d "$SERVER/libraries" ]; then
   cp -r "$TEMPLATE/libraries" "$TEMPLATE/cache" "$TEMPLATE/versions" "$SERVER/" 2>/dev/null || true
 fi
@@ -104,16 +104,14 @@ regeln:
   edelweiss-preis: 20
 CONF
 # Test-Netzwerk: Bert spricht Englisch, Anna und Bert sind eine Party (Anna führt).
-cat > "$SERVER/plugins/MorniNet/fake.properties" <<'FAKE'
+cat > "$SERVER/plugins/MoinMorni/fake.properties" <<'FAKE'
 lang.Bert=en
 party.Anna=Anna,Bert
 FAKE
-rm -f "$SERVER/plugins/MorniNet/calls.log"
+rm -f "$SERVER/plugins/MoinMorni/calls.log"
 rm -rf "$SERVER/plugins/MorniParty/spieler" "$SERVER/plugins/MorniParty/rangliste.yml"
 cp "$REPO/target/Morni-Party.jar" "$SERVER/plugins/"
-# Nie zwei Netzwerk-Plugins: alte Test-Jars (auch unter dem früheren Namen) vorher weg.
-rm -f "$SERVER"/plugins/*FakeNetwork*.jar
-cp "$REPO/test/fake-network/target/MorniNet-FakeNetwork.jar" "$SERVER/plugins/"
+cp "$REPO/test/fake-network/target/MoinMorni-FakeNetwork.jar" "$SERVER/plugins/"
 for jar in ${EXTRA_PLUGINS:-}; do
   cp "$jar" "$SERVER/plugins/"
 done
