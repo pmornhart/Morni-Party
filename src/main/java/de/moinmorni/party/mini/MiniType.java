@@ -36,7 +36,11 @@ public enum MiniType {
     SCHLITTENRENNEN(Material.SPRUCE_BOAT, 60, Scoring.Kind.RACE, SchlittenRennen::new, SchlittenRennen::build),
     ENZIAN_SUCHE(Material.CORNFLOWER, 40, Scoring.Kind.POINTS, EnzianSuche::new, EnzianSuche::build),
     MUSTERWEBER(Material.LOOM, 60, Scoring.Kind.POINTS, false, MusterWeber::new, MusterWeber::build),
-    FOEHNSTURM(Material.FEATHER, 60, Scoring.Kind.SURVIVAL, FoehnSturm::new, FoehnSturm::build);
+    FOEHNSTURM(Material.FEATHER, 60, Scoring.Kind.SURVIVAL, FoehnSturm::new, FoehnSturm::build),
+    /** Nur mit Seiten: 2 gegen 2 oder Duell. */
+    TAUZIEHEN(Material.LEAD, 30, Scoring.Kind.POINTS, TauZiehen::new, TauZiehen::build),
+    /** Nur einer gegen drei: der Einzelne jagt. */
+    GAMSJAGD(Material.GOAT_HORN, 45, Scoring.Kind.SURVIVAL, GamsJagd::new, GamsJagd::build);
 
     private final Material icon;
     private final int seconds;
@@ -91,6 +95,21 @@ public enum MiniType {
      */
     public int maxPlayers() {
         return this == EISSTOCKSCHIESSEN || this == BRUECKENBAU ? 8 : de.moinmorni.party.game.Marathon.MAX_PLAYERS;
+    }
+
+    /**
+     * Passt das Minispiel zu dieser Spielweise? Jeder gegen jeden: alle außer Tauziehen und Gamsjagd. 2 gegen 2, 1 gegen
+     * 3 und Duell: nur Spiele, in denen Seiten Sinn ergeben (beim Einzelnen zählen die Punkte mehrfach – sein Vorteil).
+     */
+    public boolean fits(de.moinmorni.party.game.Teams.Format f) {
+        return switch (f) {
+            case FREE -> this != TAUZIEHEN && this != GAMSJAGD;
+            case TEAM -> java.util.List.of(TAUZIEHEN, SCHNEEBALLSCHLACHT, TALERREGEN, HOLZHACKER, GOLDWASCHEN, ENZIAN_SUCHE)
+                    .contains(this);
+            case SOLO -> java.util.List.of(GAMSJAGD, MURMELTIER, SCHEIBENSCHIESSEN, GOLDWASCHEN).contains(this);
+            case DUEL -> java.util.List.of(TAUZIEHEN, SCHEIBENSCHIESSEN, HOLZHACKER, BERGSPRINT, SCHNEEBALLSCHLACHT,
+                    REMPELEI, MURMELTIER).contains(this);
+        };
     }
 
     /** Text-Schlüssel des Namens („mini.broeckelboden“); Beschreibung: + „.desc“. */

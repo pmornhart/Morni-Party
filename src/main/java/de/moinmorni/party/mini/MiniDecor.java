@@ -43,6 +43,8 @@ final class MiniDecor {
             case ENZIAN_SUCHE -> alm(p, r);
             case MUSTERWEBER -> weaving(p, r);
             case FOEHNSTURM -> foehnPeak(p, r);
+            case TAUZIEHEN -> mudPit(p, r);
+            case GAMSJAGD -> alm(p, r);
         }
     }
 
@@ -1325,5 +1327,51 @@ final class MiniDecor {
         Decor.mountain(p, -46, 24, -40, 16, 44, r);
         Decor.mountain(p, 44, 30, -40, 15, 40, r);
         Decor.mountain(p, 4, -56, -40, 14, 36, r);
+    }
+
+    /** Tauziehen: Festwiese mit Schlammgrube, Zuschauerbänke, Heuballen, Fahnen, Hütten und Fichten. */
+    private static void mudPit(Plan p, Random r) {
+        pad(p, -16, -12, 16, 12, 0, GRASS, r);
+        ring(p, 17, 36, 0, GRASS, r);
+        flowers(p, -34, -34, 34, 34, 0, 10, r);
+        // Zuschauerbänke vorn und hinten
+        for (int z : new int[] {-7, 7}) {
+            for (int x = -8; x <= 8; x++) {
+                if (Math.abs(x) <= 1) {
+                    continue;
+                }
+                p.setIfEmpty(x, 1, z, "spruce_stairs[facing=" + (z < 0 ? "north" : "south") + ",half=bottom,shape=straight]");
+            }
+        }
+        // Heuballen an den Enden der Stege
+        for (int sx : new int[] {-1, 1}) {
+            for (int z = -2; z <= 2; z++) {
+                p.setIfEmpty(sx * (TauZiehen.END + 2), 1, z, "hay_block[axis=z]");
+            }
+            p.setIfEmpty(sx * (TauZiehen.END + 2), 2, 0, "hay_block[axis=x]");
+            // Fahnenmasten in Blau und Rot
+            for (int y = 1; y <= 6; y++) {
+                p.setIfEmpty(sx * (TauZiehen.END + 4), y, -5, "spruce_fence");
+                p.setIfEmpty(sx * (TauZiehen.END + 4), y, 5, "spruce_fence");
+            }
+            String wool = sx < 0 ? "blue_wool" : "red_wool";
+            for (int y = 4; y <= 6; y++) {
+                p.setIfEmpty(sx * (TauZiehen.END + 4), y, -4, wool);
+                p.setIfEmpty(sx * (TauZiehen.END + 4), y, 4, wool);
+            }
+        }
+        hut(p, -24, 0, -16, 3, 2, "spruce_planks", "spruce_stairs", "spruce_slab");
+        hut(p, 24, 0, 16, 3, 2, "spruce_planks", "spruce_stairs", "spruce_slab");
+        for (int k = 0; k < 14; k++) {
+            double a = Math.toRadians(r.nextInt(360));
+            int x = (int) Math.round(Math.cos(a) * (26 + r.nextInt(8)));
+            int z = (int) Math.round(Math.sin(a) * (26 + r.nextInt(8)));
+            if (z < -16 && Math.abs(x) < 10) {
+                continue;
+            }
+            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
+        }
+        Decor.mountain(p, 0, 60, -14, 20, 54, r);
+        Decor.mountain(p, -46, 34, -14, 14, 40, r);
     }
 }

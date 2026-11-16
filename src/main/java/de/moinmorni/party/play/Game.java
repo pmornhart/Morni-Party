@@ -13,6 +13,7 @@ import de.moinmorni.party.game.GameKind;
 import de.moinmorni.party.game.ItemType;
 import de.moinmorni.party.game.Mode;
 import de.moinmorni.party.game.PartyPlayer;
+import de.moinmorni.party.game.Teams;
 import de.moinmorni.party.menu.Menu;
 import de.moinmorni.party.mini.MiniRun;
 import de.moinmorni.party.mini.MiniType;
@@ -82,6 +83,13 @@ public final class Game {
     private final List<BukkitTask> tasks = new ArrayList<>();
     private final List<Entity> markers = new ArrayList<>();
     private final List<MiniType> miniOrder = new ArrayList<>();
+    /** Vorrat je Spielweise (2 gegen 2, 1 gegen 3, Duell): gemischt, ohne Wiederholung. */
+    private final Map<Teams.Format, List<MiniType>> formatBags = new HashMap<>();
+    /** Feld, auf dem jemand in dieser Runde zuletzt stand (Farbe entscheidet über die Seiten im Minispiel). */
+    private final Map<UUID, FieldType> lastField = new HashMap<>();
+    /** Läuft gerade ein Duell-Minispiel (Duellfeld)? Dann: wer gegen wen. */
+    private PartyPlayer[] duelPair;
+    private Teams.Format forcedFormat;
     private final Map<UUID, Menu> menus = new HashMap<>();
     private Entity standFlower;
     private Entity standLabel;
@@ -183,9 +191,18 @@ public final class Game {
             return false;
         }
         if (phase == Phase.MINI) {
-            return mini != null && mini.frozen();
+            // Beim Duell spielen nur zwei – alle anderen bleiben auf ihrem Feld.
+            return mini == null || !mini.score().has(p.getUniqueId()) || mini.frozen();
         }
         return true;
+    }
+
+    /**
+     * Verwaltung/Tests: Seiten fürs nächste Minispiel festlegen (null = nach den Feldern). Team: die ersten zwei in
+     * Zugreihenfolge gegen die anderen zwei; Einer gegen drei: der Erste gegen den Rest.
+     */
+    public void forceFormat(Teams.Format f) {
+        forcedFormat = f;
     }
 
     /** Verwaltung/Tests: nächstes Minispiel festlegen. */
@@ -225,7 +242,11 @@ public final class Game {
                 updateBars();
             }
             if (mini.done()) {
-                miniResults();
+                if (duelPair != null) {
+                    duelResults();
+                } else {
+                    miniResults();
+                }
             }
         }
         if (phase == Phase.TURN && deadline >= 0 && (deadline - now) % SECOND == 0) {
@@ -664,6 +685,7 @@ public final class Game {
     private void land(PartyPlayer pp) {
         phase = Phase.LANDING;
         Engine.Outcome o = engine.land(pp);
+        lastField.put(pp.uuid(), o.field());
         Player p = online(pp);
         String field = o.field().key();
         switch (o.kind()) {
@@ -778,8 +800,22 @@ public final class Game {
         phase = Phase.LANDING;
         clearTimeout();
         closeMenus();
-        Engine.Duel d = engine.duel(a, b);
+        Player pa = online(a);
+        Player pb = online(b);
+        MiniType type = pa == null || pb == null ? null : nextMini(Teams.Format.DUEL);
+        if (type == null) {
+            diceDuel(a, b);
+            return;
+        }
+        duelPair = new PartyPlayer[] {a, b};
         say("duel.vs", Placeholder.unparsed("one", a.name()), Placeholder.unparsed("two", b.name()));
+        later(SECOND, () -> runMini(type, List.of(pa, pb), Teams.Split.duel(a.uuid(), b.uuid())));
+    }
+
+    /** Ohne passendes Duell-Minispiel (alle abgeschaltet oder jemand nicht da): wie früher würfeln. */
+    private void diceDuel(PartyPlayer a, PartyPlayer b) {
+        Engine.Duel d = engine.duel(a, b);
+        say("duel.dice", Placeholder.unparsed("one", a.name()), Placeholder.unparsed("two", b.name()));
         later(SECOND, () -> {
             for (Player x : audience()) {
                 Ui.title(x, Texts.MM.deserialize("<au>" + d.challengerRoll() + "</au> <gray>:</gray> <au>"
@@ -787,16 +823,52 @@ public final class Game {
                         + b.name() + "</white>"), 1800);
                 Ui.sound(x, "minecraft:entity.player.attack.strong", 1f);
             }
-            if (d.winner() == null) {
-                say("duel.draw");
-            } else {
-                String winner = d.winner().equals(a.uuid()) ? a.name() : b.name();
-                String loser = d.winner().equals(a.uuid()) ? b.name() : a.name();
-                say(d.blocked() ? "duel.blocked" : "duel.won", Placeholder.unparsed("winner", winner),
-                        Placeholder.unparsed("loser", loser), Placeholder.unparsed("n", String.valueOf(d.taler())));
-            }
-            refreshSidebar();
+            duelMessage(a, b, d);
             later(2 * SECOND, this::finishTurn);
+        });
+    }
+
+    private void duelMessage(PartyPlayer a, PartyPlayer b, Engine.Duel d) {
+        if (d.winner() == null) {
+            say("duel.draw");
+        } else {
+            String winner = d.winner().equals(a.uuid()) ? a.name() : b.name();
+            String loser = d.winner().equals(a.uuid()) ? b.name() : a.name();
+            say(d.blocked() ? "duel.blocked" : "duel.won", Placeholder.unparsed("winner", winner),
+                    Placeholder.unparsed("loser", loser), Placeholder.unparsed("n", String.valueOf(d.taler())));
+        }
+        refreshSidebar();
+    }
+
+    /** Duell-Minispiel vorbei: Sieger bekommt den Einsatz, dann zurück aufs Brett und der Zug geht weiter. */
+    private void duelResults() {
+        phase = Phase.MINI_RESULT;
+        MiniRun run = mini;
+        PartyPlayer a = duelPair[0];
+        PartyPlayer b = duelPair[1];
+        duelPair = null;
+        hideBars();
+        Teams.Outcome o = run.teamOutcome();
+        UUID winner = o == Teams.Outcome.A ? a.uuid() : o == Teams.Outcome.B ? b.uuid() : null;
+        Engine.Duel d = engine.settleDuel(a, b, winner);
+        for (Player x : audience()) {
+            String lang = plugin.lang(x);
+            x.sendMessage(Texts.msg(lang, "duel.result", Placeholder.component("name", Texts.text(lang, run.type().key())),
+                    Placeholder.unparsed("one", a.name()), Placeholder.unparsed("two", b.name()),
+                    Placeholder.unparsed("p1", String.valueOf(run.shownPoints(a.uuid()))),
+                    Placeholder.unparsed("p2", String.valueOf(run.shownPoints(b.uuid())))));
+            if (x.getUniqueId().equals(a.uuid()) || x.getUniqueId().equals(b.uuid())) {
+                boolean won = x.getUniqueId().equals(winner);
+                Ui.title(x, Texts.text(lang, winner == null ? "duel.title.draw" : won ? "mini.won" : "mini.over"),
+                        Component.empty(), 2000);
+                Ui.sound(x, won ? "minecraft:ui.toast.challenge_complete" : "minecraft:entity.experience_orb.pickup", 1f);
+            }
+        }
+        duelMessage(a, b, d);
+        later(RESULT_TICKS - 2 * SECOND, () -> {
+            mini = null;
+            backToBoard();
+            later(SECOND, this::finishTurn);
         });
     }
 
@@ -1031,39 +1103,102 @@ public final class Game {
             // gemischt, ohne Wiederholung, nur Plätze, die so viele Leute aushalten
             int n = players().size();
             List<MiniType> all = plugin.settings().minigames();
-            MiniType t = de.moinmorni.party.game.Marathon.draw(miniOrder, all, lastMini, x -> x.maxPlayers() >= n, rng);
+            MiniType t = de.moinmorni.party.game.Marathon.draw(miniOrder, all, lastMini,
+                    x -> x.maxPlayers() >= n && x.fits(Teams.Format.FREE), rng);
             return t != null ? t : MiniType.BROECKELBODEN;
         }
-        if (miniOrder.isEmpty()) {
-            miniOrder.addAll(plugin.settings().minigames());
-            if (!plugin.settings().fixedOrder()) {
-                Collections.shuffle(miniOrder, rng);
+        for (int tries = 0; tries < 2; tries++) {
+            if (miniOrder.isEmpty()) {
+                plugin.settings().minigames().stream().filter(x -> x.fits(Teams.Format.FREE)).forEach(miniOrder::add);
+                if (!plugin.settings().fixedOrder()) {
+                    Collections.shuffle(miniOrder, rng);
+                }
+            }
+            if (!miniOrder.isEmpty()) {
+                return miniOrder.removeFirst();
             }
         }
-        return miniOrder.removeFirst();
+        return MiniType.BROECKELBODEN;
+    }
+
+    /**
+     * Nächstes Minispiel für eine Spielweise mit Seiten (2 gegen 2, 1 gegen 3, Duell) – gemischt, ohne Wiederholung, nur
+     * aus den erlaubten. Ein festgelegtes (Verwaltung) gilt, wenn es passt. null: keines passt.
+     */
+    private MiniType nextMini(Teams.Format f) {
+        if (forcedMini != null && forcedMini.fits(f)) {
+            MiniType t = forcedMini;
+            forcedMini = null;
+            return t;
+        }
+        List<MiniType> all = plugin.settings().minigames().stream().filter(x -> x.fits(f)).toList();
+        if (all.isEmpty()) {
+            return null;
+        }
+        return de.moinmorni.party.game.Marathon.draw(formatBags.computeIfAbsent(f, k -> new ArrayList<>()), all, null,
+                x -> true, rng);
     }
 
     private void startMinigame() {
+        Teams.Split split = Teams.Split.FREE;
+        MiniType type = null;
+        if (!marathon()) {
+            List<UUID> order = engine.active().stream().map(PartyPlayer::uuid).toList();
+            split = Teams.decide(order, lastField);
+            if (forcedFormat != null) {
+                split = forcedSplit(forcedFormat, order);
+                forcedFormat = null;
+            } else if (forcedMini != null) {
+                split = Teams.Split.FREE; // Verwaltung/Tests: ein festgelegtes Spiel ist jeder gegen jeden
+            }
+            if (split.sides()) {
+                type = nextMini(split.format());
+                if (type == null) {
+                    split = Teams.Split.FREE;
+                }
+            }
+        }
+        lastField.clear();
+        runMini(type != null ? type : nextMini(), players(), split);
+    }
+
+    private static Teams.Split forcedSplit(Teams.Format f, List<UUID> order) {
+        if (order.size() != 4 || f == Teams.Format.FREE || f == Teams.Format.DUEL) {
+            return Teams.Split.FREE;
+        }
+        return f == Teams.Format.TEAM ? new Teams.Split(f, order.subList(0, 2), order.subList(2, 4))
+                : new Teams.Split(f, order.subList(0, 1), order.subList(1, 4));
+    }
+
+    /** Minispiel ansagen, Platz legen, Countdown, los – für die Runde und fürs Duell. */
+    private void runMini(MiniType type, List<Player> ps, Teams.Split split) {
         phase = Phase.MINI_INTRO;
-        MiniType type = nextMini();
-        lastMini = type;
+        if (duelPair == null) {
+            lastMini = type;
+        }
         int[] o = Places.mini(table, type);
-        List<Player> ps = players();
         mini = type.create(new MiniRun.Setup(plugin, type, plugin.world(), o[0], o[1], o[2], ps, this::audience, rng,
-                plugin.settings().miniFactor()));
+                plugin.settings().miniFactor(), split));
         lastView = mini.viewPoint();
         for (Player a : audience()) {
             String lang = plugin.lang(a);
-            Ui.title(a, Texts.text(lang, "mini.title"), Texts.text(lang, type.key()), 2500);
+            Ui.title(a, Texts.text(lang, split.format() == Teams.Format.DUEL ? "duel.mini" : "mini.title"),
+                    Texts.text(lang, type.key()), 2500);
             a.sendMessage(Texts.msg(lang, "mini.announce", Placeholder.component("name", Texts.text(lang, type.key()))));
+            if (split.sides()) {
+                a.sendMessage(Texts.msg(lang, split.format().key(), Placeholder.unparsed("sidea", names(split.a())),
+                        Placeholder.unparsed("sideb", names(split.b()))));
+            }
             if (marathon()) {
                 a.sendMessage(Texts.msg(lang, "marathon.next", Placeholder.unparsed("n", String.valueOf(engine.round())),
                         Placeholder.unparsed("of", String.valueOf(engine.rounds()))));
             }
             a.sendMessage(Texts.msg(lang, type.key() + ".desc"));
             Ui.sound(a, "minecraft:block.note_block.flute", 1.2f);
-            a.getInventory().clear();
-            a.closeInventory();
+            if (ps.contains(a) || !plays(a.getUniqueId())) {
+                a.getInventory().clear();
+                a.closeInventory();
+            }
         }
         later(3 * SECOND, () -> {
             mini.prepare();
@@ -1124,13 +1259,19 @@ public final class Game {
         miniBars.clear();
     }
 
+    private String names(List<UUID> list) {
+        return String.join(" + ", list.stream().map(u -> engine.player(u).map(PartyPlayer::name).orElse("?")).toList());
+    }
+
     private void miniResults() {
         phase = Phase.MINI_RESULT;
         MiniRun run = mini;
         hideBars();
         List<List<UUID>> places = run.score().places();
-        Map<UUID, Integer> got = engine.awardMinigame(places);
-        List<UUID> winners = places.isEmpty() ? List.of() : places.getFirst();
+        Teams.Split split = run.split();
+        Teams.Outcome outcome = split.sides() ? run.teamOutcome() : null;
+        Map<UUID, Integer> got = split.sides() ? engine.awardTeams(split, outcome) : engine.awardMinigame(places);
+        List<UUID> winners = split.sides() ? split.winners(outcome) : places.isEmpty() ? List.of() : places.getFirst();
         for (Player a : audience()) {
             String lang = plugin.lang(a);
             a.sendMessage(Texts.msg(lang, "mini.results", Placeholder.component("name", Texts.text(lang, run.type().key()))));
@@ -1147,6 +1288,12 @@ public final class Game {
                             Placeholder.component("prize", prize)));
                 }
                 place += g.size();
+            }
+            if (outcome != null) {
+                a.sendMessage(Texts.msg(lang, outcome == Teams.Outcome.DRAW ? "team.draw"
+                        : split.winners(outcome).size() == 1 ? "team.won.one" : "team.won", Placeholder.unparsed("names", names(split.winners(outcome))),
+                        Placeholder.unparsed("n", String.valueOf(outcome == Teams.Outcome.DRAW
+                                ? engine.rules().teamDraw() : got.getOrDefault(split.winners(outcome).getFirst(), 0)))));
             }
             boolean won = winners.contains(a.getUniqueId());
             if (plays(a.getUniqueId())) {
@@ -1492,7 +1639,12 @@ public final class Game {
                 .append(kind.id()).append("\",\"phase\":\"").append(phase.name().toLowerCase(java.util.Locale.ROOT))
                 .append("\",\"round\":").append(engine.round()).append(",\"rounds\":").append(engine.rounds())
                 .append(",\"stand\":").append(engine.stand()).append(",\"current\":\"").append(engine.current().name())
-                .append("\",\"mini\":\"").append(mini == null ? "" : mini.type().id()).append("\",\"miniAt\":");
+                .append("\",\"mini\":\"").append(mini == null ? "" : mini.type().id())
+                .append("\",\"format\":\"").append(mini == null ? "" : mini.split().format().name().toLowerCase(java.util.Locale.ROOT))
+                .append("\",\"sideA\":\"").append(mini == null ? "" : names(mini.split().a()))
+                .append("\",\"sideB\":\"").append(mini == null ? "" : names(mini.split().b()))
+                .append("\",\"miniPlayers\":").append(mini == null ? 0 : mini.score().all().size())
+                .append(",\"miniAt\":");
         if (mini == null) {
             b.append("null");
         } else {

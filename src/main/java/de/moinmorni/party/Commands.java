@@ -25,7 +25,7 @@ final class Commands implements TabExecutor {
 
     private static final String ADMIN = "moinmorni.party.admin";
     private static final List<String> ADMIN_SUB = List.of("info", "zustand", "start", "stopp", "wuerfel", "taler",
-            "edelweiss", "feld", "stand", "gegenstand", "minispiel", "neubauen", "neuladen");
+            "edelweiss", "feld", "stand", "gegenstand", "minispiel", "seiten", "neubauen", "neuladen");
     private final PartyPlugin plugin;
 
     Commands(PartyPlugin plugin) {
@@ -188,6 +188,21 @@ final class Commands implements TabExecutor {
                     return;
                 }
                 plugin.games().all().forEach(g -> g.forceMini(t));
+                s.sendMessage(Texts.msg(lang, "admin.ok"));
+            }
+            case "seiten" -> {
+                String w = args.length > 1 ? args[1].toLowerCase(java.util.Locale.ROOT) : "";
+                de.moinmorni.party.game.Teams.Format f = switch (w) {
+                    case "frei", "free" -> de.moinmorni.party.game.Teams.Format.FREE;
+                    case "team" -> de.moinmorni.party.game.Teams.Format.TEAM;
+                    case "einzel", "solo" -> de.moinmorni.party.game.Teams.Format.SOLO;
+                    default -> null;
+                };
+                if (f == null && !w.equals("auto")) {
+                    s.sendMessage(Texts.msg(lang, "admin.sides"));
+                    return;
+                }
+                plugin.games().all().forEach(g -> g.forceFormat(f));
                 s.sendMessage(Texts.msg(lang, "admin.ok"));
             }
             case "neubauen" -> {

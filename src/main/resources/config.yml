@@ -58,7 +58,7 @@ regeln:
   blaues-feld: 3
   rotes-feld: 3
   edelweiss-preis: 20
-  # Würfelduell: so viele Taler gehen an den Sieger.
+  # Duellfeld: so viele Taler gehen an den Sieger des Duell-Minispiels.
   duell-taler: 5
   # Talerklau: so viele Taler nimmt man jemandem ab.
   klau-taler: 7
@@ -74,3 +74,10 @@ regeln:
   gipfelrennen-max-runden: 20
   # Taler für Platz 1, 2, 3 … in den Minispielen.
   minispiel-taler: [10, 6, 4, 3, 2, 1, 1, 1]
+  # Team-Minispiele (nur zu viert: 2 gegen 2 bei zwei blauen und zwei roten Feldern, 1 gegen 3 bei einem anders
+  # farbigen Feld). Taler je Person der siegreichen Seite, Taler für alle bei Gleichstand.
+  team-taler: 8
+  team-unentschieden-taler: 3
+  # Einer gegen drei: Taler für den Einzelnen, wenn er gewinnt, und so oft zählen seine Punkte (sein Vorteil).
+  einzel-taler: 18
+  einzel-faktor: 4

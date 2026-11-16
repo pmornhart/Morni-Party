@@ -144,6 +144,45 @@ public final class Scoring {
         return groups;
     }
 
+    /**
+     * Ergebnis zwischen zwei Seiten (Team, Einer gegen drei, Duell). Punkte: Summe je Seite, die Punkte des Einzelnen
+     * zählen {@code soloFactor}-fach. Überleben und Rennen: die Seite mit dem besten Platz gewinnt (gleich = der
+     * nächstbeste entscheidet). Wer gegangen ist, zählt nicht; ist eine Seite leer, gewinnt die andere.
+     */
+    public de.moinmorni.party.game.Teams.Outcome teamOutcome(de.moinmorni.party.game.Teams.Split split,
+            int soloFactor) {
+        var a = split.a().stream().filter(points::containsKey).toList();
+        var b = split.b().stream().filter(points::containsKey).toList();
+        if (a.isEmpty() || b.isEmpty()) {
+            return a.isEmpty() == b.isEmpty() ? de.moinmorni.party.game.Teams.Outcome.DRAW
+                    : a.isEmpty() ? de.moinmorni.party.game.Teams.Outcome.B : de.moinmorni.party.game.Teams.Outcome.A;
+        }
+        int c;
+        if (kind == Kind.POINTS) {
+            int factor = split.format() == de.moinmorni.party.game.Teams.Format.SOLO ? Math.max(1, soloFactor) : 1;
+            int pa = a.stream().mapToInt(this::points).sum() * factor;
+            int pb = b.stream().mapToInt(this::points).sum();
+            c = Integer.compare(pb, pa);
+        } else {
+            Map<UUID, Integer> rank = new LinkedHashMap<>();
+            int place = 0;
+            for (List<UUID> g : places()) {
+                for (UUID u : g) {
+                    rank.put(u, place);
+                }
+                place += g.size();
+            }
+            List<Integer> ra = a.stream().map(rank::get).sorted().toList();
+            List<Integer> rb = b.stream().map(rank::get).sorted().toList();
+            c = 0;
+            for (int i = 0; i < Math.min(ra.size(), rb.size()) && c == 0; i++) {
+                c = Integer.compare(ra.get(i), rb.get(i));
+            }
+        }
+        return c < 0 ? de.moinmorni.party.game.Teams.Outcome.A : c > 0 ? de.moinmorni.party.game.Teams.Outcome.B
+                : de.moinmorni.party.game.Teams.Outcome.DRAW;
+    }
+
     /** Die auf Platz 1. */
     public List<UUID> winners() {
         List<List<UUID>> p = places();

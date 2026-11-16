@@ -286,8 +286,8 @@ public final class Texts {
                 "<dark_gray><b>Unlucky field</b></dark_gray>\n<gray>Something bad happens</gray>");
         t("field.duell", "<gold>Duellfeld</gold>",
                 "<gold>Duel field</gold>");
-        t("field.duell.sign", "<gold><b>Duellfeld</b></gold>\n<gray>Würfelduell um Taler</gray>",
-                "<gold><b>Duel field</b></gold>\n<gray>Dice duel for coins</gray>");
+        t("field.duell.sign", "<gold><b>Duellfeld</b></gold>\n<gray>Duell um Taler</gray>",
+                "<gold><b>Duel field</b></gold>\n<gray>Duel for coins</gray>");
         t("field.laden", "<yellow>Krämerladen</yellow>",
                 "<yellow>Shop</yellow>");
         t("field.laden.sign", "<yellow><b>Krämerladen</b></yellow>\n<gray>Gegenstände kaufen</gray>",
@@ -354,23 +354,45 @@ public final class Texts {
                 "<gray>The <ed>Edelweiss stand</ed> is now on field <white><field></white>.</gray>");
 
         // ---------- Duell ----------
-        t("duel.title", "Gegen wen würfelst du?",
-                "Who do you duel?");
+        t("duel.title", "Wen forderst du heraus?",
+                "Who do you challenge?");
         t("duel.pick", "<gold>⚔ <name></gold>", "<gold>⚔ <name></gold>");
         t("duel.pick.lore", "<gray>Hat <au><taler> Taler</au>.</gray>",
                 "<gray>Has <au><taler> coins</au>.</gray>");
-        t("duel.field", "<white><name></white> <gray>steht auf einem <gold>Duellfeld</gold> – Würfelduell um <au><n> Taler</au>!</gray>",
-                "<white><name></white> <gray>is on a <gold>duel field</gold> – dice duel for <au><n> coins</au>!</gray>");
-        t("duel.vs", "<gold>⚔</gold> <white><one></white> <gray>gegen</gray> <white><two></white> <gray>– beide würfeln …</gray>",
+        t("duel.field", "<white><name></white> <gray>steht auf einem <gold>Duellfeld</gold> – Duell um <au><n> Taler</au>!</gray>",
+                "<white><name></white> <gray>is on a <gold>duel field</gold> – duel for <au><n> coins</au>!</gray>");
+        t("duel.vs", "<gold>⚔</gold> <white><one></white> <gray>gegen</gray> <white><two></white> <gray>– ab zum Duell-Minispiel!</gray>",
+                "<gold>⚔</gold> <white><one></white> <gray>vs</gray> <white><two></white> <gray>– off to a duel minigame!</gray>");
+        t("duel.dice", "<gold>⚔</gold> <white><one></white> <gray>gegen</gray> <white><two></white> <gray>– beide würfeln …</gray>",
                 "<gold>⚔</gold> <white><one></white> <gray>vs</gray> <white><two></white> <gray>– both roll …</gray>");
+        t("duel.mini", "<gold>⚔ Duell! ⚔</gold>",
+                "<gold>⚔ Duel! ⚔</gold>");
+        t("duel.result", "<gold>⚔</gold> <name> <gray>–</gray> <white><one></white> <au><p1></au> <gray>:</gray> <au><p2></au> <white><two></white>",
+                "<gold>⚔</gold> <name> <gray>–</gray> <white><one></white> <au><p1></au> <gray>:</gray> <au><p2></au> <white><two></white>");
+        t("duel.title.draw", "<gray>Unentschieden</gray>",
+                "<gray>Draw</gray>");
         t("duel.won", "<white><winner></white> <gray>gewinnt das Duell und bekommt</gray> <au><n> Taler</au> <gray>von <white><loser></white>.</gray>",
                 "<white><winner></white> <gray>wins the duel and gets</gray> <au><n> coins</au> <gray>from <white><loser></white>.</gray>");
         t("duel.blocked", "<white><winner></white> <gray>gewinnt das Duell – aber der <bl>Schild</bl> von <white><loser></white> schützt die Taler (<n>).</gray>",
                 "<white><winner></white> <gray>wins the duel – but <white><loser></white>'s <bl>shield</bl> protects the coins (<n>).</gray>");
-        t("duel.draw", "<gray>Gleich hoch – unentschieden, niemand zahlt.</gray>",
-                "<gray>Same number – a draw, nobody pays.</gray>");
+        t("duel.draw", "<gray>Unentschieden – niemand zahlt.</gray>",
+                "<gray>A draw – nobody pays.</gray>");
         t("duel.alone", "<gray>Niemand da zum Duellieren.</gray>",
                 "<gray>Nobody left to duel.</gray>");
+
+        // ---------- Seiten im Minispiel ----------
+        t("format.team", "<gray>Zwei gegen zwei:</gray> <blue><sidea></blue> <gray>gegen</gray> <red><sideb></red> <gray>(je zwei auf blauen und roten Feldern)</gray>",
+                "<gray>Two against two:</gray> <blue><sidea></blue> <gray>vs</gray> <red><sideb></red> <gray>(two each on blue and red fields)</gray>");
+        t("format.solo", "<gray>Einer gegen drei:</gray> <au><sidea></au> <gray>gegen</gray> <blue><sideb></blue> <gray>– der Einzelne hat einen Vorteil.</gray>",
+                "<gray>One against three:</gray> <au><sidea></au> <gray>vs</gray> <blue><sideb></blue> <gray>– the lone player has an advantage.</gray>");
+        t("format.duel", "<gray>Duell:</gray> <blue><sidea></blue> <gray>gegen</gray> <red><sideb></red>",
+                "<gray>Duel:</gray> <blue><sidea></blue> <gray>vs</gray> <red><sideb></red>");
+        t("team.won", "<au>★</au> <white><names></white> <gray>gewinnen – je</gray> <au><n> Taler</au><gray>.</gray>",
+                "<au>★</au> <white><names></white> <gray>win – </gray><au><n> coins</au> <gray>each.</gray>");
+        t("team.won.one", "<au>★</au> <white><names></white> <gray>gewinnt allein gegen alle –</gray> <au><n> Taler</au><gray>!</gray>",
+                "<au>★</au> <white><names></white> <gray>wins alone against everyone –</gray> <au><n> coins</au><gray>!</gray>");
+        t("team.draw", "<gray>Gleichstand zwischen den Seiten – alle bekommen</gray> <au><n> Taler</au><gray>.</gray>",
+                "<gray>The sides are level – everyone gets</gray> <au><n> coins</au><gray>.</gray>");
 
         // ---------- Laden und Gegenstände ----------
         t("shop.title", "Krämerladen",
@@ -479,6 +501,8 @@ public final class Texts {
                 "<gray>Watch the others</gray>");
         t("mini.out", "<white><name></white> <gray>ist raus – noch <white><n></white> übrig.</gray>",
                 "<white><name></white> <gray>is out – <white><n></white> left.</gray>");
+        t("mini.points.team", "<au>Punkte: <n></au> <gray>· deine Seite:</gray> <au><team></au>",
+                "<au>Points: <n></au> <gray>· your side:</gray> <au><team></au>");
         t("mini.points", "<au>Punkte: <n></au>",
                 "<au>Points: <n></au>");
         t("mini.results", "<au>━━ Ergebnis: <name> ━━</au>",
@@ -763,6 +787,32 @@ public final class Texts {
         t("mini.foehnsturm.from.sw", "<gray>aus Südwesten ↗</gray>", "<gray>from the south-west ↗</gray>");
         t("mini.foehnsturm.from.w", "<gray>aus Westen →</gray>", "<gray>from the west →</gray>");
         t("mini.foehnsturm.from.nw", "<gray>aus Nordwesten ↘</gray>", "<gray>from the north-west ↘</gray>");
+        t("mini.tauziehen", "<au>Tauziehen</au>",
+                "<au>Tug of War</au>");
+        t("mini.tauziehen.desc", "<gray>Über der Schlammgrube hängt ein Seil. Klick so schnell du kannst (Schlag oder Rechtsklick mit dem Seil) – wer den roten Knoten ganz herüberzieht, gewinnt; sonst zählt am Ende, auf welcher Seite er hängt.</gray>",
+                "<gray>A rope hangs over the mud pit. Click as fast as you can (hit or right-click with the rope) – whoever pulls the red knot all the way over wins; otherwise the side the knot is on at the end wins.</gray>");
+        t("mini.tauziehen.item", "<au>Seil</au> <gray>– klicken zum Ziehen</gray>",
+                "<au>Rope</au> <gray>– click to pull</gray>");
+        t("mini.tauziehen.bar", "<rope>  <gray>Du ziehst nach</gray> <side>",
+                "<rope>  <gray>You pull to the</gray> <side>");
+        t("mini.tauziehen.left", "<blue>links</blue>", "<blue>left</blue>");
+        t("mini.tauziehen.right", "<red>rechts</red>", "<red>right</red>");
+        t("mini.gamsjagd", "<au>Gamsjagd</au>",
+                "<au>Chamois Chase</au>");
+        t("mini.gamsjagd.desc", "<gray>Einer ist der Jäger, die anderen sind Gämsen. Der Jäger ist schneller, darf aber erst nach drei Sekunden los – ein Schlag fängt eine Gämse. Bleibt bis zum Ende eine übrig, gewinnen die Gämsen.</gray>",
+                "<gray>One player is the hunter, the others are chamois. The hunter is faster but may only start after three seconds – one hit catches a chamois. If one is left at the end, the chamois win.</gray>");
+        t("mini.gamsjagd.item", "<au>Jägerstock</au>",
+                "<au>Hunter's stick</au>");
+        t("mini.gamsjagd.you.hunter", "<au>Du bist der Jäger!</au>",
+                "<au>You are the hunter!</au>");
+        t("mini.gamsjagd.you.gams", "<green>Du bist eine Gämse – lauf!</green>",
+                "<green>You are a chamois – run!</green>");
+        t("mini.gamsjagd.go", "<au><name></au> <gray>läuft los!</gray>",
+                "<au><name></au> <gray>is off!</gray>");
+        t("mini.gamsjagd.caught", "<white><name></white> <gray>wurde von</gray> <au><hunter></au> <gray>gefangen.</gray>",
+                "<white><name></white> <gray>was caught by</gray> <au><hunter></au><gray>.</gray>");
+        t("mini.gamsjagd.bar", "<gray>Gämsen übrig:</gray> <green><n></green>",
+                "<gray>Chamois left:</gray> <green><n></green>");
         t("colour.red", "<red><b>Rot</b></red>",
                 "<red><b>Red</b></red>");
         t("colour.yellow", "<yellow><b>Gelb</b></yellow>",
@@ -834,6 +884,8 @@ public final class Texts {
                 "<gray>/mparty info · zustand (state) · start · stopp (stop) · wuerfel|taler|edelweiss|feld \\<player> \\<number> · gegenstand \\<player> \\<item> · stand \\<field> · minispiel \\<name> · neubauen (rebuild) · neuladen (reload)</gray>");
         t("admin.info", "<gray>Partien: <white><games></white> · Wartend: <white><waiting></white> · Bereit: <white><ready></white> · Netzwerk: <white><net></white></gray>",
                 "<gray>Games: <white><games></white> · Waiting: <white><waiting></white> · Ready: <white><ready></white> · Network: <white><net></white></gray>");
+        t("admin.sides", "<gray>/mparty seiten auto|frei|team|einzel – Seiten fürs nächste Minispiel (nur zu viert).</gray>",
+                "<gray>/mparty seiten auto|frei|team|einzel – sides for the next minigame (four players only).</gray>");
         t("admin.ok", "<em>Erledigt.</em>",
                 "<em>Done.</em>");
         t("admin.started", "<em>Partie gestartet.</em>",

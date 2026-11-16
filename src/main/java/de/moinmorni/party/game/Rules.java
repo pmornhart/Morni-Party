@@ -17,14 +17,18 @@ package de.moinmorni.party.game;
  * @param raceMaxRounds   Gipfelrennen: spätestens nach so vielen Runden ist Schluss
  * @param awards          Taler für Platz 1, 2, 3 … in den Minispielen
  * @param marathonPoints  Minispiel-Marathon: Punkte für Platz 1, 2, 3 …
+ * @param teamWin         Team-Minispiel: Taler je Person der siegreichen Seite (2 gegen 2, auch die drei gegen einen)
+ * @param teamDraw        Team-Minispiel unentschieden: Taler für alle
+ * @param soloWin         Einer gegen drei: Taler für den Einzelnen, wenn er gewinnt
+ * @param soloFactor      Einer gegen drei: so oft zählen die Punkte des Einzelnen (sein Vorteil)
  */
 public record Rules(int startTaler, int fieldPlus, int fieldMinus, int edelweissPrice, int duelStake, int steal,
         int luckTaler, int luckSteps, int shareTaler, int summitBonus, int maxItems, int raceMaxRounds, int[] awards,
-        int[] marathonPoints) {
+        int[] marathonPoints, int teamWin, int teamDraw, int soloWin, int soloFactor) {
 
     public static Rules defaults() {
         return new Rules(10, 3, 3, 20, 5, 7, 5, 3, 2, 5, 3, 20, new int[] {10, 6, 4, 3, 2, 1, 1, 1},
-                Marathon.DEFAULT_POINTS.clone());
+                Marathon.DEFAULT_POINTS.clone(), 8, 3, 18, 4);
     }
 
     /** Taler für einen Platz (0 = erster). */

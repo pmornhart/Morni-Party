@@ -100,6 +100,10 @@ public final class PlayerListener implements Listener {
         Player p = e.getPlayer();
         Optional<Game> game = plugin.games().of(p.getUniqueId());
         if (game.isPresent() && game.get().phase() == Game.Phase.MINI && game.get().mini() != null) {
+            if (!game.get().mini().score().has(p.getUniqueId())) {
+                e.setCancelled(true); // Duell: wer nicht mitspielt, wartet auf dem Brett
+                return;
+            }
             if (e.getHand() == EquipmentSlot.HAND || e.getAction() == Action.PHYSICAL) {
                 game.get().mini().onInteract(p, e);
             }
@@ -234,7 +238,7 @@ public final class PlayerListener implements Listener {
         Player p = e.getPlayer();
         Optional<Game> game = plugin.games().of(p.getUniqueId());
         MiniRun mini = game.map(Game::mini).orElse(null);
-        if (mini != null && mini.running()) {
+        if (mini != null && mini.running() && mini.score().has(p.getUniqueId())) {
             mini.onPickup(p, e.getItem(), e);
             return;
         }
@@ -249,7 +253,8 @@ public final class PlayerListener implements Listener {
         Optional<Game> game = plugin.games().of(p.getUniqueId());
         if (game.isPresent()) {
             Game g = game.get();
-            if (g.phase() == Game.Phase.MINI && g.mini() != null && g.mini().running()) {
+            if (g.phase() == Game.Phase.MINI && g.mini() != null && g.mini().running()
+                    && g.mini().score().has(p.getUniqueId())) {
                 g.mini().onMove(p, e);
             }
             if (g.frozen(p) && e.hasChangedPosition()) {

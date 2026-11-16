@@ -79,7 +79,11 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
                 Math.max(0, c.getInt("regeln.gipfel-bonus", d.summitBonus())),
                 Math.max(1, c.getInt("regeln.rucksack", d.maxItems())),
                 Math.max(1, c.getInt("regeln.gipfelrennen-max-runden", d.raceMaxRounds())),
-                aw, mp);
+                aw, mp,
+                Math.max(0, c.getInt("regeln.team-taler", d.teamWin())),
+                Math.max(0, c.getInt("regeln.team-unentschieden-taler", d.teamDraw())),
+                Math.max(0, c.getInt("regeln.einzel-taler", d.soloWin())),
+                Math.max(1, Math.min(5, c.getInt("regeln.einzel-faktor", d.soloFactor()))));
         int min = Math.max(2, c.getInt("spieler.mindestens", 2));
         return new Settings(
                 c.getString("welt", "party"),

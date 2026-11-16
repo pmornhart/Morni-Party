@@ -348,6 +348,24 @@ public final class Engine {
         return new Duel(challenger.uuid(), opponent.uuid(), a, b, win.uuid(), paid, false);
     }
 
+    /**
+     * Duell-Minispiel entschieden: der Sieger bekommt den Einsatz vom Verlierer (Schild schützt den Verlierer).
+     * {@code winner} = null: unentschieden, niemand zahlt.
+     */
+    public Duel settleDuel(PartyPlayer challenger, PartyPlayer opponent, UUID winner) {
+        if (winner == null || !(winner.equals(challenger.uuid()) || winner.equals(opponent.uuid()))) {
+            return new Duel(challenger.uuid(), opponent.uuid(), 0, 0, null, 0, false);
+        }
+        PartyPlayer win = winner.equals(challenger.uuid()) ? challenger : opponent;
+        PartyPlayer lose = win == challenger ? opponent : challenger;
+        if (consumeShield(lose)) {
+            return new Duel(challenger.uuid(), opponent.uuid(), 0, 0, win.uuid(), 0, true);
+        }
+        int paid = -lose.addTaler(-rules.duelStake());
+        win.addTaler(paid);
+        return new Duel(challenger.uuid(), opponent.uuid(), 0, 0, win.uuid(), paid, false);
+    }
+
     // ---------- Laden und Gegenstände ----------
 
     public boolean canBuyItem(PartyPlayer p, ItemType item) {
@@ -494,6 +512,35 @@ public final class Engine {
                 }
             }
             place += group.size();
+        }
+        return got;
+    }
+
+    /**
+     * Taler aus einem Team-Minispiel (2 gegen 2 oder 1 gegen 3): die siegreiche Seite bekommt je {@code teamWin},
+     * der Einzelne als Sieger {@code soloWin}; bei Gleichstand alle {@code teamDraw}. Sieger zählen als
+     * Minispiel-Sieg. Gibt die Taler je Person zurück (auch 0 für die Verlierer).
+     */
+    public Map<UUID, Integer> awardTeams(Teams.Split split, Teams.Outcome outcome) {
+        Map<UUID, Integer> got = new LinkedHashMap<>();
+        List<UUID> all = new ArrayList<>(split.a());
+        all.addAll(split.b());
+        List<UUID> winners = split.winners(outcome);
+        for (UUID u : all) {
+            Optional<PartyPlayer> p = player(u).filter(x -> !x.left);
+            if (p.isEmpty()) {
+                continue;
+            }
+            int amount;
+            if (outcome == Teams.Outcome.DRAW) {
+                amount = rules.teamDraw();
+            } else if (!winners.contains(u)) {
+                amount = 0;
+            } else {
+                amount = split.format() == Teams.Format.SOLO && split.a().contains(u) ? rules.soloWin() : rules.teamWin();
+                p.get().minigamesWon++;
+            }
+            got.put(u, p.get().addTaler(amount));
         }
         return got;
     }

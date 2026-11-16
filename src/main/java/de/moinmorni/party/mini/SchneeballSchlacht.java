@@ -188,6 +188,9 @@ final class SchneeballSchlacht extends MiniRun {
         }
         e.setCancelled(true);
         ball.remove();
+        if (mates(thrower, victim)) {
+            return; // eigene Seite: zählt nicht
+        }
         if (immune.getOrDefault(victim.getUniqueId(), -1) > ticks) {
             return;
         }

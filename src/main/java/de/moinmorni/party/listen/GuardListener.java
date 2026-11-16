@@ -35,7 +35,7 @@ public final class GuardListener implements Listener {
 
     private Optional<MiniRun> mini(Player p) {
         return plugin.games().of(p.getUniqueId()).filter(g -> g.phase() == Game.Phase.MINI).map(Game::mini)
-                .filter(MiniRun::running);
+                .filter(m -> m != null && m.running() && m.score().has(p.getUniqueId()));
     }
 
     @EventHandler(priority = EventPriority.HIGH)

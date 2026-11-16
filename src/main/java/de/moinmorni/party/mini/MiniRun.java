@@ -3,6 +3,7 @@ package de.moinmorni.party.mini;
 import de.moinmorni.party.PartyPlugin;
 import de.moinmorni.party.Texts;
 import de.moinmorni.party.Ui;
+import de.moinmorni.party.game.Teams;
 import de.moinmorni.party.world.Plan;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,12 @@ public abstract class MiniRun {
 
     /** Alles, was ein Minispiel zum Laufen braucht. */
     public record Setup(PartyPlugin plugin, MiniType type, World world, int ox, int oy, int oz, List<Player> players,
-            Supplier<List<Player>> audience, Random rng, double factor) {
+            Supplier<List<Player>> audience, Random rng, double factor, Teams.Split teams) {
+
+        public Setup(PartyPlugin plugin, MiniType type, World world, int ox, int oy, int oz, List<Player> players,
+                Supplier<List<Player>> audience, Random rng, double factor) {
+            this(plugin, type, world, ox, oy, oz, players, audience, rng, factor, Teams.Split.FREE);
+        }
     }
 
     protected static final int SECOND = 20;
@@ -51,6 +57,8 @@ public abstract class MiniRun {
     protected final List<Player> players;
     protected final Random rng;
     protected final Scoring score;
+    /** Wer mit wem spielt (jeder gegen jeden, 2 gegen 2, 1 gegen 3, Duell). */
+    protected final Teams.Split split;
     private final Supplier<List<Player>> audience;
     private final int duration;
     private final List<Entity> spawned = new ArrayList<>();
@@ -69,6 +77,7 @@ public abstract class MiniRun {
         this.rng = s.rng();
         this.audience = s.audience();
         this.score = new Scoring(s.type().kind());
+        this.split = s.teams() == null ? Teams.Split.FREE : s.teams();
         this.duration = (int) Math.round(s.type().seconds() * (s.type().scaled() ? s.factor() : 1.0) * SECOND);
         players.forEach(p -> score.join(p.getUniqueId()));
     }
@@ -79,6 +88,23 @@ public abstract class MiniRun {
 
     public Scoring score() {
         return score;
+    }
+
+    public Teams.Split split() {
+        return split;
+    }
+
+    /**
+     * Ergebnis zwischen den Seiten (nur bei Team, Einer gegen drei und Duell). Vorgabe aus der Wertung; Spiele mit
+     * eigener Siegbedingung (Tauziehen, Gamsjagd) entscheiden selbst.
+     */
+    public Teams.Outcome teamOutcome() {
+        return score.teamOutcome(split, plugin.settings().rules().soloFactor());
+    }
+
+    /** Spielen zwei zusammen (gleiche Seite)? */
+    protected boolean mates(Player x, Player y) {
+        return split.mates(x.getUniqueId(), y.getUniqueId());
     }
 
     public boolean running() {
@@ -115,7 +141,23 @@ public abstract class MiniRun {
             p.setGameMode(gameMode());
             p.teleport(spawns.get(i % spawns.size()));
             equip(p);
+            teamCap(p);
         }
+    }
+
+    /** Bei Seiten: Mütze in der Farbe der Seite (blau / rot, der Einzelne gold). */
+    protected void teamCap(Player p) {
+        int side = split.side(p.getUniqueId());
+        var worn = p.getInventory().getHelmet();
+        if (side < 0 || (worn != null && !worn.getType().isAir())) {
+            return;
+        }
+        int colour = split.format() == Teams.Format.SOLO ? (side == 0 ? 0xF1C40F : 0x3498DB)
+                : (side == 0 ? 0x3498DB : 0xE74C3C);
+        org.bukkit.inventory.ItemStack cap = new org.bukkit.inventory.ItemStack(org.bukkit.Material.LEATHER_HELMET);
+        cap.editMeta(org.bukkit.inventory.meta.LeatherArmorMeta.class,
+                m -> m.setColor(org.bukkit.Color.fromRGB(colour)));
+        p.getInventory().setHelmet(cap);
     }
 
     public void start() {
@@ -337,7 +379,14 @@ public abstract class MiniRun {
     protected void point(Player p, int n) {
         score.add(p.getUniqueId(), n);
         Ui.sound(p, "minecraft:entity.experience_orb.pickup", 1.2f);
-        bar(p, "mini.points", Placeholder.unparsed("n", String.valueOf(score.points(p.getUniqueId()))));
+        int side = split.side(p.getUniqueId());
+        if (side >= 0 && split.side(side).size() > 1) {
+            int team = split.side(side).stream().mapToInt(score::points).sum();
+            bar(p, "mini.points.team", Placeholder.unparsed("n", String.valueOf(score.points(p.getUniqueId()))),
+                    Placeholder.unparsed("team", String.valueOf(team)));
+        } else {
+            bar(p, "mini.points", Placeholder.unparsed("n", String.valueOf(score.points(p.getUniqueId()))));
+        }
     }
 
     /** Nachricht an alle, die zusehen oder mitspielen. */

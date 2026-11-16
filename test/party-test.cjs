@@ -427,7 +427,6 @@ async function part1() {
   check('Ergebnis mit Punkten und Talern', resultLines(anna).length === 3, resultLines(anna).join(' | '));
   check('Englisches Ergebnis', bert.chats.some((c) => /Result: Cowbell/.test(c)) && resultLines(bert).some((l) => /coins/.test(l)));
   check('Ein Minispiel-Sieg wird gezählt', end1 && end1.players.some((p) => p.minis === 1), end1 && JSON.stringify(end1.players.map((p) => p.minis)));
-  await cmd('mparty minispiel schaefchen');
   const r2 = await phase((x) => x.phase === 'turn' && x.round === 2, 20000);
   check('Zurück aufs Brett, Runde 2', r2 && [anna, bert, carl].every((b) => Math.abs(b.entity.position.x - r2.boardAt[0]) < 60),
     r2 && JSON.stringify(anna.entity.position));
@@ -444,12 +443,27 @@ async function part1() {
   let g2 = r2;
   const d1 = g2.current;
   const duel = fieldIndex(g2, 'D', 1);
-  await cmd(`mparty feld ${d1} ${duel - 1}`, `mparty wuerfel ${d1} 1`);
+  await cmd(`mparty feld ${d1} ${duel - 1}`, `mparty wuerfel ${d1} 1`, 'mparty minispiel tauziehen');
   clear(anna, bert, carl);
+  const before2 = Object.fromEntries(g2.players.map((p) => [p.name, p.taler]));
   g2 = await playTurn(g2);
-  check('Duellfeld: Menü „Gegen wen würfelst du?“', currentBotByName(d1).windows.some((t) => /Gegen wen|Who do you duel/.test(t)),
+  check('Duellfeld: Menü „Wen forderst du heraus?“', currentBotByName(d1).windows.some((t) => /Wen forderst|Who do you challenge/.test(t)),
     currentBotByName(d1).windows.join(','));
-  check('Würfelduell im Chat', sees(anna, /(gewinnt das Duell|unentschieden|wins the duel|a draw)/), anna.chats.filter((c) => /Duell|duel/.test(c)).join(' | '));
+  const dg = await waitMini('tauziehen', 30000);
+  check('Duell-Minispiel: Tauziehen zu zweit', dg && dg.format === 'duel' && dg.miniPlayers === 2 && dg.sideA === d1, dg && `${dg.format} ${dg.miniPlayers} ${dg.sideA}`);
+  const puller = currentBotByName(d1);
+  let pulling = true;
+  const pullJob = (async () => { while (pulling) { puller.swingArm(); await sleep(60); } })();
+  await waitMiniEnd(40000);
+  pulling = false;
+  await pullJob;
+  g2 = await phase((x) => x.phase === 'turn' && x.current !== d1, 30000);
+  const opp = dg && g2 && g2.players.find((p) => p.name === dg.sideB);
+  check('Duell im Chat: Sieger bekommt den Einsatz', sees(anna, new RegExp(`${d1} gewinnt das Duell und bekommt 5 Taler`)) || sees(anna, /Schild/),
+    anna.chats.filter((c) => /Duell|duel|⚔/.test(c)).join(' | '));
+  check('Duell: Taler wandern (Tauziehen gewonnen)', g2 && opp && pl(g2, d1).taler === before2[d1] + 5 && opp.taler === before2[opp.name] - 5,
+    g2 && JSON.stringify(g2.players.map((p) => `${p.name}:${before2[p.name]}→${p.taler}`)));
+  await cmd('mparty minispiel schaefchen'); // erst nach dem Duell (das hätte es sonst verbraucht)
 
   // ---- Runde 2, Zug 2: Platztausch
   const t1 = g2.current;
@@ -1288,6 +1302,123 @@ async function marathon() {
     anna.chats.join(' | '));
 }
 
+/** Vier Züge spielen (Würfel fest), bis das Minispiel der Runde beginnt. */
+async function playRound(g, setup) {
+  for (let i = 0; i < 4 && g && g.phase === 'turn'; i++) {
+    if (setup) await setup(g);
+    else {
+      // sicher auf ein blaues Feld (kein Duellfeld, das das festgelegte Minispiel vorher verbrauchen würde)
+      const safe = fieldIndex(g, 'T', 18);
+      await cmd(`mparty feld ${g.current} ${safe - 1}`, `mparty wuerfel ${g.current} 1`);
+    }
+    g = await playTurn(g);
+  }
+  return g;
+}
+
+/** Ergebnis aller Seiten (Taler vorher → nachher). */
+const talerOf = (g) => Object.fromEntries(g.players.map((p) => [p.name, p.taler]));
+
+async function teams() {
+  console.log('\n— Partie 8: Team- und Duell-Minispiele zu viert —');
+  if (!bots.Dora) bots.Dora = await join('Dora');
+  bots.Dora.policy = defaultPolicy;
+  const { Anna: anna, Bert: bert, Carl: carl, Dora: dora } = bots;
+  const list = [anna, bert, carl, dora];
+  clear(...list);
+  for (const b of list) {
+    let w = await openWithItem(b, 2);
+    if (w) await click(b, 15);
+    w = await openWithItem(b, 3);
+    if (w) await click(b, MODE.jagd8);
+  }
+  let g = await phase((x) => x.phase === 'turn', 30000);
+  check('Teams: Partie zu viert startet', g && g.players.length === 4, g && String(g.players.length));
+  const order = g.players.map((p) => p.name);
+
+  // ---- Runde 1: zwei landen auf blauen, zwei auf roten Feldern → 2 gegen 2 von selbst
+  await cmd(`mparty stand ${fieldIndex(g, 'T', 0)}`);
+  const blue1 = fieldIndex(g, 'T', 18);
+  const blue2 = fieldIndex(g, 'T', blue1);
+  const red1 = fieldIndex(g, 'V', 18);
+  const red2 = fieldIndex(g, 'V', red1);
+  const target = { [order[0]]: blue1, [order[1]]: red1, [order[2]]: blue2, [order[3]]: red2 };
+  g = await playRound(g, async (x) => cmd(`mparty feld ${x.current} ${target[x.current] - 1}`, `mparty wuerfel ${x.current} 1`));
+  g = await phase((x) => x.phase === 'mini', 30000);
+  check('Felder entscheiden: 2 gegen 2 (blau gegen rot)', g && g.format === 'team' && g.sideA === `${order[0]} + ${order[2]}` &&
+    g.sideB === `${order[1]} + ${order[3]}`, g && `${g.format} ${g.mini} ${g.sideA} | ${g.sideB}`);
+  check('Ansage „Zwei gegen zwei“ (Englisch: „Two against two“)', sees(anna, /Zwei gegen zwei:/) && sees(bert, /Two against two:/));
+  check('Mützen in der Farbe der Seite', list.some((b) => b.inventory.slots[5]?.name === 'leather_helmet'),
+    list.map((b) => b.inventory.slots[5]?.name).join(','));
+  await waitMiniEnd(90000);
+  check('Team-Ergebnis im Chat', await waitFor(() => sees(anna, /gewinnt – je \d+ Taler|Gleichstand zwischen den Seiten/), 5000),
+    anna.chats.filter((c) => /Taler/.test(c)).slice(-3).join(' | '));
+  g = await phase((x) => x.phase === 'turn', 30000);
+
+  // ---- Runde 2: Tauziehen 2 gegen 2, Seite a zieht, Seite b nicht
+  await cmd('mparty seiten team', 'mparty minispiel tauziehen');
+  g = await playRound(g);
+  let before = talerOf(g);
+  g = await waitMini('tauziehen', 30000);
+  check('Tauziehen: 2 gegen 2', g && g.format === 'team' && g.sideA === `${order[0]} + ${order[1]}`, g && `${g.format} ${g.sideA}`);
+  let pulling = true;
+  const pullers = [bots[order[0]], bots[order[1]]];
+  const pullJob = (async () => { while (pulling) { for (const b of pullers) b.swingArm(); await sleep(80); } })();
+  const start = Date.now();
+  await waitMiniEnd(40000);
+  pulling = false;
+  await pullJob;
+  check('Tauziehen: Seil ganz herübergezogen vor Ablauf der Zeit', Date.now() - start < 29000, `${Date.now() - start} ms`);
+  check('Tauziehen: Seil in der Aktionsleiste', bots[order[0]].bars.some((b) => /◆/.test(b)), bots[order[0]].bars.slice(-1)[0]);
+  g = await phase((x) => x.phase === 'turn', 30000);
+  check('Tauziehen: Sieger je 8 Taler, Verlierer nichts', g && pl(g, order[0]).taler === before[order[0]] + 8 &&
+    pl(g, order[1]).taler === before[order[1]] + 8 && pl(g, order[2]).taler === before[order[2]],
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${before[p.name]}→${p.taler}`)));
+  check('Team-Sieg im Chat', sees(anna, new RegExp(`${order[0]} \\+ ${order[1]} gewinnen – je 8 Taler`)), anna.chats.slice(-6).join(' | '));
+
+  // ---- Runde 3: Gamsjagd 1 gegen 3, der Jäger fängt alle
+  await cmd('mparty seiten einzel', 'mparty minispiel gamsjagd');
+  g = await playRound(g);
+  before = talerOf(g);
+  clear(...list);
+  g = await waitMini('gamsjagd', 30000);
+  check('Gamsjagd: einer gegen drei', g && g.format === 'solo' && g.sideA === order[0], g && `${g.format} ${g.sideA}`);
+  const hunter = bots[order[0]];
+  check('Gamsjagd: Rollen als Titel', await waitFor(() => sawTitle(hunter, /Jäger|hunter/) && sawTitle(bots[order[1]], /Gämse|chamois/), 5000));
+  await sleep(3500);
+  for (const name of order.slice(1)) {
+    const prey = bots[name];
+    for (let k = 0; k < 6; k++) {
+      await cmd(`execute at ${name} run tp ${hunter.username} ~1 ~ ~`);
+      await sleep(400);
+      const e = hunter.players[name]?.entity;
+      if (e) hunter.attack(e);
+      await sleep(300);
+      if (sees(anna, new RegExp(`${name} wurde von ${hunter.username} gefangen`))) break;
+    }
+    check(`Gamsjagd: ${name} gefangen`, sees(anna, new RegExp(`${name} wurde von ${hunter.username} gefangen`)), prey.username);
+  }
+  await waitMiniEnd(30000);
+  g = await phase((x) => x.phase === 'turn', 30000);
+  check('Gamsjagd: „gewinnt allein gegen alle“', sees(anna, new RegExp(`${order[0]} gewinnt allein gegen alle – 18 Taler`)));
+  check('Gamsjagd: der Jäger gewinnt 18 Taler', g && pl(g, order[0]).taler === before[order[0]] + 18 && pl(g, order[1]).taler === before[order[1]],
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${before[p.name]}→${p.taler}`)));
+
+  // ---- Runde 4: Murmeltier 1 gegen 3, niemand trifft → Gleichstand
+  await cmd('mparty seiten einzel', 'mparty minispiel murmeltier');
+  g = await playRound(g);
+  before = talerOf(g);
+  g = await waitMini('murmeltier', 30000);
+  check('Murmeltier als einer gegen drei', g && g.format === 'solo', g && g.format);
+  check('Ansage „Einer gegen drei“ mit Vorteil', sees(anna, /Einer gegen drei: .* der Einzelne hat einen Vorteil/));
+  await waitMiniEnd(70000);
+  g = await phase((x) => x.phase === 'turn', 30000);
+  check('Gleichstand: alle bekommen 3 Taler', g && g.players.every((p) => p.taler === before[p.name] + 3) &&
+    sees(anna, /Gleichstand zwischen den Seiten/), g && JSON.stringify(g.players.map((p) => `${p.name}:${before[p.name]}→${p.taler}`)));
+  await cmd('mparty stopp');
+  check('Teams: zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+}
+
 /** Ergebniszeilen im Marathon („… → +10 Punkte“). */
 const resultLines2 = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Punkte|points)$/.test(c));
 
@@ -1304,6 +1435,7 @@ async function main() {
   if (PARTS.includes(5)) await newMinis('Partie 5: neue Minispiele, Paket 2', PAKET2);
   if (PARTS.includes(6)) await newMinis('Partie 6: neue Minispiele, Paket 3', PAKET3);
   if (PARTS.includes(7)) await marathon();
+  if (PARTS.includes(8)) await teams();
   for (const b of Object.values(bots)) b.quit();
   await sleep(500);
   const failed = results.filter((r) => !r.ok).length;

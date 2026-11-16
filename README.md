@@ -42,7 +42,7 @@ Jedes Brett hat 36 Felder auf einem Spiralweg:
 | Verlustfeld | rot | −3 Taler |
 | Glücksfeld | grün | Geschenk vom Almwirt, Rückenwind (3 vor), alle geben dir etwas, Fundstück |
 | Pechfeld | schwarz | Steinschlag, Nebel (3 zurück), du gibst eine Runde aus, etwas fällt aus dem Rucksack |
-| Duellfeld | orange | Würfelduell gegen jemanden deiner Wahl – wer höher würfelt, bekommt 5 Taler |
+| Duellfeld | orange | Duell gegen jemanden deiner Wahl: ein kurzes Minispiel zu zweit – der Sieger bekommt 5 Taler |
 | Krämerladen | gelb | Gegenstände kaufen |
 | Fundstück | rosa | ein Gegenstand gratis |
 
@@ -86,6 +86,24 @@ Jedes Brett hat 36 Felder auf einem Spiralweg:
 | Musterweber | Punkte | Ein 4×4-Muster kurz anschauen, dann am eigenen Webrahmen aus dem Gedächtnis nachlegen; drei Runden mit 2, 3, 4 Farben. | Weberei mit Fachwerk, Wollballen und Garten |
 | Föhnsturm | Überleben | Windböen (vorher Wolken, Ton und Richtung im Titel) schieben vom Gipfel; Schutz hinter Felsen oder geduckt. | Gipfel über dem Wolkenmeer mit Föhnmauer und Linsenwolken |
 
+| Tauziehen | Seiten | Nur 2 gegen 2 und im Duell: so schnell wie möglich klicken, wer den roten Knoten ganz zu sich zieht, gewinnt. | Festwiese mit Schlammgrube, Bretterstegen, Zuschauerbänken und blau-roten Fahnen |
+| Gamsjagd | Seiten | Nur einer gegen drei: der Einzelne ist der Jäger (schneller, startet drei Sekunden später), ein Schlag fängt eine Gämse; bleibt eine übrig, gewinnen die Gämsen. | Weite Alm mit Felsen, Büschen und hohem Gras zum Ausweichen |
+
+#### Jeder gegen jeden, 2 gegen 2, 1 gegen 3, Duell
+
+Nach jeder Brett-Runde zählt bei **genau vier Leuten** die Farbe des Feldes, auf dem jeder zuletzt stand: **blau**
+(Taler, Glück, Laden, Fundstück) oder **rot** (Verlust, Pech, Duell).
+
+| Farben | Spielweise | Minispiele | Taler |
+|---|---|---|---|
+| alle gleich | jeder gegen jeden | alle außer Tauziehen und Gamsjagd | 10, 6, 4, … nach Platz |
+| 2 blau, 2 rot | **2 gegen 2** (Blau gegen Rot, farbige Mützen) | Tauziehen, Schneeballschlacht (eigene Seite zählt nicht), Talerregen, Holzhacker, Goldwaschen, Enzian-Suche | Sieger je 8, Gleichstand alle 3 |
+| 3 : 1 | **1 gegen 3** – der Einzelne hat einen Vorteil | Gamsjagd (schneller), Murmeltier-Klopfen, Scheibenschießen, Goldwaschen (seine Punkte zählen vierfach) | Einzelner als Sieger 18, sonst die drei je 8 |
+| Duellfeld | **Duell 1 gegen 1** | Tauziehen, Scheibenschießen, Holzhacker, Bergsprint, Schneeballschlacht, Rempelei, Murmeltier-Klopfen | Sieger bekommt 5 Taler vom Verlierer (Schild schützt) |
+
+Bei den Seiten zählt bei Punkte-Spielen die Summe der Seite, bei Überleben und Rennen der beste Platz der Seite.
+Die Aktionsleiste zeigt die eigenen Punkte und die der Seite.
+
 Wertung: **Punkte** – wer die meisten hat; **Überleben** – wer am längsten dabei bleibt; **Rennen** – wer zuerst
 ankommt, danach alle anderen nach der geschafften Strecke.
 
@@ -99,7 +117,7 @@ Alle Menüs sind Truhen und gehen auch mit Bedrock (Geyser); auf Bedrock reicht 
 | `/verlassen` | Warteschlange, Partie oder Zuschauen verlassen (auch `/leave`) |
 | `/zuschauen [spieler]` | einer Partie zuschauen (ohne Namen: Menü) |
 | `/stats [spieler]` · `/top` | Statistik und Bestenliste |
-| `/mparty …` | Verwaltung (`moinmorni.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `neubauen`, `neuladen` |
+| `/mparty …` | Verwaltung (`moinmorni.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `neubauen`, `neuladen` |
 
 ## Im Netzwerk
 
@@ -135,7 +153,8 @@ Minispiele (Paket 1: Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-
 (Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht), Partie 6 Paket 3 (Schlittenrennen, Enzian-Suche,
 Musterweber, Föhnsturm). `PARTS=1,2` spielt nur einen Teil,
 `ONLY=lawinenhang,murmeltier` nur diese Minispiele aus den Partien 4 bis 6. Partie 7 ist ein Minispiel-Marathon
-zu viert (drei Minispiele, Zwischenstand, Siegerehrung, Statistik, Englisch).
+zu viert (drei Minispiele, Zwischenstand, Siegerehrung, Statistik, Englisch). Partie 8 prüft die Seiten zu viert:
+2 gegen 2 von selbst nach den Feldfarben, Tauziehen, Gamsjagd (einer gegen drei) und einen Gleichstand.
 
 ## Einstellungen
 
