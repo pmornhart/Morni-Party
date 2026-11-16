@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Morni-Party: Spielmodus „Morni Party“ des Netzwerks morni.net (Paper-Plugin). -->
+<!-- Morni-Party: Spielmodus „Morni Party“ des MoinMorni-Netzwerks (Paper-Plugin). -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>net.morni</groupId>
+  <groupId>de.moinmorni</groupId>
   <artifactId>morni-party</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
   <packaging>jar</packaging>
   <name>Morni-Party</name>
 
@@ -94,7 +94,7 @@
         <version>3.4.2</version>
         <configuration>
           <excludes>
-            <exclude>net/morni/api/**</exclude>
+            <exclude>de/moinmorni/api/**</exclude>
           </excludes>
         </configuration>
       </plugin>

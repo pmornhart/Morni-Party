@@ -1,6 +1,6 @@
 # Morni Party
 
-Der Brettspiel-Modus des Minecraft-Netzwerks **morni.net**: ein Spieleabend für **2 bis 8** –
+Der Brettspiel-Modus des Minecraft-Netzwerks **MoinMorni** (moinmorni.net): ein Spieleabend für **2 bis 8** –
 würfeln, über das Spielbrett ziehen, Taler sammeln, am wandernden Stand **Edelweiß** kaufen, und nach jeder Runde ein
 kurzes **Minispiel** für alle. Ein Paper-Plugin für Paper 26.x (Java 25). Es läuft im Netzwerk und auch ganz allein.
 
@@ -132,11 +132,11 @@ Alle Menüs sind Truhen und gehen auch mit Bedrock (Geyser); auf Bedrock reicht 
 | `/verlassen` | Warteschlange, Partie oder Zuschauen verlassen (auch `/leave`) |
 | `/zuschauen [spieler]` | einer Partie zuschauen (ohne Namen: Menü) |
 | `/stats [spieler]` · `/top` | Statistik und Bestenliste |
-| `/mparty …` | Verwaltung (`morninet.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `wurm <leben>`, `neubauen`, `neuladen` |
+| `/mparty …` | Verwaltung (`moinmorni.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `wurm <leben>`, `neubauen`, `neuladen` |
 
 ## Im Netzwerk
 
-Das Netzwerk-Plugin („MorniNet“) stellt die Schnittstelle `net.morni.api.MorniNet` bereit; Morni Party nutzt
+Das Netzwerk-Plugin („MoinMorni“) stellt die Schnittstelle `de.moinmorni.api.MoinMorni` bereit; Morni Party nutzt
 sie, wenn sie da ist (`softdepend`): Sprache, Party, Statistik, Zustand für Lobby-Figur und Webseite, zurück zur Lobby.
 Ohne Netzwerk: deutsche Texte, Statistik nur lokal, „zur Lobby“ trennt die Verbindung mit einem Hinweis.
 
@@ -149,8 +149,8 @@ Statistik nach jeder Partie (`stats("party", …)`, nur wer bis zum Schluss dabe
 Zustand: `waiting` (keine Partie) oder `running`, dazu die Spielerzahl.
 
 Bei jedem Push auf `main` baut GitHub ein Release mit `Morni-Party.jar` (Version aus `pom.xml`); das Netzwerk holt sich
-das neueste. Aktuell ist **0.2.0** (neue Spielarten, Bretter und Minispiele, Umbenennung in morni.net) – was sich je
-Version geändert hat, steht in `docs/releases/`.
+das neueste. Aktuell ist **0.2.1** (Name wieder MoinMorni; mit 0.2.0 kamen neue Spielarten, Bretter und
+Minispiele) – was sich je Version geändert hat, steht in `docs/releases/`.
 
 ## Bauen und testen
 
