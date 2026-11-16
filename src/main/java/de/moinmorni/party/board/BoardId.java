@@ -9,7 +9,13 @@ public enum BoardId {
     /** Schloss Weißenstein: Schlossgarten, Terrassen und Mauern hinauf zur Turmplattform. */
     SCHLOSS,
     /** Goldstollen: ein offenes Bergwerk, der Weg führt hinab zur Goldkammer. */
-    GOLDSTOLLEN;
+    GOLDSTOLLEN,
+    /** Königssee: Stege über einem Bergsee, Fähren als Abkürzung, Kapelle auf der Insel als Ziel. */
+    KOENIGSSEE,
+    /** Wiesn: Festwiese mit Zelten und Fahrgeschäften, das Riesenrad tauscht Plätze. */
+    WIESN,
+    /** Wintersonnwend: verschneiter Berg mit Eisflächen und Lawinen, oben das Sonnwendfeuer. */
+    WINTERSONNWEND;
 
     public String id() {
         return name().toLowerCase(Locale.ROOT);

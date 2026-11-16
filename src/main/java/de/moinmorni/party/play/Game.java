@@ -10,6 +10,7 @@ import de.moinmorni.party.board.Field;
 import de.moinmorni.party.board.FieldType;
 import de.moinmorni.party.game.Engine;
 import de.moinmorni.party.game.GameKind;
+import de.moinmorni.party.game.Huette;
 import de.moinmorni.party.game.ItemType;
 import de.moinmorni.party.game.Mode;
 import de.moinmorni.party.game.PartyPlayer;
@@ -70,6 +71,7 @@ public final class Game {
     private static final int ROLL_FRAMES = 8;
     private static final int RESULT_TICKS = 5 * SECOND;
     private static final int END_TICKS = 12 * SECOND;
+    private static final int AWARD_TICKS = 5 * SECOND / 2;
 
     private final PartyPlugin plugin;
     private final int table;
@@ -90,6 +92,14 @@ public final class Game {
     /** Läuft gerade ein Duell-Minispiel (Duellfeld)? Dann: wer gegen wen. */
     private PartyPlayer[] duelPair;
     private Teams.Format forcedFormat;
+    /** Gipfel-Turnier: Turnierbaum, laufendes Spiel, Unentschieden im laufenden Spiel, Tafel. */
+    private de.moinmorni.party.game.Bracket bracket;
+    private de.moinmorni.party.game.Bracket.Match match;
+    private int draws;
+    /** Tatzelwurm: Ergebnis des Kampfs (null, solange er läuft). */
+    private MiniRun.Coop wurmResult;
+    private boolean awardsShown;
+    private final Map<String, TextDisplay> tafeln = new HashMap<>();
     private final Map<UUID, Menu> menus = new HashMap<>();
     private Entity standFlower;
     private Entity standLabel;
@@ -108,6 +118,12 @@ public final class Game {
     private boolean ended;
 
     public Game(PartyPlugin plugin, int table, BoardId boardId, GameKind kind, List<Player> players) {
+        this(plugin, table, boardId, kind, players, players.stream().map(p -> List.of(p.getUniqueId())).toList());
+    }
+
+    /** {@code groups}: wie sie gewartet haben (Partys zusammen) – für die Seilschaften. */
+    public Game(PartyPlugin plugin, int table, BoardId boardId, GameKind kind, List<Player> players,
+            List<List<UUID>> groups) {
         this.plugin = plugin;
         this.table = table;
         this.boardId = boardId;
@@ -120,7 +136,27 @@ public final class Game {
         for (int i = 0; i < order.size(); i++) {
             pps.add(new PartyPlayer(order.get(i).getUniqueId(), order.get(i).getName(), i));
         }
-        this.engine = new Engine(layout, kind.mode(), kind.rounds(), pps, plugin.settings().rules(), rng);
+        var quick = plugin.settings().quick();
+        var rules = kind.mode() == Mode.SCHNELL ? plugin.settings().rules().quick(quick.startTaler(), quick.edelweissPrice())
+                : plugin.settings().rules();
+        int rounds = kind.mode() == Mode.HUETTE ? plugin.settings().hutMax() : kind.rounds();
+        this.engine = new Engine(layout, kind.mode(), rounds, pps, rules, rng);
+        if (kind.mode() == Mode.SEILSCHAFT) {
+            List<UUID> here = order.stream().map(Player::getUniqueId).toList();
+            List<List<UUID>> known = groups.stream().map(g -> g.stream().filter(here::contains).toList())
+                    .filter(g -> !g.isEmpty()).toList();
+            engine.team(de.moinmorni.party.game.Seilschaft.pair(known));
+        }
+    }
+
+    /** Seilschaft? */
+    public boolean roped() {
+        return kind.mode() == Mode.SEILSCHAFT;
+    }
+
+    /** Seilschaft als Text: „Anna & Bert“. */
+    private String ropeNames(List<PartyPlayer> team) {
+        return String.join(" & ", team.stream().map(PartyPlayer::name).toList());
     }
 
     // ---------- Zugriff ----------
@@ -165,7 +201,7 @@ public final class Game {
     /** Mitspielende, die gerade da sind. */
     public List<Player> players() {
         List<Player> out = new ArrayList<>();
-        for (PartyPlayer pp : engine.active()) {
+        for (PartyPlayer pp : huette() ? engine.climbing() : engine.active()) {
             Player p = plugin.getServer().getPlayer(pp.uuid());
             if (p != null) {
                 out.add(p);
@@ -176,7 +212,13 @@ public final class Game {
 
     /** Alle, die etwas sehen sollen (Mitspielende und Zuschauer). */
     public List<Player> audience() {
-        List<Player> out = players();
+        List<Player> out = new ArrayList<>();
+        for (PartyPlayer pp : engine.active()) {
+            Player p = plugin.getServer().getPlayer(pp.uuid());
+            if (p != null) {
+                out.add(p);
+            }
+        }
         for (UUID u : spectators) {
             Player p = plugin.getServer().getPlayer(u);
             if (p != null) {
@@ -189,6 +231,12 @@ public final class Game {
     public boolean frozen(Player p) {
         if (!plays(p.getUniqueId())) {
             return false;
+        }
+        if (huette() && engine.player(p.getUniqueId()).map(PartyPlayer::out).orElse(false)) {
+            return false; // raus: schaut frei zu
+        }
+        if (turnier() && (mini == null || !mini.score().has(p.getUniqueId()))) {
+            return false; // wartet auf das eigene Spiel oder ist raus: schaut frei zu
         }
         if (phase == Phase.MINI) {
             // Beim Duell spielen nur zwei – alle anderen bleiben auf ihrem Feld.
@@ -244,6 +292,10 @@ public final class Game {
             if (mini.done()) {
                 if (duelPair != null) {
                     duelResults();
+                } else if (turnier()) {
+                    matchResults();
+                } else if (mini.coop() != null) {
+                    coopResults();
                 } else {
                     miniResults();
                 }
@@ -278,8 +330,28 @@ public final class Game {
         return kind.mode() == Mode.MARATHON;
     }
 
+    /** Hüttenaufstieg (ohne Spielbrett, mit Leben)? */
+    public boolean huette() {
+        return kind.mode() == Mode.HUETTE;
+    }
+
+    /** Der Tatzelwurm (alle zusammen)? */
+    public boolean wurm() {
+        return kind.mode() == Mode.TATZELWURM;
+    }
+
+    /** Gipfel-Turnier? */
+    public boolean turnier() {
+        return kind.mode() == Mode.TURNIER;
+    }
+
+    /** Ohne Spielbrett: nur Minispiele (Marathon, Hüttenaufstieg, Turnier)? */
+    public boolean boardless() {
+        return !kind.mode().board();
+    }
+
     public void start() {
-        if (marathon()) {
+        if (boardless()) {
             startMarathon();
             return;
         }
@@ -303,6 +375,12 @@ public final class Game {
                     Placeholder.unparsed("n", String.valueOf(engine.rounds())),
                     Placeholder.unparsed("price", String.valueOf(engine.rules().edelweissPrice()))));
             p.sendMessage(Texts.msg(lang, "game.order", Placeholder.unparsed("names", names)));
+            if (roped()) {
+                for (List<PartyPlayer> t : engine.teams()) {
+                    p.sendMessage(Texts.msg(lang, "rope.team", Placeholder.unparsed("names", ropeNames(t)),
+                            Placeholder.unparsed("taler", String.valueOf(t.getFirst().taler()))));
+                }
+            }
             Ui.sound(p, "minecraft:ui.toast.challenge_complete", 1.2f);
         }
         refreshSidebar();
@@ -316,6 +394,13 @@ public final class Game {
             case EDELWEISS_JAGD -> Texts.text(lang, "mode.edelweiss-jagd.line", Placeholder.unparsed("n",
                     String.valueOf(kind.rounds())));
             case MARATHON -> Texts.text(lang, "mode.marathon.line", Placeholder.unparsed("n", String.valueOf(kind.rounds())));
+            case SEILSCHAFT -> Texts.text(lang, "mode.seilschaft.line", Placeholder.unparsed("n",
+                    String.valueOf(kind.rounds())));
+            case SCHNELL -> Texts.text(lang, "mode.schnell.line", Placeholder.unparsed("n", String.valueOf(kind.rounds())));
+            case BERGDUELL -> Texts.text(lang, "mode.bergduell.line", Placeholder.unparsed("n", String.valueOf(kind.rounds())));
+            case HUETTE -> Texts.text(lang, "mode.huette.line", Placeholder.unparsed("n", String.valueOf(engine.rules().lives())));
+            case TURNIER -> Texts.text(lang, "mode.turnier.line", Placeholder.unparsed("n", String.valueOf(engine.players().size())));
+            case TATZELWURM -> Texts.text(lang, "mode.tatzelwurm.line");
         };
     }
 
@@ -333,8 +418,9 @@ public final class Game {
         int[] pts = engine.rules().marathonPoints();
         for (Player p : audience()) {
             String lang = plugin.lang(p);
-            Ui.title(p, Texts.text(lang, "mode.marathon"), modeLine(lang), 3500);
-            p.sendMessage(Texts.msg(lang, "game.goal.marathon", Placeholder.unparsed("n", String.valueOf(engine.rounds())),
+            Ui.title(p, Texts.text(lang, "mode." + kind.mode().id()), modeLine(lang), 3500);
+            p.sendMessage(Texts.msg(lang, "game.goal." + kind.mode().id(), Placeholder.unparsed("n", String.valueOf(engine.rounds())),
+                    Placeholder.unparsed("lives", String.valueOf(engine.rules().lives())),
                     Placeholder.unparsed("first", String.valueOf(de.moinmorni.party.game.Marathon.points(pts, 0))),
                     Placeholder.unparsed("second", String.valueOf(de.moinmorni.party.game.Marathon.points(pts, 1))),
                     Placeholder.unparsed("third", String.valueOf(de.moinmorni.party.game.Marathon.points(pts, 2)))));
@@ -344,6 +430,303 @@ public final class Game {
         refreshSidebar();
         plugin.stateChanged();
         later(4 * SECOND, this::startMinigame);
+    }
+
+    // ---------- Auszeichnungen ----------
+
+    /**
+     * Vor der Siegerehrung einer Edelweiß-Partie auf dem Brett: Auszeichnungen nacheinander zeigen (je ein Edelweiß
+     * dazu), danach die Siegerehrung. false, wenn es nichts zu zeigen gibt.
+     */
+    private boolean showAwards() {
+        awardsShown = true;
+        if (!kind.mode().board() || kind.mode() == Mode.GIPFELRENNEN || engine.active().size() < 2) {
+            return false;
+        }
+        List<de.moinmorni.party.game.Awards.Award> list = engine.awards(plugin.settings().awards());
+        if (list.isEmpty()) {
+            return false;
+        }
+        token++;
+        phase = Phase.END;
+        clearTimeout();
+        closeMenus();
+        if (mini != null && !mini.done()) {
+            mini.finish();
+        }
+        hideBars();
+        say("award.header");
+        for (int i = 0; i < list.size(); i++) {
+            var a = list.get(i);
+            later(SECOND + i * AWARD_TICKS, () -> {
+                String names = String.join(roped() ? " & " : ", ", a.winners().stream().map(PartyPlayer::name).toList());
+                for (Player x : audience()) {
+                    String lang = plugin.lang(x);
+                    Component title = Texts.text(lang, "award." + a.type().id());
+                    Component what = Texts.text(lang, "award." + a.type().id() + ".value", Texts.count("n", a.value()));
+                    x.sendMessage(Texts.msg(lang, "award.line", Placeholder.component("award", title),
+                            Placeholder.unparsed("names", names), Placeholder.component("what", what)));
+                    Ui.title(x, title, Texts.text(lang, "award.sub", Placeholder.unparsed("names", names),
+                            Placeholder.component("what", what)), 2600);
+                    Ui.sound(x, "minecraft:block.note_block.chime", 1.2f);
+                }
+                refreshSidebar();
+            });
+        }
+        later(SECOND + list.size() * AWARD_TICKS + SECOND, this::end);
+        return true;
+    }
+
+    // ---------- Tatzelwurm ----------
+
+    /** Kampf vorbei: gemeinsames Ergebnis mit Sternen, Treffer je Person, dann Siegerehrung. */
+    private void coopResults() {
+        phase = Phase.MINI_RESULT;
+        MiniRun run = mini;
+        hideBars();
+        wurmResult = run.coop();
+        for (UUID u : run.score().all()) {
+            engine.addPoints(u, run.score().points(u));
+        }
+        String stars = "★".repeat(wurmResult.stars()) + "☆".repeat(3 - wurmResult.stars());
+        for (Player a : audience()) {
+            String lang = plugin.lang(a);
+            a.sendMessage(Texts.msg(lang, wurmResult.won() ? "wurm.won" : "wurm.lost",
+                    Placeholder.unparsed("time", Ui.clock(wurmResult.seconds())), Placeholder.unparsed("stars", stars),
+                    Placeholder.unparsed("hp", String.valueOf(wurmResult.hp())), Placeholder.unparsed("max", String.valueOf(wurmResult.max())),
+                    Placeholder.unparsed("stuns", String.valueOf(wurmResult.stuns()))));
+            Ui.title(a, Texts.text(lang, wurmResult.won() ? "wurm.title.won" : "wurm.title.lost"),
+                    Texts.MM.deserialize("<au>" + stars + "</au>"), 3500);
+            Ui.sound(a, wurmResult.won() ? "minecraft:ui.toast.challenge_complete" : "minecraft:entity.wither.ambient", 1f);
+        }
+        later(RESULT_TICKS, () -> {
+            mini = null;
+            engine.stop();
+            end();
+        });
+    }
+
+    // ---------- Gipfel-Turnier ----------
+
+    private String nameOf(UUID u) {
+        return u == null ? "?" : engine.player(u).map(PartyPlayer::name).orElse("?");
+    }
+
+    /** Name einer Runde, vom Ende her: Finale, Halbfinale, Viertelfinale, Achtelfinale. */
+    private Component roundName(String lang, int left) {
+        return left >= 1 && left <= 4 ? Texts.text(lang, "turnier.round." + left)
+                : Texts.text(lang, "turnier.round", Placeholder.unparsed("n", String.valueOf(left)));
+    }
+
+    private Component roundName(String lang) {
+        return bracket == null || bracket.done() ? Texts.text(lang, "turnier.round.done") : roundName(lang, bracket.left());
+    }
+
+    /** Wie weit jemand kam (für die Siegerehrung). */
+    private Component reached(String lang, PartyPlayer pp) {
+        if (bracket == null) {
+            return Component.empty();
+        }
+        if (!pp.out()) {
+            return Texts.text(lang, "turnier.reached.won");
+        }
+        return Texts.text(lang, "turnier.reached", Placeholder.component("round",
+                roundName(lang, bracket.roundCount() - pp.outRound() + 1)));
+    }
+
+    /** Nächstes Spiel des Turniers (der Baum überspringt Freilose); ist es vorbei: Siegerehrung. */
+    private void nextMatch() {
+        if (bracket == null) {
+            bracket = new de.moinmorni.party.game.Bracket(engine.active().stream().map(PartyPlayer::uuid).toList(), rng);
+        }
+        match = bracket.next();
+        if (match == null) {
+            engine.stop();
+            end();
+            return;
+        }
+        Player pa = plugin.getServer().getPlayer(match.a());
+        Player pb = plugin.getServer().getPlayer(match.b());
+        if (pa == null || pb == null) {
+            bracket.forfeit(pa == null ? match.a() : match.b());
+            later(SECOND, this::nextMatch);
+            return;
+        }
+        MiniType type = nextMini(Teams.Format.DUEL);
+        for (Player a : audience()) {
+            String lang = plugin.lang(a);
+            a.sendMessage(Texts.msg(lang, "turnier.match", Placeholder.component("round", roundName(lang)),
+                    Placeholder.unparsed("one", pa.getName()), Placeholder.unparsed("two", pb.getName())));
+        }
+        runMini(type == null ? MiniType.TAUZIEHEN : type, List.of(pa, pb), Teams.Split.duel(match.a(), match.b()));
+    }
+
+    /** Spiel vorbei: Sieger weiter, Verlierer raus; bei Gleichstand ein neues Duell, beim zweiten das Los. */
+    private void matchResults() {
+        phase = Phase.MINI_RESULT;
+        MiniRun run = mini;
+        hideBars();
+        Teams.Outcome o = run.teamOutcome();
+        UUID a = match.a();
+        UUID b = match.b();
+        if (o == Teams.Outcome.DRAW && draws < 1) {
+            draws++;
+            say("turnier.draw", Placeholder.unparsed("one", nameOf(a)), Placeholder.unparsed("two", nameOf(b)));
+            later(RESULT_TICKS, () -> {
+                mini = null;
+                Player pa = plugin.getServer().getPlayer(a);
+                Player pb = plugin.getServer().getPlayer(b);
+                if (pa != null && pb != null) {
+                    runMini(nextMini(Teams.Format.DUEL), List.of(pa, pb), Teams.Split.duel(a, b));
+                } else {
+                    bracket.forfeit(pa == null ? a : b);
+                    nextMatch();
+                }
+            });
+            return;
+        }
+        boolean lot = o == Teams.Outcome.DRAW;
+        UUID winner = o == Teams.Outcome.A ? a : o == Teams.Outcome.B ? b : rng.nextBoolean() ? a : b;
+        UUID loser = winner.equals(a) ? b : a;
+        draws = 0;
+        int roundNo = bracket.round() + 1;
+        boolean finale = bracket.left() == 1;
+        bracket.report(winner);
+        engine.knockOut(winner, loser, roundNo);
+        for (Player x : audience()) {
+            String lang = plugin.lang(x);
+            x.sendMessage(Texts.msg(lang, "duel.result", Placeholder.component("name", Texts.text(lang, run.type().key())),
+                    Placeholder.unparsed("one", nameOf(a)), Placeholder.unparsed("two", nameOf(b)),
+                    Placeholder.unparsed("p1", String.valueOf(run.shownPoints(a))),
+                    Placeholder.unparsed("p2", String.valueOf(run.shownPoints(b)))));
+            x.sendMessage(Texts.msg(lang, lot ? "turnier.lot" : finale ? "turnier.champion" : "turnier.through",
+                    Placeholder.unparsed("winner", nameOf(winner)), Placeholder.unparsed("loser", nameOf(loser))));
+            if (x.getUniqueId().equals(winner) || x.getUniqueId().equals(loser)) {
+                boolean won = x.getUniqueId().equals(winner);
+                Ui.title(x, Texts.text(lang, won ? "mini.won" : "mini.over"),
+                        Texts.text(lang, won ? (finale ? "turnier.sub.champion" : "turnier.sub.through") : "turnier.sub.out"), 2500);
+                Ui.sound(x, won ? "minecraft:ui.toast.challenge_complete" : "minecraft:entity.villager.no", 1f);
+            }
+        }
+        showTafel();
+        refreshSidebar();
+        later(RESULT_TICKS, () -> {
+            mini = null;
+            if (bracket.done()) {
+                engine.stop();
+                end();
+                return;
+            }
+            nextMatch();
+        });
+    }
+
+    /**
+     * Turnierbaum als Tafel vor den Zuschauern (am Platz des laufenden Spiels) – eine Tafel je Sprache, jeder sieht nur
+     * die in seiner Sprache.
+     */
+    private void showTafel() {
+        if (bracket == null || mini == null) {
+            return;
+        }
+        Location view = mini.viewPoint();
+        Location at = view.clone().add(view.getDirection().setY(0).normalize().multiply(7)).add(0, 1.5, 0);
+        for (String lang : List.of("de", "en")) {
+            TextDisplay d = tafeln.get(lang);
+            if (d == null || d.isDead() || !d.getWorld().equals(at.getWorld()) || d.getLocation().distanceSquared(at) > 1) {
+                if (d != null) {
+                    d.remove();
+                }
+                d = at.getWorld().spawn(at, TextDisplay.class, t -> {
+                    t.setBillboard(Display.Billboard.CENTER);
+                    t.setPersistent(false);
+                    t.setLineWidth(400);
+                    t.setBackgroundColor(Color.fromARGB(170, 20, 30, 25));
+                    t.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(0.6f, 0.6f, 0.6f),
+                            new AxisAngle4f()));
+                });
+                tafeln.put(lang, d);
+            }
+            d.text(tafelText(lang));
+        }
+        for (Player a : audience()) {
+            String mine = "en".equals(plugin.lang(a)) ? "en" : "de";
+            tafeln.forEach((lang, d) -> {
+                if (lang.equals(mine)) {
+                    a.showEntity(plugin, d);
+                } else {
+                    a.hideEntity(plugin, d);
+                }
+            });
+        }
+    }
+
+    private Component tafelText(String lang) {
+        Component c = Texts.text(lang, "turnier.tafel.title");
+        List<List<UUID>> rounds = bracket.rounds();
+        for (int r = 0; r < rounds.size() && r < bracket.roundCount(); r++) {
+            List<UUID> slots = rounds.get(r);
+            c = c.append(Component.newline()).append(Component.newline()).append(roundName(lang, bracket.roundCount() - r));
+            for (int i = 0; i + 1 < slots.size(); i += 2) {
+                c = c.append(Component.newline()).append(slot(lang, r, slots.get(i))).append(Texts.text(lang, "turnier.tafel.vs"))
+                        .append(slot(lang, r, slots.get(i + 1)));
+            }
+        }
+        UUID champ = bracket.champion();
+        if (champ != null) {
+            c = c.append(Component.newline()).append(Component.newline())
+                    .append(Texts.text(lang, "turnier.tafel.champion", Placeholder.unparsed("name", nameOf(champ))));
+        }
+        return c;
+    }
+
+    private Component slot(String lang, int round, UUID u) {
+        if (u == null) {
+            return Texts.text(lang, "turnier.tafel.bye");
+        }
+        if (bracket.won(round, u)) {
+            return Texts.text(lang, "turnier.tafel.won", Placeholder.unparsed("name", nameOf(u)));
+        }
+        int pair = bracket.rounds().get(round).indexOf(u) / 2;
+        boolean played = bracket.round() > round || (!bracket.done() && bracket.round() == round
+                && pair < bracket.next().index());
+        return Texts.text(lang, played ? "turnier.tafel.lost" : "turnier.tafel.open", Placeholder.unparsed("name", nameOf(u)));
+    }
+
+    private String hearts(UUID u) {
+        return engine.player(u).map(p -> Huette.hearts(p.lives(), engine.rules().lives())).orElse("");
+    }
+
+    /** Hüttenaufstieg: wer ein Leben verlor, wer raus ist (die schauen ab jetzt zu). */
+    private void announceClimb(Engine.Climb climb) {
+        for (UUID u : climb.lost()) {
+            String name = engine.player(u).map(PartyPlayer::name).orElse("?");
+            if (climb.out().contains(u)) {
+                say("huette.out", Placeholder.unparsed("name", name));
+            } else {
+                say("huette.lost", Placeholder.unparsed("name", name), Placeholder.unparsed("hearts", hearts(u)));
+            }
+        }
+        for (UUID u : climb.out()) {
+            Player p = plugin.getServer().getPlayer(u);
+            if (p != null) {
+                p.getInventory().clear();
+                p.setGameMode(GameMode.SPECTATOR);
+                Ui.title(p, Texts.text(plugin.lang(p), "huette.out.title"), Texts.text(plugin.lang(p), "huette.out.sub"), 3000);
+            }
+        }
+    }
+
+    /** Hüttenaufstieg: Zwischenstand mit Herzen. */
+    private void hutStanding() {
+        for (Player a : audience()) {
+            String lang = plugin.lang(a);
+            a.sendMessage(Texts.msg(lang, "huette.standing", Placeholder.unparsed("left", String.valueOf(engine.climbing().size()))));
+            for (PartyPlayer pp : engine.climbing()) {
+                a.sendMessage(Texts.text(lang, "huette.standing.line", Placeholder.unparsed("name", pp.name()),
+                        Placeholder.unparsed("hearts", Huette.hearts(pp.lives(), engine.rules().lives()))));
+            }
+        }
     }
 
     /** Marathon: Zwischenstand als kurze Tafel im Chat (die ersten fünf und die eigene Zeile). */
@@ -360,7 +743,7 @@ public final class Game {
                     if (shown < 5 || pp.uuid().equals(a.getUniqueId())) {
                         a.sendMessage(Texts.text(lang, "marathon.standing.line", Placeholder.unparsed("pos", String.valueOf(place)),
                                 Placeholder.unparsed("name", pp.name()),
-                                Placeholder.unparsed("points", String.valueOf(pp.minigamePoints()))));
+                                Texts.count("points", pp.minigamePoints())));
                     }
                     shown++;
                 }
@@ -397,6 +780,11 @@ public final class Game {
                 case GEGENSTAND -> "<light_purple><b>✦</b></light_purple>";
                 case START -> "<white><b>⚑</b></white>";
                 case ZIEL -> "<au><b>★</b></au>";
+                case FAEHRE -> "<aqua><b>⚓</b></aqua>";
+                case RIESENRAD -> "<light_purple><b>✪</b></light_purple>";
+                case FAHRGESCHAEFT -> "<dark_purple><b>♫</b></dark_purple>";
+                case LAWINE -> "<white><b>❄!</b></white>";
+                case EIS -> "<aqua><b>❄</b></aqua>";
                 default -> null;
             };
             if (label == null) {
@@ -567,7 +955,7 @@ public final class Game {
                 String lang = plugin.lang(a);
                 if (a.equals(p)) {
                     Ui.title(a, Texts.MM.deserialize("<au><b>" + shown + "</b></au>"),
-                            Texts.text(lang, "roll.sub", Placeholder.unparsed("n", String.valueOf(roll.total()))), 1200);
+                            Texts.text(lang, "roll.sub", Texts.count("n", roll.total())), 1200);
                 }
                 Ui.sound(a, "minecraft:entity.experience_orb.pickup", 0.8f);
                 a.sendMessage(Texts.msg(lang, "roll.done", Placeholder.unparsed("name", cur.name()),
@@ -724,11 +1112,132 @@ public final class Game {
                 }
                 laterFinish();
             }
+            case FERRY -> ferry(pp, o.steps());
+            case SWAP -> {
+                UUID other = o.others().keySet().iterator().next();
+                String oname = engine.player(other).map(PartyPlayer::name).orElse("?");
+                say(o.blocked() ? "land.wheel.blocked" : "land.wheel", Placeholder.unparsed("name", pp.name()),
+                        Placeholder.unparsed("other", oname));
+                if (!o.blocked()) {
+                    later(SECOND, () -> {
+                        engine.player(other).ifPresent(op -> {
+                            Player x = online(op);
+                            if (x != null) {
+                                x.teleport(spot(op));
+                            }
+                        });
+                        if (p != null) {
+                            p.teleport(spot(pp));
+                        }
+                        audience().forEach(a -> Ui.sound(a, "minecraft:entity.player.levelup", 1.6f));
+                        refreshSidebar();
+                    });
+                }
+                later(2 * SECOND + SECOND / 2, this::finishTurn);
+            }
+            case RIDE -> ride(pp, o);
+            case AVALANCHE -> avalanche(pp, o);
+            case SLIDE -> {
+                say("land.ice", Placeholder.unparsed("name", pp.name()), Placeholder.unparsed("n", String.valueOf(o.steps())));
+                if (p != null) {
+                    Ui.sound(p, "minecraft:block.glass.step", 1.6f);
+                }
+                later(SECOND / 2, () -> move(pp, o.steps(), false, this::finishTurn));
+            }
         }
-        if (p != null && o.kind() != Engine.Kind.SHOP && o.kind() != Engine.Kind.DUEL) {
+        if (p != null && o.kind() != Engine.Kind.SHOP && o.kind() != Engine.Kind.DUEL && o.kind() != Engine.Kind.RIDE) {
             p.sendActionBar(Texts.text(plugin.lang(p), field));
         }
         refreshSidebar();
+    }
+
+    /** Königssee: mit der Fähre quer über den See – die Figur gleitet in gerader Linie zum Ziel-Steg. */
+    private void ferry(PartyPlayer pp, int steps) {
+        say("land.ferry", Placeholder.unparsed("name", pp.name()), Placeholder.unparsed("n", String.valueOf(steps)));
+        Player p = online(pp);
+        if (p == null) {
+            laterFinish();
+            return;
+        }
+        Location from = p.getLocation();
+        Location to = spot(pp);
+        int frames = 40;
+        Ui.sound(p, "minecraft:entity.boat.paddle_water", 1f);
+        for (int i = 1; i <= frames; i++) {
+            int k = i;
+            later(SECOND + k, () -> {
+                double a = (double) k / frames;
+                Location l = from.clone().add(to.clone().subtract(from).toVector().multiply(a));
+                l.setY(Math.max(from.getY(), to.getY()) + Math.sin(a * Math.PI) * 1.2);
+                l.setYaw(to.getYaw());
+                p.teleport(l);
+                if (k % 4 == 0) {
+                    plugin.world().spawnParticle(org.bukkit.Particle.SPLASH, l, 6, 0.4, 0.1, 0.4, 0.05);
+                }
+            });
+        }
+        later(SECOND + frames + 2, () -> {
+            p.teleport(spot(pp));
+            refreshSidebar();
+            laterFinish();
+        });
+    }
+
+    /** Wiesn: ein Fahrgeschäft. */
+    private void ride(PartyPlayer pp, Engine.Outcome o) {
+        Player p = online(pp);
+        for (Player a : audience()) {
+            String lang = plugin.lang(a);
+            Component item = o.item() == null ? Component.empty() : Texts.text(lang, o.item().key());
+            a.sendMessage(Texts.msg(lang, o.ride().key(), Placeholder.unparsed("name", pp.name()),
+                    Placeholder.unparsed("n", String.valueOf(Math.abs(o.steps()))),
+                    Placeholder.unparsed("taler", String.valueOf(o.taler())),
+                    Placeholder.unparsed("count", String.valueOf(o.others().size())),
+                    Placeholder.component("item", item)));
+            Ui.sound(a, "minecraft:block.note_block.bell", 1.4f);
+        }
+        if (p != null) {
+            Ui.title(p, Texts.text(plugin.lang(p), o.ride().key() + ".title"), Component.empty(), 1800);
+        }
+        if (o.steps() > 0) {
+            later(SECOND + SECOND / 2, () -> move(pp, o.steps(), false, this::finishTurn));
+        } else if (o.steps() < 0) {
+            later(SECOND + SECOND / 2, () -> moveBack(pp, -o.steps(), this::finishTurn));
+        } else {
+            laterFinish();
+        }
+        refreshSidebar();
+    }
+
+    /** Wintersonnwend: Lawine – alle Getroffenen rutschen nacheinander zurück. */
+    private void avalanche(PartyPlayer pp, Engine.Outcome o) {
+        List<String> names = o.others().keySet().stream().map(u -> engine.player(u).map(PartyPlayer::name).orElse("?")).toList();
+        say(o.others().isEmpty() ? "land.avalanche.blocked" : "land.avalanche", Placeholder.unparsed("name", pp.name()),
+                Placeholder.unparsed("names", String.join(", ", names)),
+                Placeholder.unparsed("n", String.valueOf(Engine.AVALANCHE_BACK)));
+        audience().forEach(a -> Ui.sound(a, "minecraft:block.snow.break", 0.6f));
+        Player p = online(pp);
+        if (p != null) {
+            plugin.world().spawnParticle(org.bukkit.Particle.SNOWFLAKE, p.getLocation().add(0, 1, 0), 120, 3, 2, 3, 0.1);
+        }
+        List<Map.Entry<UUID, Integer>> list = new ArrayList<>(o.others().entrySet());
+        Runnable[] next = new Runnable[1];
+        int[] i = {0};
+        next[0] = () -> {
+            if (i[0] >= list.size()) {
+                refreshSidebar();
+                laterFinish();
+                return;
+            }
+            var e = list.get(i[0]++);
+            PartyPlayer who = engine.player(e.getKey()).orElse(null);
+            if (who == null || e.getValue() <= 0) {
+                next[0].run();
+                return;
+            }
+            moveBack(who, e.getValue(), next[0]);
+        };
+        later(SECOND + SECOND / 2, next[0]);
     }
 
     private void luckMessage(PartyPlayer pp, Engine.Outcome o) {
@@ -738,7 +1247,7 @@ public final class Game {
             String key = o.blocked() ? "luck.blocked" : o.luck().key();
             a.sendMessage(Texts.msg(lang, key, Placeholder.unparsed("name", pp.name()),
                     Placeholder.unparsed("n", String.valueOf(Math.abs(o.taler()))),
-                    Placeholder.unparsed("steps", String.valueOf(Math.abs(o.steps()))),
+                    Texts.count("steps", Math.abs(o.steps())),
                     Placeholder.component("item", item)));
             Ui.sound(a, o.luck().good() ? "minecraft:entity.player.levelup" : "minecraft:entity.wither.ambient",
                     o.luck().good() ? 1.4f : 1.8f);
@@ -772,7 +1281,7 @@ public final class Game {
 
     private void chooseDuel(PartyPlayer pp) {
         Player p = online(pp);
-        List<PartyPlayer> others = engine.active().stream().filter(o -> o != pp).toList();
+        List<PartyPlayer> others = engine.active().stream().filter(o -> o != pp && !engine.mates(o, pp)).toList();
         if (p == null || others.isEmpty()) {
             laterFinish();
             return;
@@ -981,7 +1490,9 @@ public final class Game {
             return;
         }
         if (t.needsTarget()) {
-            List<PartyPlayer> others = engine.active().stream().filter(o -> o != pp).toList();
+            // Talerklau nie beim Partner (Platztausch mit dem Partner geht – das kann helfen)
+            List<PartyPlayer> others = engine.active().stream()
+                    .filter(o -> o != pp && (t != ItemType.TALERKLAU || !engine.mates(o, pp))).toList();
             Menu m = new Menu(1, Texts.text(lang, "bag.target"));
             for (int i = 0; i < others.size() && i < 9; i++) {
                 PartyPlayer o = others.get(i);
@@ -1099,7 +1610,7 @@ public final class Game {
             forcedMini = null;
             return t;
         }
-        if (marathon()) {
+        if (boardless()) {
             // gemischt, ohne Wiederholung, nur Plätze, die so viele Leute aushalten
             int n = players().size();
             List<MiniType> all = plugin.settings().minigames();
@@ -1140,15 +1651,24 @@ public final class Game {
     }
 
     private void startMinigame() {
+        if (turnier()) {
+            nextMatch();
+            return;
+        }
+        if (wurm()) {
+            runMini(MiniType.TATZELWURM, players(), Teams.Split.FREE);
+            return;
+        }
         Teams.Split split = Teams.Split.FREE;
         MiniType type = null;
-        if (!marathon()) {
+        if (!boardless()) {
             List<UUID> order = engine.active().stream().map(PartyPlayer::uuid).toList();
-            split = Teams.decide(order, lastField);
+            split = roped() ? ropeSplit() : kind.mode() == Mode.BERGDUELL && order.size() == 2
+                    ? Teams.Split.duel(order.get(0), order.get(1)) : Teams.decide(order, lastField);
             if (forcedFormat != null) {
-                split = forcedSplit(forcedFormat, order);
+                split = roped() && forcedFormat == Teams.Format.TEAM ? ropeSplit() : forcedSplit(forcedFormat, order);
                 forcedFormat = null;
-            } else if (forcedMini != null) {
+            } else if (forcedMini != null && !((roped() || kind.mode() == Mode.BERGDUELL) && forcedMini.fits(split.format()))) {
                 split = Teams.Split.FREE; // Verwaltung/Tests: ein festgelegtes Spiel ist jeder gegen jeden
             }
             if (split.sides()) {
@@ -1160,6 +1680,16 @@ public final class Game {
         }
         lastField.clear();
         runMini(type != null ? type : nextMini(), players(), split);
+    }
+
+    /** Seilschaft: genau zwei Seilschaften zu zweit → 2 gegen 2, sonst jeder gegen jeden. */
+    private Teams.Split ropeSplit() {
+        List<List<PartyPlayer>> t = engine.teams();
+        if (t.size() != 2 || t.get(0).size() != 2 || t.get(1).size() != 2) {
+            return Teams.Split.FREE;
+        }
+        return new Teams.Split(Teams.Format.TEAM, t.get(0).stream().map(PartyPlayer::uuid).toList(),
+                t.get(1).stream().map(PartyPlayer::uuid).toList());
     }
 
     private static Teams.Split forcedSplit(Teams.Format f, List<UUID> order) {
@@ -1177,8 +1707,9 @@ public final class Game {
             lastMini = type;
         }
         int[] o = Places.mini(table, type);
+        double factor = plugin.settings().miniFactor() * (kind.mode() == Mode.SCHNELL ? plugin.settings().quick().miniFactor() : 1);
         mini = type.create(new MiniRun.Setup(plugin, type, plugin.world(), o[0], o[1], o[2], ps, this::audience, rng,
-                plugin.settings().miniFactor(), split));
+                factor, split));
         lastView = mini.viewPoint();
         for (Player a : audience()) {
             String lang = plugin.lang(a);
@@ -1192,6 +1723,9 @@ public final class Game {
             if (marathon()) {
                 a.sendMessage(Texts.msg(lang, "marathon.next", Placeholder.unparsed("n", String.valueOf(engine.round())),
                         Placeholder.unparsed("of", String.valueOf(engine.rounds()))));
+            } else if (huette() && duelPair == null) {
+                a.sendMessage(Texts.msg(lang, "huette.next", Placeholder.unparsed("n", String.valueOf(engine.round())),
+                        Placeholder.unparsed("left", String.valueOf(engine.climbing().size()))));
             }
             a.sendMessage(Texts.msg(lang, type.key() + ".desc"));
             Ui.sound(a, "minecraft:block.note_block.flute", 1.2f);
@@ -1202,7 +1736,22 @@ public final class Game {
         }
         later(3 * SECOND, () -> {
             mini.prepare();
-            for (UUID u : spectators) {
+            List<UUID> watching = new ArrayList<>(spectators);
+            if (huette()) {
+                engine.active().stream().filter(PartyPlayer::out).forEach(pp -> watching.add(pp.uuid()));
+            }
+            if (turnier()) {
+                for (PartyPlayer pp : engine.active()) {
+                    Player w = online(pp);
+                    if (w != null && !ps.contains(w)) {
+                        w.getInventory().clear();
+                        w.setGameMode(GameMode.SPECTATOR);
+                        watching.add(pp.uuid());
+                    }
+                }
+                showTafel();
+            }
+            for (UUID u : watching) {
                 Player s = plugin.getServer().getPlayer(u);
                 if (s != null) {
                     s.teleport(mini.viewPoint());
@@ -1270,7 +1819,9 @@ public final class Game {
         List<List<UUID>> places = run.score().places();
         Teams.Split split = run.split();
         Teams.Outcome outcome = split.sides() ? run.teamOutcome() : null;
-        Map<UUID, Integer> got = split.sides() ? engine.awardTeams(split, outcome) : engine.awardMinigame(places);
+        Engine.Climb climb = huette() ? engine.climb(places) : null;
+        Map<UUID, Integer> got = climb != null ? Map.of() : split.sides() ? engine.awardTeams(split, outcome)
+                : engine.awardMinigame(places);
         List<UUID> winners = split.sides() ? split.winners(outcome) : places.isEmpty() ? List.of() : places.getFirst();
         for (Player a : audience()) {
             String lang = plugin.lang(a);
@@ -1280,10 +1831,12 @@ public final class Game {
                 for (UUID u : g) {
                     String name = engine.player(u).map(PartyPlayer::name).orElse("?");
                     long at = run.score().finishTick(u);
-                    Component prize = Texts.text(lang, marathon() ? "mini.prize.points" : "mini.prize.taler",
-                            Placeholder.unparsed("n", String.valueOf(got.getOrDefault(u, 0))));
+                    Component prize = climb != null
+                            ? Texts.text(lang, climb.lost().contains(u) ? "mini.prize.life" : "mini.prize.safe")
+                            : Texts.text(lang, marathon() ? "mini.prize.points" : "mini.prize.taler",
+                                    Texts.count("n", got.getOrDefault(u, 0)));
                     a.sendMessage(Texts.text(lang, run.resultKey(u), Placeholder.unparsed("pos", String.valueOf(place)),
-                            Placeholder.unparsed("name", name), Placeholder.unparsed("points", String.valueOf(run.shownPoints(u))),
+                            Placeholder.unparsed("name", name), Texts.count("points", run.shownPoints(u)),
                             Placeholder.unparsed("time", Ui.seconds(Math.max(0, at) * 50, lang)),
                             Placeholder.component("prize", prize)));
                 }
@@ -1291,26 +1844,37 @@ public final class Game {
             }
             if (outcome != null) {
                 a.sendMessage(Texts.msg(lang, outcome == Teams.Outcome.DRAW ? "team.draw"
-                        : split.winners(outcome).size() == 1 ? "team.won.one" : "team.won", Placeholder.unparsed("names", names(split.winners(outcome))),
+                        : split.format() == Teams.Format.DUEL ? "team.won.duel" : split.winners(outcome).size() == 1 ? "team.won.one"
+                        : "team.won", Placeholder.unparsed("names", names(split.winners(outcome))),
                         Placeholder.unparsed("n", String.valueOf(outcome == Teams.Outcome.DRAW
                                 ? engine.rules().teamDraw() : got.getOrDefault(split.winners(outcome).getFirst(), 0)))));
             }
             boolean won = winners.contains(a.getUniqueId());
             if (plays(a.getUniqueId())) {
-                Ui.title(a, Texts.text(lang, won ? "mini.won" : "mini.over"), Texts.text(lang, marathon() ? "mini.got.points"
-                        : "mini.got", Placeholder.unparsed("n", String.valueOf(got.getOrDefault(a.getUniqueId(), 0)))), 2500);
+                Component sub = climb != null ? Texts.text(lang, climb.lost().contains(a.getUniqueId()) ? "huette.sub.lost"
+                        : "huette.sub.safe", Placeholder.unparsed("hearts", hearts(a.getUniqueId())))
+                        : Texts.text(lang, marathon() ? "mini.got.points" : "mini.got",
+                                Placeholder.unparsed("n", String.valueOf(got.getOrDefault(a.getUniqueId(), 0))));
+                Ui.title(a, Texts.text(lang, won ? "mini.won" : "mini.over"), sub, 2500);
                 Ui.sound(a, won ? "minecraft:ui.toast.challenge_complete" : "minecraft:entity.experience_orb.pickup", 1f);
             }
         }
+        if (climb != null) {
+            announceClimb(climb);
+        }
         later(RESULT_TICKS, () -> {
             mini = null;
-            if (marathon()) {
+            if (boardless()) {
                 engine.nextRound();
                 if (engine.over()) {
                     end();
                     return;
                 }
-                marathonStanding();
+                if (huette()) {
+                    hutStanding();
+                } else {
+                    marathonStanding();
+                }
                 refreshSidebar();
                 later(3 * SECOND, this::startMinigame);
                 return;
@@ -1347,7 +1911,7 @@ public final class Game {
 
     /** Blick aufs ganze Brett (für Zuschauer); im Marathon der Platz des letzten Minispiels. */
     public Location viewPoint() {
-        if (marathon()) {
+        if (boardless()) {
             return lastView == null ? plugin.lobby().spawn() : lastView.clone();
         }
         double r = layout.shape().outer() + 12;
@@ -1382,6 +1946,9 @@ public final class Game {
         if (ended || closed) {
             return;
         }
+        if (!awardsShown && showAwards()) {
+            return;
+        }
         ended = true;
         token++;
         phase = Phase.END;
@@ -1392,21 +1959,25 @@ public final class Game {
         }
         hideBars();
         List<List<PartyPlayer>> places = engine.places();
-        List<PartyPlayer> winners = places.isEmpty() ? List.of() : places.getFirst();
-        String names = String.join(", ", winners.stream().map(PartyPlayer::name).toList());
+        List<PartyPlayer> winners = places.isEmpty() || (wurm() && (wurmResult == null || !wurmResult.won())) ? List.of()
+                : places.getFirst();
+        String names = String.join(roped() ? " & " : ", ", winners.stream().map(PartyPlayer::name).toList());
         for (Player a : audience()) {
             String lang = plugin.lang(a);
             a.sendMessage(Texts.msg(lang, "end.header"));
             int place = 1;
             for (List<PartyPlayer> g : places) {
                 for (PartyPlayer pp : g) {
-                    a.sendMessage(Texts.text(lang, marathon() ? "end.line.marathon" : "end.line",
+                    a.sendMessage(Texts.text(lang, marathon() ? "end.line.marathon" : huette() ? "end.line.huette"
+                            : turnier() ? "end.line.turnier" : wurm() ? "end.line.wurm" : "end.line",
+                            Placeholder.component("reached", turnier() ? reached(lang, pp) : Component.empty()),
+                            Placeholder.unparsed("hearts", Huette.hearts(pp.lives(), engine.rules().lives())),
                             Placeholder.unparsed("pos", String.valueOf(place)),
                             Placeholder.unparsed("name", pp.name()), Placeholder.unparsed("edelweiss", String.valueOf(pp.edelweiss())),
                             Placeholder.unparsed("taler", String.valueOf(pp.taler())),
                             Placeholder.unparsed("field", String.valueOf(pp.pos())),
-                            Placeholder.unparsed("points", String.valueOf(pp.minigamePoints())),
-                            Placeholder.unparsed("minis", String.valueOf(pp.minigamesWon()))));
+                            Texts.count("points", pp.minigamePoints()),
+                            Texts.count("minis", pp.minigamesWon())));
                 }
                 place += g.size();
             }
@@ -1433,6 +2004,9 @@ public final class Game {
                     add.put("summits", 1L);
                 }
                 plugin.net().stats(pp.uuid(), add, marathon() ? Map.of("marathon_points_best", (long) pp.minigamePoints())
+                        : huette() ? Map.of("huette_lives_best", (long) pp.lives())
+                        : turnier() ? Map.of("turnier_matches_best", (long) pp.minigamesWon())
+                        : wurm() ? Map.of("tatzelwurm_stars_best", (long) (wurmResult == null ? 0 : wurmResult.stars()))
                         : Map.of("edelweiss_best", (long) pp.edelweiss()));
             }
             Player p = online(pp);
@@ -1469,6 +2043,8 @@ public final class Game {
         tasks.clear();
         markers.forEach(Entity::remove);
         markers.clear();
+        tafeln.values().forEach(Entity::remove);
+        tafeln.clear();
         if (standFlower != null) {
             standFlower.remove();
             standLabel.remove();
@@ -1501,8 +2077,12 @@ public final class Game {
         if (menus.containsKey(u)) {
             menus.remove(u).closeQuietly(p);
         }
+        boolean inMatch = mini != null && !mini.done() && mini.score().has(u);
         if (mini != null && !mini.done()) {
             mini.leave(p);
+        }
+        if (turnier() && bracket != null && !inMatch) {
+            bracket.forfeit(u); // wartete noch: der nächste Gegner kommt kampflos weiter
         }
         miniBars.values().forEach(p::hideBossBar);
         plugin.sidebar().hide(p);
@@ -1515,7 +2095,7 @@ public final class Game {
             later(SECOND, this::end);
             return;
         }
-        if (!marathon() && current && phase != Phase.MINI_INTRO && phase != Phase.MINI_COUNTDOWN && phase != Phase.MINI
+        if (!boardless() && current && phase != Phase.MINI_INTRO && phase != Phase.MINI_COUNTDOWN && phase != Phase.MINI
                 && phase != Phase.MINI_RESULT) {
             // Der Zug der gegangenen Person endet sofort.
             token++;
@@ -1546,7 +2126,7 @@ public final class Game {
         Map<UUID, Integer> places = engine.placeOf();
         List<PartyPlayer> sorted = new ArrayList<>(engine.active());
         sorted.sort((x, y) -> Integer.compare(places.getOrDefault(x.uuid(), 99), places.getOrDefault(y.uuid(), 99)));
-        if (marathon()) {
+        if (boardless()) {
             marathonSidebar(sorted, places);
             return;
         }
@@ -1559,7 +2139,28 @@ public final class Game {
                     : Texts.text(lang, "side.round", Placeholder.unparsed("round", String.valueOf(Math.min(engine.round(),
                             engine.rounds()))), Placeholder.unparsed("rounds", String.valueOf(engine.rounds()))));
             lines.add(Component.empty());
-            for (PartyPlayer pp : sorted) {
+            if (roped()) {
+                List<List<PartyPlayer>> teams = new ArrayList<>(engine.teams());
+                teams.sort((x, y) -> Integer.compare(places.getOrDefault(x.getFirst().uuid(), 99),
+                        places.getOrDefault(y.getFirst().uuid(), 99)));
+                for (List<PartyPlayer> t : teams) {
+                    Component names = Component.empty();
+                    for (int k = 0; k < t.size(); k++) {
+                        PartyPlayer pp = t.get(k);
+                        boolean cur = !ended && engine.current() == pp && phase.ordinal() <= Phase.LANDING.ordinal();
+                        if (k > 0) {
+                            names = names.append(Component.text(" & ", TextColor.color(0xAAAAAA)));
+                        }
+                        names = names.append(Component.text((cur ? "▶" : "") + pp.name(),
+                                TextColor.color(COLOURS[pp.colour() % COLOURS.length])));
+                    }
+                    lines.add(Texts.text(lang, "side.rope", Placeholder.unparsed("pos",
+                            String.valueOf(places.getOrDefault(t.getFirst().uuid(), 0))), Placeholder.component("names", names),
+                            Placeholder.unparsed("edelweiss", String.valueOf(t.getFirst().edelweiss())),
+                            Placeholder.unparsed("taler", String.valueOf(t.getFirst().taler()))));
+                }
+            }
+            for (PartyPlayer pp : roped() ? List.<PartyPlayer>of() : sorted) {
                 boolean cur = !ended && engine.current() == pp && phase.ordinal() <= Phase.LANDING.ordinal();
                 Component name = Component.text(pp.name(), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
                 lines.add(Texts.text(lang, kind.mode() == Mode.GIPFELRENNEN ? "side.player.race" : "side.player",
@@ -1582,8 +2183,11 @@ public final class Game {
         for (Player a : audience()) {
             String lang = plugin.lang(a);
             List<Component> lines = new ArrayList<>();
-            lines.add(Texts.text(lang, "mode.marathon"));
-            lines.add(Texts.text(lang, "side.marathon", Placeholder.unparsed("round", String.valueOf(Math.min(engine.round(),
+            lines.add(Texts.text(lang, "mode." + kind.mode().id()));
+            lines.add(turnier() ? Texts.text(lang, "side.turnier", Placeholder.component("round", roundName(lang)))
+                    : huette() ? Texts.text(lang, "side.huette", Placeholder.unparsed("round", String.valueOf(engine.round())),
+                    Placeholder.unparsed("left", String.valueOf(engine.climbing().size())))
+                    : Texts.text(lang, "side.marathon", Placeholder.unparsed("round", String.valueOf(Math.min(engine.round(),
                     engine.rounds()))), Placeholder.unparsed("rounds", String.valueOf(engine.rounds()))));
             lines.add(Component.empty());
             int shown = 0;
@@ -1593,7 +2197,12 @@ public final class Game {
                     continue;
                 }
                 Component name = Component.text(pp.name(), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
-                lines.add(Texts.text(lang, "side.player.marathon", Placeholder.unparsed("pos",
+                lines.add(turnier() ? Texts.text(lang, pp.out() ? "side.player.huette.out" : "side.player.turnier",
+                        Placeholder.component("name", name), Placeholder.unparsed("wins", String.valueOf(pp.minigamesWon())))
+                        : huette() ? Texts.text(lang, pp.out() ? "side.player.huette.out" : "side.player.huette",
+                        Placeholder.component("name", name),
+                        Placeholder.unparsed("hearts", Huette.hearts(pp.lives(), engine.rules().lives())))
+                        : Texts.text(lang, "side.player.marathon", Placeholder.unparsed("pos",
                         String.valueOf(places.getOrDefault(pp.uuid(), 0))), Placeholder.component("name", name),
                         Placeholder.unparsed("points", String.valueOf(pp.minigamePoints()))));
                 shown++;
@@ -1644,6 +2253,10 @@ public final class Game {
                 .append("\",\"sideA\":\"").append(mini == null ? "" : names(mini.split().a()))
                 .append("\",\"sideB\":\"").append(mini == null ? "" : names(mini.split().b()))
                 .append("\",\"miniPlayers\":").append(mini == null ? 0 : mini.score().all().size())
+                .append(",\"miniTicks\":").append(mini == null ? 0 : mini.durationTicks())
+                .append(",\"wurmHp\":").append(mini == null || mini.coop() == null ? -1 : mini.coop().hp())
+                .append(",\"targets\":[").append(mini == null ? "" : String.join(",", mini.targets().stream()
+                        .map(t -> String.format(java.util.Locale.ROOT, "[%.2f,%.2f,%.2f]", t[0], t[1], t[2])).toList())).append("]")
                 .append(",\"miniAt\":");
         if (mini == null) {
             b.append("null");
@@ -1654,7 +2267,12 @@ public final class Game {
         int[] bo = origin;
         b.append(",\"boardAt\":[").append(bo[0]).append(',').append(bo[1]).append(',').append(bo[2]).append("],\"fields\":\"");
         for (Field f : layout.fields()) {
-            b.append(f.type() == FieldType.GEGENSTAND ? 'I' : f.type().name().charAt(0));
+            b.append(switch (f.type()) {
+                case GEGENSTAND -> 'I';
+                case FAHRGESCHAEFT -> 'K';
+                case LAWINE -> 'A';
+                default -> f.type().name().charAt(0);
+            });
         }
         b.append("\",\"players\":[");
         List<PartyPlayer> all = engine.players();
@@ -1668,7 +2286,8 @@ public final class Game {
                     .append(String.join(" ", p.items().stream().map(ItemType::id).toList())).append("\",\"left\":")
                     .append(p.left()).append(",\"minis\":").append(p.minigamesWon()).append(",\"points\":")
                     .append(p.minigamePoints()).append(",\"shield\":")
-                    .append(p.shield()).append('}');
+                    .append(p.shield()).append(",\"team\":").append(p.team()).append(",\"lives\":").append(p.lives())
+                    .append(",\"out\":").append(p.out()).append('}');
         }
         b.append("],\"spectators\":").append(spectators.size()).append('}');
         return b.toString();

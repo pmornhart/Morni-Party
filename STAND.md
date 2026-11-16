@@ -5,19 +5,26 @@ Entscheidungen von Philip (14.11.2026): Brettspiel für 2–8, würfeln, Taler s
 wandernden Stand kaufen, Ereignisfelder (Glück, Pech, Duell, Laden, Gegenstand), Gegenstände (u. a. Doppelwürfel,
 Tausch, Talerklau, Schild), nach jeder Runde ein Minispiel; Spielarten Gipfelrennen und Edelweiß-Jagd (10/15/20
 Runden); drei Bretter Almsommer am Morni-Kogel, Schloss Weißenstein, Goldstollen; zwölf Minispiele. Vorbild nur die
-Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
+Mechanik großer Party-Spiele – eigene Namen und eigene Optik. Seit dem 16.11. (Branch `claude/mehr-minispiele`): neun
+Spielarten, sechs Bretter, 26 Minispiele und der Tatzelwurm, Seiten nach Feldfarben (2 gegen 2, 1 gegen 3, Duell) und
+Auszeichnungen am Ende.
 
 ## Aufbau
 
 - `src/main/java/de/moinmorni/party/`: `PartyPlugin` (Start, Welt, Aufgaben), `Settings` (config.yml), `Texts` (de/en),
   `Ui`, `Items`, `Commands`.
 - `board/` (ohne Minecraft): `BoardId`, `FieldType`, `Field`, `BoardLayout` (Spiralweg mit 36 Feldern, Höhe des Geländes).
-- `game/` (ohne Minecraft): `Engine` (alle Spielregeln), `PartyPlayer`, `Rules`, `Mode`, `GameKind`, `ItemType`, `Luck`,
-  `WaitQueue` (Partys bleiben zusammen), `Votes`.
+- `game/` (ohne Minecraft): `Engine` (alle Spielregeln), `PartyPlayer`, `Purse` (Beutel, in der Seilschaft geteilt),
+  `Rules`, `Mode` (neun Spielarten), `GameKind`, `ItemType`, `Luck`, `Ride` (Fahrgeschäfte), `WaitQueue` (Partys
+  bleiben zusammen), `Votes`, `Marathon`, `Teams` (Seiten nach Feldfarben), `Seilschaft`, `Huette`, `Bracket`
+  (Turnierbaum), `Awards` (Auszeichnungen).
 - `play/`: `Lobby` (Festplatz, Warteschlange, Abstimmung, Countdown, Zuschauen, Statistik-Menü), `Game` (Partie: Züge,
   Menüs, Minispiele, Ende), `Games`, `Sidebar`.
-- `mini/`: `MiniType` (die zwölf), `MiniRun` (Ablauf, Helfer), `Scoring` (Wertung, ohne Minecraft), je Minispiel eine Klasse.
-- `world/`: `Plan`, `Decor`, `VoidGenerator`, `Places` (wo was steht), `HubPlan`, `BoardPlans`, `HubSigns`,
+- `mini/`: `MiniType` (27 Plätze: 24 Minispiele für alle, Tauziehen, Gamsjagd, Tatzelwurm), `MiniRun` (Ablauf, Helfer,
+  Seiten, Koop), `Scoring` (Wertung inkl. Seiten, ohne Minecraft), je Minispiel eine Klasse, reine Regeln in eigenen
+  Klassen (`Seil`, `GamsRevier`, `WurmRegeln`, `Eisbahn`, `Takt`, `Rennbahn`, `EnzianWiese`, `Webmuster`, `Wind`).
+- `world/`: `Plan`, `Decor`, `VoidGenerator`, `Places` (wo was steht), `HubPlan`, `BoardPlans` (+ `BoardPlans2` für
+  Königssee, Wiesn, Wintersonnwend), `HubSigns`,
   `Construction` (baut nur bei neuer Bau-Version oder anderer Zahl Tische).
 - `data/`: `PlayerStats`, `Store` (YAML im Hintergrund, Rangliste). `net/`: `Network`, `Connected`, `Standalone`.
 - `src/api/java/de/moinmorni/api/MoinMorni.java`: Kopie der Netzwerk-Schnittstelle (nicht in der Jar).
@@ -85,6 +92,72 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
 - Bilder der zwölf neuen Plätze mit echtem Client 26.3, je „spiel“ (laufendes Minispiel) und „weit“ (Kulisse), nur lokal
   unter `~/mm-cache/bilder-party-mehr/` (24 Bilder). Der Testserver wurde zweimal vom Speicherwächter der Sandbox
   beendet (andere Server liefen daneben) – das Schuhplattler-Bild „spiel“ steht hinter einem Zeltpfosten.
+
+- **Paket 5: Team- und Duell-Minispiele** (16.11.): Bei genau vier Leuten entscheidet die Farbe des zuletzt
+  betretenen Felds (blau: Taler, Glück, Laden, Fundstück; rot: Verlust, Pech, Duell, Lawine) über die Spielweise des
+  Minispiels – alle gleich: jeder gegen jeden, 2:2: zwei gegen zwei, 3:1: einer gegen drei (`game/Teams`, rein).
+  Teamwertung in `Scoring.teamOutcome` (Punkte-Summe je Seite, Punkte des Einzelnen zählen vierfach; Überleben/Rennen:
+  bester Platz, gleich = nächstbester), Taler in `Engine.awardTeams` (Sieger je 8, Einzelner 18, Gleichstand alle 3,
+  alles in der config.yml). Das **Duellfeld** startet ein Duell-Minispiel zu zweit statt des Würfelduells
+  (`Engine.settleDuel`, Schild schützt; die anderen bleiben auf dem Brett). Zwei neue Minispiele mit eigenen Plätzen:
+  **Tauziehen** (2 gegen 2 und Duell, Regeln in `mini/Seil`: jeder Klick zieht, höchstens alle 2 Ticks, geteilt durch
+  die Größe der Seite; Verlierer landen im Schlamm; Festwiese im Talkessel mit Tribünen, Wimpelketten,
+  Schiedsrichterstuhl) und **Gamsjagd** (einer gegen drei: der Jäger ist etwas schneller und startet drei Sekunden
+  später; Gamsrevier `mini/GamsRevier` mit Felsbuckeln, die man immer erklettern kann, Latschen, Zirben, Hochsitz).
+  Mützen in der Farbe der Seite, Seiten-Punkte in der Aktionsleiste, Schneeballschlacht zählt die eigene Seite nicht.
+  Minispiele je Spielweise: 2:2 Tauziehen, Schneeballschlacht, Talerregen, Holzhacker, Goldwaschen, Enzian-Suche; 1:3
+  Gamsjagd, Murmeltier, Scheibenschießen, Goldwaschen; Duell Tauziehen, Scheibenschießen, Holzhacker, Bergsprint,
+  Schneeballschlacht, Rempelei, Murmeltier. `/mparty seiten auto|frei|team|einzel`. Echt: Partie 8 20/20,
+  Partie 1 mit Duell-Minispiel 94/94 (zusammen mit 8).
+- **Paket 6: Seilschaft** (16.11.): Edelweiß-Jagd zu zweit (10/15 Runden, gerade Zahl, mindestens vier): ein
+  gemeinsamer Beutel (`game/Purse`), Partys aus zwei sind eine Seilschaft, größere Partys werden geteilt
+  (`game/Seilschaft`), Züge abwechselnd A1, B1, A2, B2, zu viert jedes Minispiel 2 gegen 2, kein Talerklau und kein Duell
+  gegen den Partner, Seitenleiste mit einer Zeile je Seilschaft, Sieger „Anna & Bert“. Festplatz: fehlen für die
+  gewünschte Spielart noch Leute, wartet er höchstens zweimal einen Countdown länger. Echt: Partie 9 alle grün.
+- **Paket 7: Schnelle Partie und Bergduell** (16.11.): Schnelle Partie (5 Runden, 20 Start-Taler, Edelweiß 15,
+  Minispiele × 0,75) und Bergduell (genau zwei, 8 Runden, jedes Minispiel ein Duell, Sieger 8 Taler). Echt: Partien 10
+  und 11 alle grün.
+- **Paket 8: Hüttenaufstieg** (16.11.): ohne Brett, 3 ❤ für alle; nach jedem Minispiel verliert die untere Hälfte
+  ein Leben (`game/Huette.losers`, geteilter Platz zählt nach dem besten Rang, alle gleich = niemand), wer keins mehr
+  hat, schaut im Zuschauermodus zu, wer zuletzt übrig ist, gewinnt; Herzen in Ergebnis, Seitenleiste und
+  Siegerehrung. Echt: Partie 12 alle grün.
+- **Paket 9: Gipfel-Turnier** (16.11.): K.-o.-Turnier aus Duell-Minispielen bis 16 (`game/Bracket`: Freilose so
+  verteilt, dass niemand zweimal eins bekommt, Aufgeben = kampflos weiter), Unentschieden = neues Duell, beim zweiten
+  das Los; Turnierbaum als Tafel vor den Zuschauern, eine je Sprache (nur die eigene ist sichtbar). Echt: Partie 13
+  alle grün (Unentschieden, neues Duell, Halbfinale, Finale, Siegerehrung „raus im Halbfinale“).
+- **Paket 10: Der Tatzelwurm** (16.11.): Koop ohne Brett, alle gegen einen Wurm mit Katzenkopf aus Block-Anzeigen in
+  einer Felsenklamm (eigener Platz), drei Abschnitte (Regeln in `mini/WurmRegeln`): aus den sechs Wurmlöchern brechen
+  (Kopf treffen, Felsbrocken mit Schatten-Warnung), Jagd im Kreis (nur leuchtende Schuppen verwundbar, Kopf stößt um),
+  Zorn in der Mitte (Bodenwellen überspringen, Kopfschlag auf roten Kreis, danach liegt der Kopf harmlos am Boden).
+  Benommen statt ausscheiden, gemeinsame Wertung mit bis zu drei Sternen, `/mparty wurm <leben>` zum Testen.
+  Echt: Partie 14 14/14 (Kopf- und Schuppentreffer, Felsbrocken machen benommen, alle drei Abschnitte, Sieg, Sterne,
+  Statistik). Gefunden: mineflayer kennt die Lage teleportierter Interaktions-Wesen nicht – der Test zielt über die
+  Trefferflächen aus `/mparty zustand` (`targets`); `Interaction#setResponsive(true)`, Kopf größer.
+- **Paket 11: drei neue Bretter** (16.11.): Königssee (Holzstege auf Pfählen über dem Bergsee, Seerosen, Schilf,
+  Bootshaus, Ruderboote, Felswände, Kapelle mit roten Zwiebeltürmen auf der Insel; **Fähre** in gerader Linie
+  mindestens 6 Felder voraus, Bojen zeigen die Route), Wiesn (Bierzelte, Riesenrad in der Mitte, Kettenkarussell,
+  Achterbahn, Buden, Maibaum, Lichter; **Riesenrad** tauscht den Platz, **Fahrgeschäft**: Achterbahn, Autoscooter,
+  Kettenkarussell, Losbude – `game/Ride`), Wintersonnwend (verschneiter Berg, Lawinenverbau, Skihütte, Iglu,
+  gefrorener See, großes Sonnwendfeuer als Kegel-Holzstoß; **Eis** rutscht bis ans Ende, **Lawine** schiebt dich und
+  alle bis 5 Felder vor dir 3 zurück). Regeln in `board/BoardLayout` (Sonderfelder, Fähre, Eis) und `game/Engine`.
+  Bau-Version 8. Echt: Partie 15 12/12 (Fähre 5 → 11, Riesenrad-Tausch, Achterbahn, Eis bis ans Ende, Lawine für
+  zwei).
+- **Paket 12: Auszeichnungen** (16.11.): vor der Siegerehrung einer Brett-Partie mit Edelweiß je ein Edelweiß für
+  Wanderer, Minispiel-Meister, Pechvogel und Duellkönig (`game/Awards`, Gleichstand: alle Besten), in der config.yml
+  abschaltbar (`auszeichnungen`). Echt: Partie 1.
+- **Feinschliff** (16.11.): Einzahl und Mehrzahl richtig – „1 Punkt“, „1 Feld weit“, „1 Sieg“, „1 Partie“, englisch
+  „+1 coin“ – in Ergebniszeilen, Zwischenstand, Siegerehrung, Bestenliste, `/stats`, Auszeichnungen, Würfel-Titel und
+  Glück/Pech (`Texts.count` + MiniMessage-Auswahl `<points_pl:'0#Punkte|1#Punkt|1<Punkte'/>`, geprüft in `TextsTest`).
+  config.yml mit Abschnitt `huettenaufstieg` und Erklärungen; Duellfelder im echten Test umgangen, wo ein
+  festgelegtes Minispiel kommen soll (`safeDie`).
+- Gesamttest (16.11. nachmittags, Paper 26.1.2, vier Test-Spieler): Partien 2–11, 13 und 15 **203/204**, Server-Log
+  ohne Fehler; der eine Fehlschlag war eine zu früh geprüfte Siegerehrung der Seilschaft (erst kommen die
+  Auszeichnungen – der Test wartet jetzt). Partien 1, 12 und 14 davor einzeln grün. Gefunden: seit das Duellfeld ein
+  Minispiel startet, verschob ein Duell im Test das festgelegte Minispiel der Runde – die Würfel im Test meiden
+  Duellfelder jetzt (`safeDie`); die Statistik-Datei wird relativ zum Stand vor Partie 2 geprüft.
+- Unit-Tests: 129 (u. a. Teams, Seil, Gamsrevier, Seilschaft, Modi, Hüttenaufstieg, Turnierbaum, Tatzelwurm-Regeln,
+  neue Bretter, Auszeichnungen, Einzahl/Mehrzahl). Bilder der neuen Plätze und Bretter mit echtem Client 26.3 nur lokal unter
+  `~/mm-cache/bilder-party-mehr/`.
 
 ## Offen
 

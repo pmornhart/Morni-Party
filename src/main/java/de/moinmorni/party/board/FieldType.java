@@ -22,7 +22,17 @@ public enum FieldType {
     /** Rosa: ein Gegenstand geschenkt. */
     GEGENSTAND,
     /** Ziel: Gipfel, Turmspitze oder Goldkammer. */
-    ZIEL;
+    ZIEL,
+    /** Königssee: Fähre – quer über den See ein Stück voraus. */
+    FAEHRE,
+    /** Wiesn: Riesenrad – Platz mit jemandem tauschen. */
+    RIESENRAD,
+    /** Wiesn: Fahrgeschäft – Achterbahn, Autoscooter, Kettenkarussell oder Losbude. */
+    FAHRGESCHAEFT,
+    /** Wintersonnwend: Lawine – du und alle kurz vor dir rutschen zurück. */
+    LAWINE,
+    /** Wintersonnwend: Eis – man rutscht bis ans Ende der Eisfläche weiter. */
+    EIS;
 
     /** Schlüssel für Texte, z. B. „field.taler“. */
     public String key() {

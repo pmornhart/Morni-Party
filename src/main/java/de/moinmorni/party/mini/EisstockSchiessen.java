@@ -322,7 +322,7 @@ final class EisstockSchiessen extends MiniRun {
             Player best = plugin.getServer().getPlayer(lead);
             say("mini.eisstockschiessen.lead", Placeholder.unparsed("n", String.valueOf(round)),
                     Placeholder.unparsed("name", best == null ? "?" : best.getName()),
-                    Placeholder.unparsed("points", String.valueOf(now.get(lead))));
+                    Texts.count("points", now.get(lead)));
         }
         soundAll("minecraft:block.note_block.chime", 1.2f);
     }

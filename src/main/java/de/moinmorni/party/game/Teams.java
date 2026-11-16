@@ -94,9 +94,10 @@ public final class Teams {
     private Teams() {
     }
 
-    /** Farbe eines Feldes: Verlust, Pech und Duell sind rot, alles andere blau. */
+    /** Farbe eines Feldes: Verlust, Pech, Duell und Lawine sind rot, alles andere blau. */
     public static Colour colour(FieldType t) {
-        return t == FieldType.VERLUST || t == FieldType.PECH || t == FieldType.DUELL ? Colour.RED : Colour.BLUE;
+        return t == FieldType.VERLUST || t == FieldType.PECH || t == FieldType.DUELL || t == FieldType.LAWINE ? Colour.RED
+                : Colour.BLUE;
     }
 
     /**

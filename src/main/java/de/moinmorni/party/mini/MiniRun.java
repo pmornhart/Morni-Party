@@ -94,6 +94,25 @@ public abstract class MiniRun {
         return split;
     }
 
+    /** Ergebnis eines gemeinsamen Spiels (Koop): geschafft, Sterne, Benommenheiten, Sekunden, Leben übrig/gesamt. */
+    public record Coop(boolean won, int stars, int stuns, int seconds, int hp, int max) {
+    }
+
+    /** Verwaltung/Tests: einen Wert im laufenden Spiel setzen (z. B. Leben des Tatzelwurms). false = gibt es nicht. */
+    public boolean adminSet(String key, int value) {
+        return false;
+    }
+
+    /** Verwaltung/Tests: Stellen, an denen man gerade treffen kann (relativ zur Mitte), sonst leer. */
+    public List<double[]> targets() {
+        return List.of();
+    }
+
+    /** Gemeinsames Spiel? Dann dessen Ergebnis, sonst null. */
+    public Coop coop() {
+        return null;
+    }
+
     /**
      * Ergebnis zwischen den Seiten (nur bei Team, Einer gegen drei und Duell). Vorgabe aus der Wertung; Spiele mit
      * eigener Siegbedingung (Tauziehen, Gamsjagd) entscheiden selbst.

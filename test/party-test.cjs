@@ -13,6 +13,11 @@
  *   Partie 5: Paket 2 – Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht
  *   Partie 6: Paket 3 – Schlittenrennen, Enzian-Suche, Musterweber, Föhnsturm
  *   Partie 7: Minispiel-Marathon mit drei Minispielen zu viert
+ *   Partie 8: Team- und Duell-Minispiele zu viert (Seiten nach Feldfarben, Tauziehen, Gamsjagd, Gleichstand)
+ *   Partie 9: Seilschaft zu viert (Party als Seilschaft, gemeinsame Taler, 2 gegen 2)
+ *   Partie 10: Schnelle Partie zu dritt · Partie 11: Bergduell zu zweit
+ *   Partie 12: Hüttenaufstieg (Leben) zu viert · Partie 13: Gipfel-Turnier zu viert
+ *   Partie 14: Der Tatzelwurm zu zweit · Partie 15: die drei neuen Bretter zu dritt
  *
  * Verfasst mit Claude 🤖
  */
@@ -100,7 +105,7 @@ async function waitFor(cond, ms = 5000, step = 150) {
 }
 
 /** Plätze im Menü „Welche Spielart?“ (je Spielart eine halbe Zeile, Testwerte: Jagd 2/8, Marathon 3/6). */
-const MODE = { gipfel: 0, jagd2: 5, jagd8: 6, marathon3: 9, marathon6: 10 };
+const MODE = { gipfel: 0, jagd2: 5, jagd8: 6, marathon3: 9, marathon6: 10, seil3: 14, schnell: 18, duell: 23, huette: 27, turnier: 32, wurm: 36 };
 
 const bots = {};
 let lastJoin = 0;
@@ -213,6 +218,21 @@ const fieldIndex = (g, letter, after = 0) => {
   for (let i = after + 1; i < g.fields.length - 1; i++) if (g.fields[i] === letter) return i;
   return -1;
 };
+/**
+ * Würfelzahl für den, der dran ist (am liebsten {@code want}), mit der er nicht auf einem Duellfeld landet – ein Duell
+ * bringt ein eigenes Minispiel und würde das festgelegte Minispiel der Runde verschieben.
+ */
+const safeDie = (g, want = 1) => {
+  const p = pl(g, g.current);
+  const goal = g.fields.length - 1;
+  const land = (n) => {
+    let pos = p.pos;
+    for (let k = 0; k < n; k++) pos = pos === goal ? 1 : pos + 1;
+    return pos;
+  };
+  for (const n of [want, 1, 2, 3, 4, 5, 6]) if (g.fields[land(n)] !== 'D') return n;
+  return want;
+};
 
 /** Zug spielen: Würfel benutzen (Rechtsklick), warten bis der Zug weiter ist. */
 async function playTurn(g, { roll = true } = {}) {
@@ -298,7 +318,7 @@ function schaefchen(list) {
 }
 
 /** Ergebniszeilen „1. Name (n Punkte) → +x Taler“ aus dem Chat. */
-const resultLines = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Taler|coins)/.test(c));
+const resultLines = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Taler|coins?)/.test(c));
 
 async function waitMini(id, ms = 60000) {
   return phase((x) => x.mini === id && x.phase === 'mini', ms);
@@ -425,7 +445,7 @@ async function part1() {
   check('Kuhglocke: zu früh geklickt kostet einen Punkt', carl.bars.some((b) => /Zu früh/.test(b)), carl.bars.slice(-3).join(' | '));
   check('Kuhglocke: Schnellste im Chat', sees(anna, /war Nummer 1/), anna.chats.filter((c) => /Nummer/.test(c)).slice(0, 2).join(' | '));
   check('Ergebnis mit Punkten und Talern', resultLines(anna).length === 3, resultLines(anna).join(' | '));
-  check('Englisches Ergebnis', bert.chats.some((c) => /Result: Cowbell/.test(c)) && resultLines(bert).some((l) => /coins/.test(l)));
+  check('Englisches Ergebnis', bert.chats.some((c) => /Result: Cowbell/.test(c)) && resultLines(bert).some((l) => /coins?/.test(l)));
   check('Ein Minispiel-Sieg wird gezählt', end1 && end1.players.some((p) => p.minis === 1), end1 && JSON.stringify(end1.players.map((p) => p.minis)));
   const r2 = await phase((x) => x.phase === 'turn' && x.round === 2, 20000);
   check('Zurück aufs Brett, Runde 2', r2 && [anna, bert, carl].every((b) => Math.abs(b.entity.position.x - r2.boardAt[0]) < 60),
@@ -511,7 +531,11 @@ async function part1() {
   // ---- Ende
   const done = await phase((x) => x.phase === 'end', 20000);
   check('Nach Runde 2 ist Schluss', done != null);
-  check('Siegerehrung im Chat', await waitFor(() => sees(anna, /Die Partie ist vorbei/) && sees(bert, /The game is over/), 4000));
+  check('Auszeichnungen vor der Siegerehrung (de/en)', await waitFor(() => sees(anna, /Auszeichnungen – je ein Edelweiß extra/) &&
+    sees(bert, /Awards – one extra edelweiss each/), 5000));
+  check('Wanderer und Minispiel-Meister', await waitFor(() => sees(anna, /✿ Wanderer: .* \(\d+ Feld(er)? gelaufen\)/) &&
+    sees(anna, /✿ Minispiel-Meister: .* \(\d+ Minispiele? gewonnen\)/), 12000), anna.chats.filter((c) => /✿ /.test(c)).join(' | '));
+  check('Siegerehrung im Chat', await waitFor(() => sees(anna, /Die Partie ist vorbei/) && sees(bert, /The game is over/), 15000));
   const winnerLine = anna.chats.find((c) => /^1\. .*✿/.test(c));
   check('Platz 1 mit Edelweiß und Talern', winnerLine && /✿ \d+ ● \d+/.test(winnerLine), winnerLine);
   check('Titel Gewonnen!/Vorbei!', [anna, bert, carl].some((b) => sawTitle(b, /Gewonnen|You won/)) && [anna, bert, carl].some((b) => sawTitle(b, /Sieg|Winner/)));
@@ -538,6 +562,7 @@ const currentBotByName = (n) => bots[n];
 async function part2() {
   console.log('\n— Partie 2: Gipfelrennen auf dem Almsommer, zu viert —');
   const { Anna: anna, Bert: bert, Carl: carl, Dora: dora } = bots;
+  const gamesBefore = Number((statsFile('Anna').match(/^partien: (\d+)/m) ?? [0, 0])[1]);
   clear(anna, bert, carl, dora);
   for (const b of [anna, bert, carl, dora]) {
     let w = await openWithItem(b, 2);
@@ -615,7 +640,7 @@ async function part2() {
   check('Statistik: Sieg und Gipfel für Anna', annaStats && annaStats.add.wins === 1 && annaStats.add.summits === 1, JSON.stringify(annaStats));
   check('Dora (gegangen) bekommt keine Partie gezählt', !log.some((c) => c.name === 'Dora'));
   check('Zurück auf den Festplatz', await waitFor(() => [anna, bert, carl].every(inHub), 20000));
-  check('Statistik-Datei: Anna 2 Partien, 1 Gipfel', /partien: 2/.test(statsFile('Anna')) && /gipfel: 1/.test(statsFile('Anna')), statsFile('Anna'));
+  check('Statistik-Datei: Anna eine Partie mehr, 1 Gipfel', new RegExp(`partien: ${gamesBefore + 1}\\b`).test(statsFile('Anna')) && /gipfel: 1/.test(statsFile('Anna')), statsFile('Anna'));
 }
 
 // ------------------------------------------------------------------ Partie 3
@@ -752,7 +777,7 @@ async function part3() {
     const id = REST[r];
     await cmd(`mparty minispiel ${id}`);
     for (let i = 0; i < 4 && g && g.phase === 'turn'; i++) {
-      await cmd(`mparty wuerfel ${g.current} ${1 + (i % 3)}`);
+      await cmd(`mparty wuerfel ${g.current} ${safeDie(g, 1 + (i % 3))}`);
       g = await playTurn(g);
     }
     clear(...list);
@@ -767,7 +792,7 @@ async function part3() {
     stop();
     const lines = resultLines(anna);
     check(`${id}: läuft und hat ein Ergebnis`, end && lines.length === 3, lines.join(' | '));
-    if (id === 'talerregen') check('Talerregen: Taler eingesammelt', lines.some((l) => /\((?!0 )\d+ Punkte\)/.test(l)), lines.join(' | '));
+    if (id === 'talerregen') check('Talerregen: Taler eingesammelt', lines.some((l) => /\((?!0 )\d+ Punkte?\)/.test(l)), lines.join(' | '));
     if (id === 'pfeilhagel') check('Pfeilhagel: getroffen = raus', anna.chats.some((c) => /ist raus/.test(c)) || lines.length === 3,
       anna.chats.filter((c) => /raus/.test(c)).join(' | '));
     if (id === 'heisse-brezn') {
@@ -780,10 +805,10 @@ async function part3() {
       // Wer nicht auf der Farbe steht, fällt (Carl bleibt stehen – trifft er zufällig die Farbe, fallen die anderen)
       check('Trachtenfarben: wer nicht auf der Farbe steht, fällt', anna.chats.some((c) => /ist raus/.test(c)), anna.chats.filter((c) => /raus/.test(c)).join(' | '));
     }
-    if (id === 'gipfelkoenig') check('Gipfelkönig: Anna oben sammelt Punkte', /^1\. Anna \((\d+) Punkte\)/.test(lines[0] ?? '') && !/\(0 Punkte\)/.test(lines[0]), lines[0]);
-    if (id === 'holzhacker') check('Holzhacker: Holz gespalten', lines.some((l) => /\([1-9]\d* Punkte\)/.test(l)), lines.join(' | '));
+    if (id === 'gipfelkoenig') check('Gipfelkönig: Anna oben sammelt Punkte', /^1\. Anna \((\d+) Punkte?\)/.test(lines[0] ?? '') && !/\(0 Punkte\)/.test(lines[0]), lines[0]);
+    if (id === 'holzhacker') check('Holzhacker: Holz gespalten', lines.some((l) => /\([1-9]\d* Punkte?\)/.test(l)), lines.join(' | '));
     if (id === 'rempelei') check('Rempelei: jemand fällt hinunter', anna.chats.some((c) => /ist raus|Rand bröckelt/.test(c)), anna.chats.filter((c) => /raus|bröckelt/.test(c)).join(' | '));
-    if (id === 'scheibenschiessen') check('Scheibenschießen: Treffer zählen', lines.some((l) => /\([1-9]\d* Punkte\)/.test(l)), lines.join(' | '));
+    if (id === 'scheibenschiessen') check('Scheibenschießen: Treffer zählen', lines.some((l) => /\([1-9]\d* Punkte?\)/.test(l)), lines.join(' | '));
     g = await phase((x) => x.phase === 'turn' || x.phase === 'end', 30000);
   }
   const done = await phase((x) => x.phase === 'end', 60000);
@@ -791,7 +816,7 @@ async function part3() {
   check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 25000));
   clear(anna);
   anna.chat('/top');
-  check('/top zeigt die Besten', await waitFor(() => sees(anna, /^1\. \S+ \d+ Siege/), 3000), anna.chats.join(' | '));
+  check('/top zeigt die Besten', await waitFor(() => sees(anna, /^1\. \S+ \d+ Siege?/), 3000), anna.chats.join(' | '));
 }
 
 // ------------------------------------------------------------------ Neue Minispiele
@@ -1139,7 +1164,7 @@ async function newMinis(title, ids) {
   for (const id of ids.filter((x) => !process.env.ONLY || process.env.ONLY.split(',').includes(x))) {
     await cmd(`mparty minispiel ${id}`);
     for (let i = 0; i < 4 && g && g.phase === 'turn'; i++) {
-      await cmd(`mparty wuerfel ${g.current} ${1 + (i % 3)}`);
+      await cmd(`mparty wuerfel ${g.current} ${safeDie(g, 1 + (i % 3))}`);
       g = await playTurn(g);
     }
     clear(...list);
@@ -1163,7 +1188,7 @@ async function newMinis(title, ids) {
       check('Lawinenhang: Schneebrocken trifft und schiebt zurück', seen.hit, carl.bars.slice(-3).join(' | '));
       check('Lawinenhang: Anna zuerst oben, Bert Zweiter', /^1\. Anna \(im Ziel/.test(lines[0] ?? '') && /^2\. Bert \(im Ziel/.test(lines[1] ?? ''),
         lines.join(' | '));
-      check('Lawinenhang: Carl nach Strecke gewertet', /^3\. Carl \(\d+ Blöcke weit\)/.test(lines[2] ?? ''), lines[2]);
+      check('Lawinenhang: Carl nach Strecke gewertet', /^3\. Carl \(\d+ (Blöcke|Block) weit\)/.test(lines[2] ?? ''), lines[2]);
       check('Englisch: „finished in“', bert.chats.some((c) => /Anna \(finished in/.test(c)));
     }
     if (id === 'maibaumkraxeln') {
@@ -1171,7 +1196,7 @@ async function newMinis(title, ids) {
       check('Maibaum: Stücke brechen weg', seen.min < seen.before, `${seen.before} → ${seen.min}`);
       check('Maibaum: Anna hat den Kranz zuerst', sees(anna, /Anna hat den Kranz erreicht – Platz 1/) && /^1\. Anna \(oben nach/.test(lines[0] ?? ''),
         lines.join(' | '));
-      check('Maibaum: Carl nach Höhe gewertet', /^3\. Carl \(\d+ Blöcke hoch\)/.test(lines[2] ?? ''), lines[2]);
+      check('Maibaum: Carl nach Höhe gewertet', /^3\. Carl \(\d+ (Blöcke|Block) hoch\)/.test(lines[2] ?? ''), lines[2]);
     }
     if (id === 'eisstockschiessen') {
       check('Eisstock: Kraftbalken in der Aktionsleiste', anna.bars.some((b) => /Kraft .*\d+ %/.test(b)) && bert.bars.some((b) => /Power/.test(b)),
@@ -1179,16 +1204,16 @@ async function newMinis(title, ids) {
       check('Eisstock: alle werfen dreimal (Klick)', (seen.throws ?? 0) >= 6, String(seen.throws));
       check('Eisstock: Stöcke gleiten über die Bahn', (seen.stones ?? 0) >= 4, String(seen.stones));
       check('Eisstock: Zwischenstand nach jedem Wurf', sees(anna, /Nach Wurf 3/), anna.chats.filter((c) => /Wurf/.test(c)).join(' | '));
-      check('Eisstock: Punkte nach Abstand zur Daube', lines.some((l) => /\([1-9]\d* Punkte\)/.test(l)), lines.join(' | '));
+      check('Eisstock: Punkte nach Abstand zur Daube', lines.some((l) => /\([1-9]\d* Punkte?\)/.test(l)), lines.join(' | '));
     }
     if (id === 'murmeltier') {
-      check('Murmeltier: Treffer geben Punkte', lines.some((l) => /\([1-9]\d* Punkte\)/.test(l)), lines.join(' | '));
+      check('Murmeltier: Treffer geben Punkte', lines.some((l) => /\([1-9]\d* Punkte?\)/.test(l)), lines.join(' | '));
       check('Murmeltier: Steinbrocken kostet einen Punkt', seen.stone, carl.bars.slice(-3).join(' | '));
     }
     if (id === 'goldwaschen') {
       check('Goldwaschen: Haufen auswaschen', (seen.digs ?? 0) >= 6 && [anna, bert, carl].some((x) => x.bars.some((t) => /Nur Kies|Just gravel|Punkte|points/.test(t))),
         `${seen.digs} Mal`);
-      check('Goldwaschen: Gold gefunden gibt Punkte', lines.some((l) => /\([1-9]\d* (Punkte|points)\)/.test(l)), lines.join(' | '));
+      check('Goldwaschen: Gold gefunden gibt Punkte', lines.some((l) => /\([1-9]\d* (Punkte?|points?)\)/.test(l)), lines.join(' | '));
     }
     if (id === 'schuhplattler') {
       check('Schuhplattler: Ansagen im Takt', (seen.cues ?? 0) >= 4, String(seen.cues));
@@ -1216,7 +1241,7 @@ async function newMinis(title, ids) {
     if (id === 'enzian-suche') {
       check('Enzian-Suche: Enziane gefunden und gepflückt (Schlag und Rechtsklick)', (seen.Anna ?? 0) >= 2 && (seen.Bert ?? 0) >= 2,
         `${seen.Anna}/${seen.Bert}`);
-      check('Enzian-Suche: Punkte für Anna und Bert', lines.filter((l) => /(Anna|Bert) \([1-9]\d* Punkte\)/.test(l)).length === 2, lines.join(' | '));
+      check('Enzian-Suche: Punkte für Anna und Bert', lines.filter((l) => /(Anna|Bert) \([1-9]\d* Punkte?\)/.test(l)).length === 2, lines.join(' | '));
     }
     if (id === 'musterweber') {
       check('Musterweber: Muster gezeigt (16 Felder)', seen.Annacells === 16, String(seen.Annacells));
@@ -1287,7 +1312,7 @@ async function marathon() {
   check('Drittes Minispiel', g != null && sees(anna, /Minispiel 3 von 3/));
   const done = await phase((x) => x.phase === 'end', 90000);
   check('Nach drei Minispielen: Siegerehrung', done != null && await waitFor(() => sees(anna, /Die Partie ist vorbei/) && sees(bert, /The game is over/), 5000));
-  const line = anna.chats.find((c) => /^1\. Anna – \d+ Punkte · \d+ Minispiele gewonnen/.test(c));
+  const line = anna.chats.find((c) => /^1\. Anna – \d+ Punkte · \d+ Minispiele? gewonnen/.test(c));
   check('Anna gewinnt mit Punkten und Minispiel-Siegen', line != null, anna.chats.filter((c) => /Punkte ·/.test(c)).join(' | '));
   check('Titel Gewonnen!', sawTitle(anna, /Gewonnen/));
   const log = calls().filter((c) => c.t === 'stats' && c.mode === 'party' && c.add.games_marathon === 1);
@@ -1298,7 +1323,7 @@ async function marathon() {
   clear(anna, bert);
   anna.chat('/stats');
   bert.chat('/stats');
-  check('/stats zeigt den Marathon (de/en)', await waitFor(() => sees(anna, /Minispiel-Marathon: 1 Partien · 1 Siege/) && sees(bert, /Minigame Marathon: 1 games/), 4000),
+  check('/stats zeigt den Marathon (de/en)', await waitFor(() => sees(anna, /Minispiel-Marathon: 1 Partie · 1 Sieg\b/) && sees(bert, /Minigame Marathon: 1 game\b/), 4000),
     anna.chats.join(' | '));
 }
 
@@ -1363,7 +1388,7 @@ async function teams() {
   check('Tauziehen: 2 gegen 2', g && g.format === 'team' && g.sideA === `${order[0]} + ${order[1]}`, g && `${g.format} ${g.sideA}`);
   let pulling = true;
   const pullers = [bots[order[0]], bots[order[1]]];
-  const pullJob = (async () => { while (pulling) { for (const b of pullers) b.swingArm(); await sleep(80); } })();
+  const pullJob = (async () => { while (pulling) { for (const b of pullers) b.swingArm(); await sleep(Number(process.env.PULL_MS ?? 80)); } })();
   const start = Date.now();
   await waitMiniEnd(40000);
   pulling = false;
@@ -1419,8 +1444,442 @@ async function teams() {
   check('Teams: zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
 }
 
+async function seilschaft() {
+  console.log('\n— Partie 9: Seilschaft (3 Runden) zu viert —');
+  if (!bots.Dora) bots.Dora = await join('Dora');
+  bots.Dora.policy = defaultPolicy;
+  const { Anna: anna, Bert: bert, Carl: carl, Dora: dora } = bots;
+  const list = [anna, bert, carl, dora];
+  clear(...list);
+  for (const b of list) {
+    let w = await openWithItem(b, 2);
+    if (w) await click(b, 15);
+    w = await openWithItem(b, 3);
+    if (w) await click(b, MODE.seil3);
+  }
+  let g = await phase((x) => x.phase === 'turn', 30000);
+  check('Seilschaft startet zu viert', g && g.mode === 'seilschaft-3' && g.players.length === 4, g && g.mode);
+  const team = (n) => pl(g, n).team;
+  check('Party Anna + Bert ist eine Seilschaft', g && team('Anna') === team('Bert') && team('Carl') === team('Dora') && team('Anna') !== team('Carl'),
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${p.team}`)));
+  const order = g.players.map((p) => p.name);
+  check('Züge wechseln zwischen den Seilschaften', g && team(order[0]) !== team(order[1]) && team(order[1]) !== team(order[2]), order.join(','));
+  check('Ansage der Seilschaften (gemeinsam 20 Taler)', sees(anna, /Anna & Bert – gemeinsam 20 Taler/) && sees(bert, /Anna & Bert – together 20 coins/),
+    anna.chats.filter((c) => /gemeinsam/.test(c)).join(' | '));
+  await cmd('mparty taler Anna 30');
+  g = await game();
+  check('Gemeinsamer Geldbeutel: Bert hat auch 30', g && pl(g, 'Bert').taler === 30 && pl(g, 'Carl').taler === 20,
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${p.taler}`)));
+
+  // ---- Runde 1: Duell nur gegen die andere Seilschaft, danach Tauziehen 2 gegen 2
+  const first = g.current;
+  const duelField = fieldIndex(g, 'D', 1);
+  await cmd(`mparty feld ${first} ${duelField - 1}`, `mparty wuerfel ${first} 1`, 'mparty minispiel tauziehen');
+  clear(...list);
+  const fb = bots[first];
+  const menuP = nextWindow(fb);
+  const oldPolicy = fb.policy;
+  fb.policy = async () => {};
+  await use(fb, 0);
+  const menu = await menuP;
+  const heads = menu ? menu.slots.filter((it) => it && it.name === 'player_head').map((it) => plain(it.customName ?? it.displayName ?? '')) : [];
+  const partner = g.players.find((p) => p.name !== first && p.team === pl(g, first).team).name;
+  check('Duell-Menü ohne den Partner', heads.length === 2 && !heads.some((h) => h.includes(partner)), heads.join(','));
+  fb.policy = oldPolicy;
+  if (menu) fb.closeWindow(fb.currentWindow ?? menu);
+  const dg = await waitMini('tauziehen', 30000);
+  check('Duell gegen die andere Seilschaft', dg && dg.format === 'duel' && dg.sideB !== partner, dg && `${dg.sideA} gegen ${dg.sideB}`);
+  await waitMiniEnd(40000);
+  g = await phase((x) => x.phase === 'turn' && x.current !== first, 40000);
+  await cmd('mparty minispiel tauziehen');
+  for (let i = 0; i < 3 && g && g.phase === 'turn'; i++) {
+    const safe = fieldIndex(g, 'T', 18);
+    await cmd(`mparty feld ${g.current} ${safe - 1}`, `mparty wuerfel ${g.current} 1`);
+    g = await playTurn(g);
+  }
+  const before = await game();
+  g = await waitMini('tauziehen', 30000);
+  check('Minispiel nach der Runde: Seilschaft gegen Seilschaft', g && g.format === 'team' &&
+    [g.sideA, g.sideB].includes('Anna + Bert') && [g.sideA, g.sideB].includes('Carl + Dora'), g && `${g.sideA} | ${g.sideB}`);
+  let pulling = true;
+  const pullJob = (async () => { while (pulling) { anna.swingArm(); bert.swingArm(); await sleep(Number(process.env.PULL_MS ?? 80)); } })();
+  await waitMiniEnd(40000);
+  pulling = false;
+  await pullJob;
+  g = await phase((x) => x.phase === 'turn' || x.phase === 'end', 30000);
+  check('Sieg im Tauziehen: +16 für den gemeinsamen Beutel (je 8)', g && before && pl(g, 'Anna').taler === pl(before, 'Anna').taler + 16 &&
+    pl(g, 'Bert').taler === pl(g, 'Anna').taler, g && before && `${pl(before, 'Anna').taler} → ${pl(g, 'Anna').taler}`);
+  const side = Object.values(anna.scoreboards ?? {}).flatMap((sb) => Object.values(sb.itemsMap ?? {}).map((it) => plain(it.displayName)));
+  // mineflayer liest die Anzeigenamen der Zeilen nicht – die Zeilen selbst sieht man auf dem Bild (echter Client)
+  check('Seitenleiste da', side.some((l) => /Anna & Bert|Bert & Anna/.test(l.replace('▶', ''))) || anna.scoreboard?.sidebar != null);
+  const done = await phase((x) => x.phase === 'end', 400000);
+  check('Seilschaft endet nach 3 Runden', done != null);
+  // erst die Auszeichnungen, dann die Siegerehrung mit „Anna & Bert“
+  check('Sieger als Seilschaft angesagt', await waitFor(() => sawTitle(anna, /&/) || sawTitle(carl, /&/), 25000), anna.titles.slice(-3).join(' | '));
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+  const log = calls().filter((c) => c.t === 'stats' && c.add && c.add.games_seilschaft === 1);
+  check('Statistik ans Netzwerk: games_seilschaft für alle vier', log.length === 4, String(log.length));
+  clear(anna, bert);
+  anna.chat('/stats');
+  bert.chat('/stats');
+  check('/stats zeigt die Seilschaft (de/en)', await waitFor(() => sees(anna, /Seilschaft: 1 Partie\b/) && sees(bert, /Rope Team: 1 game\b/), 4000),
+    anna.chats.slice(-6).join(' | '));
+}
+
+/** Abstimmen und warten, bis die Partie läuft. */
+async function startWith(list, slot) {
+  clear(...list);
+  for (const b of list) {
+    let w = await openWithItem(b, 2);
+    if (w) await click(b, 15);
+    w = await openWithItem(b, 3);
+    if (w) await click(b, slot);
+  }
+  return phase(() => true, 30000);
+}
+
+async function schnell() {
+  console.log('\n— Partie 10: Schnelle Partie (2 Runden) zu dritt —');
+  const { Anna: anna, Bert: bert, Carl: carl } = bots;
+  const list = [anna, bert, carl];
+  let g = await startWith(list, MODE.schnell);
+  g = await phase((x) => x.phase === 'turn', 30000);
+  check('Schnelle Partie startet', g && g.mode === 'schnell-2' && g.players.length === 3, g && g.mode);
+  check('Mehr Start-Taler (20)', g && g.players.every((p) => p.taler === 20), g && JSON.stringify(g.players.map((p) => p.taler)));
+  check('Ansage: Edelweiß nur 15 Taler (de/en)', sees(anna, /Schnelle Partie: nur 2 Runden!.*nur 15 Taler/) && sees(bert, /Quick game: only 2 rounds!.*only 15 coins/),
+    anna.chats.filter((c) => /Schnelle/.test(c)).join(' | '));
+  await cmd('mparty minispiel bergsprint');
+  for (let i = 0; i < 3 && g && g.phase === 'turn'; i++) {
+    await cmd(`mparty wuerfel ${g.current} ${safeDie(g, 1 + i)}`);
+    g = await playTurn(g);
+  }
+  g = await waitMini('bergsprint', 30000);
+  check('Minispiel kürzer (45 s × 0,4 × 0,75 = 13,5 s)', g && g.miniTicks === 270, g && String(g.miniTicks));
+  const done = await phase((x) => x.phase === 'end', 300000);
+  check('Nach 2 Runden vorbei', done != null);
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+  const log = calls().filter((c) => c.t === 'stats' && c.add && c.add.games_schnell === 1);
+  check('Statistik: games_schnell', log.length === 3, String(log.length));
+}
+
+async function bergduell() {
+  console.log('\n— Partie 11: Bergduell (2 Runden), Anna gegen Bert —');
+  const { Anna: anna, Bert: bert } = bots;
+  const list = [anna, bert];
+  let g = await startWith(list, MODE.duell);
+  g = await phase((x) => x.phase === 'turn', 30000);
+  check('Bergduell startet zu zweit', g && g.mode === 'bergduell-2' && g.players.length === 2, g && `${g.mode} ${g.players.length}`);
+  check('Ansage Bergduell (de/en)', sees(anna, /Bergduell: ihr zwei gegeneinander/) && sees(bert, /Mountain duel: the two of you/));
+  await cmd('mparty minispiel tauziehen');
+  for (let i = 0; i < 2 && g && g.phase === 'turn'; i++) {
+    const safe = fieldIndex(g, 'T', 18);
+    await cmd(`mparty feld ${g.current} ${safe - 1}`, `mparty wuerfel ${g.current} 1`);
+    g = await playTurn(g);
+  }
+  const before = await game();
+  g = await waitMini('tauziehen', 30000);
+  check('Minispiel nach der Runde ist ein Duell', g && g.format === 'duel' && g.miniPlayers === 2, g && g.format);
+  let pulling = true;
+  const pullJob = (async () => { while (pulling) { anna.swingArm(); await sleep(80); } })();
+  await waitMiniEnd(40000);
+  pulling = false;
+  await pullJob;
+  g = await phase((x) => x.phase === 'turn' || x.phase === 'end', 30000);
+  check('Duell-Sieg: Anna +8 Taler', g && before && pl(g, 'Anna').taler === pl(before, 'Anna').taler + 8 && pl(g, 'Bert').taler === pl(before, 'Bert').taler,
+    g && before && `${pl(before, 'Anna').taler}→${pl(g, 'Anna').taler} ${pl(before, 'Bert').taler}→${pl(g, 'Bert').taler}`);
+  check('Ansage „gewinnt das Duell“', sees(anna, /Anna gewinnt das Duell – 8 Taler/), anna.chats.slice(-5).join(' | '));
+  const done = await phase((x) => x.phase === 'end', 300000);
+  check('Bergduell vorbei', done != null);
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+  const log = calls().filter((c) => c.t === 'stats' && c.add && c.add.games_bergduell === 1);
+  check('Statistik: games_bergduell', log.length === 2, String(log.length));
+}
+
+/** Bergsprint: diese Leute nacheinander ins Ziel bringen (die anderen bleiben unten). */
+async function sprint(order) {
+  const g = await waitMini('bergsprint', 40000);
+  if (!g) return null;
+  const [mx, my, mz] = g.miniAt;
+  for (const [i, b] of order.entries()) {
+    await sleep(700);
+    await tpTo(b, mx + 0.5 - 2 + i * 2, my + 11, mz + 31.5);
+  }
+  await waitMiniEnd(60000);
+  return g;
+}
+
+async function huette() {
+  console.log('\n— Partie 12: Hüttenaufstieg (2 Leben) zu viert —');
+  if (!bots.Dora) bots.Dora = await join('Dora');
+  bots.Dora.policy = defaultPolicy;
+  const { Anna: anna, Bert: bert, Carl: carl, Dora: dora } = bots;
+  const list = [anna, bert, carl, dora];
+  let g = await startWith(list, MODE.huette);
+  await cmd('mparty minispiel bergsprint');
+  g = await game();
+  check('Hüttenaufstieg startet ohne Brett', g && g.mode === 'huette' && g.players.length === 4, g && g.mode);
+  check('Ansage mit Leben (de/en)', await waitFor(() => sees(anna, /Jeder hat 2 ❤/) && sees(bert, /Everyone has 2 ❤/), 5000));
+  const lives = async () => Object.fromEntries((await game())?.players.map((p) => [p.name, p.lives]) ?? []);
+  // 1: Anna, Bert oben – Carl und Dora verlieren ein Leben
+  await sprint([anna, bert]);
+  await cmd('mparty minispiel holzhacker');
+  let l = await lives();
+  check('Untere Hälfte verliert ein Leben', l.Anna === 2 && l.Bert === 2 && l.Carl === 1 && l.Dora === 1, JSON.stringify(l));
+  check('Ansage „verliert ein Leben – ❤♡“', sees(anna, /Carl verliert ein Leben – ❤♡/), anna.chats.filter((c) => /Leben/.test(c)).join(' | '));
+  check('Ergebnis: −1 ❤ / sicher', resultLines3(anna).some((l) => /Carl .*−1 ❤/.test(l)) && resultLines3(anna).some((l) => /Anna .*sicher/.test(l)),
+    resultLines3(anna).join(' | '));
+  // 2: Holzhacker, niemand hackt → alle gleich, niemand verliert
+  g = await waitMini('holzhacker', 40000);
+  await cmd('mparty minispiel bergsprint');
+  await waitMiniEnd(90000);
+  l = await lives();
+  check('Gleichstand: niemand verliert', l.Anna === 2 && l.Carl === 1 && l.Dora === 1, JSON.stringify(l));
+  // 3: Anna, Carl oben – Dora fliegt raus, Bert verliert eins
+  await sprint([anna, carl]);
+  await cmd('mparty minispiel bergsprint');
+  l = await lives();
+  g = await game();
+  check('Dora ist raus, Bert hat noch eins', l.Dora === 0 && l.Bert === 1 && pl(g, 'Dora').out, JSON.stringify(l));
+  check('Ansage: kein Leben mehr, schaut zu', sees(anna, /Dora hat kein Leben mehr/));
+  check('Dora schaut zu (Zuschauermodus)', await waitFor(() => dora.game?.gameMode === 'spectator', 5000), dora.game?.gameMode);
+  // 4: nur noch drei – Anna, Bert oben, Carl raus
+  g = await waitMini('bergsprint', 40000);
+  check('Dora spielt nicht mehr mit', g && g.miniPlayers === 3, g && String(g.miniPlayers));
+  await sprint([anna, bert]);
+  await cmd('mparty minispiel bergsprint');
+  l = await lives();
+  check('Carl ist raus', l.Carl === 0, JSON.stringify(l));
+  // 5: Anna gegen Bert – Bert raus, Anna erreicht die Hütte
+  await sprint([anna]);
+  const done = await phase((x) => x.phase === 'end', 30000);
+  check('Hüttenaufstieg vorbei, als nur noch eine übrig ist', done != null);
+  check('Siegerehrung mit Herzen', await waitFor(() => sees(anna, /^1\. Anna ❤/) && sees(anna, /^2\. Bert/), 5000),
+    anna.chats.filter((c) => /^\d\. /.test(c)).join(' | '));
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+  const log = calls().filter((c) => c.t === 'stats' && c.add && c.add.games_huette === 1);
+  check('Statistik: games_huette für alle vier, Anna gewinnt', log.length === 4 && log.find((c) => c.name === 'Anna')?.add.wins_huette === 1,
+    String(log.length));
+}
+
+/** Ergebniszeilen im Hüttenaufstieg. */
+const resultLines3 = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(❤|sicher|safe)$/.test(c));
+
+/** Tauziehen im Turnier: wer auf Seite a steht, zieht (oder niemand). Gibt den Zustand zu Beginn zurück. */
+async function tug(pull) {
+  const g = await waitMini('tauziehen', 60000);
+  if (!g) return null;
+  const puller = bots[g.sideA];
+  let on = pull;
+  const job = (async () => { while (on) { puller.swingArm(); await sleep(80); } })();
+  await waitMiniEnd(45000);
+  on = false;
+  await job;
+  return g;
+}
+
+async function turnier() {
+  console.log('\n— Partie 13: Gipfel-Turnier zu viert —');
+  if (!bots.Dora) bots.Dora = await join('Dora');
+  bots.Dora.policy = defaultPolicy;
+  const { Anna: anna, Bert: bert, Carl: carl, Dora: dora } = bots;
+  const list = [anna, bert, carl, dora];
+  clear(...list);
+  for (const b of list) {
+    let w = await openWithItem(b, 2);
+    if (w) await click(b, 15);
+    w = await openWithItem(b, 3);
+    if (w) await click(b, MODE.turnier);
+  }
+  let g = await phase(() => true, 30000);
+  await cmd('mparty minispiel tauziehen');
+  check('Gipfel-Turnier startet ohne Brett', g && g.mode === 'turnier' && g.players.length === 4, g && g.mode);
+  // Halbfinale 1: erst unentschieden (niemand zieht) → neues Duell
+  let m1 = await tug(false);
+  check('Halbfinale: Duell zu zweit, die anderen schauen zu', m1 && m1.format === 'duel' && m1.miniPlayers === 2, m1 && m1.format);
+  check('Ansage Halbfinale (de/en)', sees(anna, /Halbfinale – \S+ gegen \S+/) && sees(bert, /Semi-final – \S+ vs \S+/));
+  await cmd('mparty minispiel tauziehen');
+  check('Unentschieden → neues Duell', await waitFor(() => sees(anna, /es gibt ein neues Duell/), 8000));
+  m1 = await tug(true);
+  check('Sieger kommt weiter', await waitFor(() => sees(anna, new RegExp(`${m1?.sideA} kommt weiter, ${m1?.sideB} ist raus`)), 6000),
+    anna.chats.slice(-4).join(' | '));
+  const watcher = list.find((b) => b.username !== m1.sideA && b.username !== m1.sideB);
+  check('Wer wartet, schaut im Zuschauermodus zu', watcher.game?.gameMode === 'spectator', watcher.game?.gameMode);
+  const boards = Object.values(watcher.entities).filter((e) => e.name === 'text_display');
+  check('Turnierbaum als Tafel', boards.length >= 1, String(boards.length));
+  // Halbfinale 2
+  await cmd('mparty minispiel tauziehen');
+  const m2 = await tug(true);
+  // Finale
+  await cmd('mparty minispiel tauziehen');
+  const fin = await tug(true);
+  check('Finale zwischen den Siegern', fin && [m1.sideA, m2.sideA].includes(fin.sideA) && [m1.sideA, m2.sideA].includes(fin.sideB),
+    fin && `${fin.sideA} gegen ${fin.sideB}`);
+  check('Ansage Turniersieg', await waitFor(() => sees(anna, new RegExp(`★ ${fin.sideA} gewinnt das Gipfel-Turnier! ★`)), 6000));
+  const done = await phase((x) => x.phase === 'end', 30000);
+  check('Turnier vorbei', done != null);
+  check('Siegerehrung: Sieg, Finale, Halbfinale', await waitFor(() => sees(anna, new RegExp(`^1\\. ${fin.sideA} – Turniersieg`)) &&
+    sees(anna, new RegExp(`^2\\. ${fin.sideB} – raus im Finale`)) && anna.chats.filter((c) => /^3\. \S+ – raus im Halbfinale/.test(c)).length === 2, 6000),
+    anna.chats.filter((c) => /^\d\. /.test(c)).slice(-4).join(' | '));
+  check('Englisch: „Cup winner“', sees(bert, new RegExp(`^1\\. ${fin.sideA} – Cup winner`)));
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+  const log = calls().filter((c) => c.t === 'stats' && c.add && c.add.games_turnier === 1);
+  check('Statistik: games_turnier, Sieger wins_turnier', log.length === 4 && log.find((c) => c.name === fin.sideA)?.add.wins_turnier === 1,
+    String(log.length));
+}
+
+/**
+ * Auf den Wurm einschlagen: die Stellen, an denen man gerade treffen kann, meldet der Server im Zustand (mineflayer
+ * kennt die Lage teleportierter Klickflächen nicht genau) – hin, hinschauen, auf alle Klickflächen schlagen (nur die in
+ * Reichweite zählt).
+ */
+async function hitWorm(bot, g, until, ms) {
+  const [ox, oy, oz] = g.miniAt;
+  const end = Date.now() + ms;
+  while (Date.now() < end && !(await until())) {
+    const st = await game();
+    for (const [tx, ty, tz] of st?.targets ?? []) {
+      await tpTo(bot, ox + tx + 1.6, oy + 1, oz + tz);
+      await sleep(200);
+      await bot.lookAt(new (bot.entity.position.constructor)(ox + tx, oy + ty + 0.8, oz + tz), true);
+      const inter = Object.values(bot.entities).filter((e) => e.name === 'interaction');
+      if (process.env.DEBUG) console.log('wurm-ziel', tx, ty, tz, 'klickflächen', inter.length, bot.game.gameMode);
+      for (const e of inter) bot.attack(e);
+      await sleep(350);
+    }
+    await sleep(200);
+  }
+}
+
+async function tatzelwurm() {
+  console.log('\n— Partie 14: Der Tatzelwurm, Anna und Bert zusammen —');
+  const { Anna: anna, Bert: bert } = bots;
+  const list = [anna, bert];
+  let g = await startWith(list, MODE.wurm);
+  check('Tatzelwurm startet', g && g.mode === 'tatzelwurm' && g.players.length === 2, g && g.mode);
+  g = await waitMini('tatzelwurm', 40000);
+  check('Kampf läuft, Leben 18 + 2 × 12', g && g.wurmHp === 42, g && String(g.wurmHp));
+  check('Abschnitt 1 angesagt (de/en)', await waitFor(() => sawTitle(anna, /Aus dem Boden/) && sawTitle(bert, /Out of the ground/), 5000));
+  await hitWorm(anna, g, async () => ((await game())?.wurmHp ?? 42) <= 38, 40000);
+  g = await game();
+  check('Treffer am Kopf zählen doppelt', g && g.wurmHp <= 38 && g.wurmHp % 2 === 0, g && String(g.wurmHp));
+  check('Felsbrocken: jemand wird benommen', await waitFor(() => sawTitle(anna, /Benommen/) || sawTitle(bert, /Stunned/), 25000));
+  await cmd('mparty wurm 26');
+  check('Abschnitt 2: die Jagd', await waitFor(() => sawTitle(anna, /Die Jagd/), 5000));
+  await hitWorm(anna, g, async () => ((await game())?.wurmHp ?? 26) <= 23, 30000);
+  g = await game();
+  check('Leuchtende Schuppen treffen', g && g.wurmHp <= 23, g && String(g.wurmHp));
+    await cmd('mparty wurm 4');
+  check('Abschnitt 3: der Zorn', await waitFor(() => sawTitle(anna, /Der Zorn/), 5000));
+  await hitWorm(anna, g, async () => (await game())?.phase !== 'mini', 60000);
+  check('Tatzelwurm besiegt', await waitFor(() => sees(anna, /der Tatzelwurm ist besiegt/), 8000), anna.chats.slice(-4).join(' | '));
+  check('Gemeinsames Ergebnis mit Sternen (de/en)', await waitFor(() => sees(anna, /Geschafft! Der Tatzelwurm ist besiegt – in \d+:\d\d, \d+ mal benommen: [★☆]{3}/) &&
+    sees(bert, /Done! The Tatzelwurm is beaten/), 8000), anna.chats.slice(-3).join(' | '));
+  const done = await phase((x) => x.phase === 'end', 20000);
+  check('Siegerehrung mit Treffern', done != null && await waitFor(() => sees(anna, /^Anna – \d+ Treffer/) && sees(bert, /^Bert – \d+ hits?/), 5000),
+    anna.chats.filter((c) => /Treffer/.test(c)).join(' | '));
+  check('Beide gewinnen zusammen', sawTitle(anna, /Gewonnen/) && sawTitle(bert, /Won|You won/), `${anna.titles.slice(-2)} / ${bert.titles.slice(-2)}`);
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+  const log = calls().filter((c) => c.t === 'stats' && c.add && c.add.games_tatzelwurm === 1);
+  check('Statistik: games/wins_tatzelwurm', log.length === 2 && log.every((c) => c.add.wins_tatzelwurm === 1), String(log.length));
+}
+
+/** Eine Edelweiß-Jagd (2 Runden) zu dritt auf einem bestimmten Brett starten (Brett-Menü: Platz {@code boardSlot}). */
+async function boardGame(list, boardSlot) {
+  clear(...list);
+  for (const b of list) {
+    let w = await openWithItem(b, 2);
+    if (w) await click(b, boardSlot);
+    w = await openWithItem(b, 3);
+    if (w) await click(b, MODE.jagd2);
+  }
+  return phase((x) => x.phase === 'turn', 40000);
+}
+
+/** Den aktuellen Zug so spielen, dass er genau auf Feld {@code target} landet. */
+async function landOn(g, target) {
+  await cmd(`mparty feld ${g.current} ${target - 1}`, `mparty wuerfel ${g.current} 1`);
+  await sleep(300);
+  const bot = bots[g.current];
+  await waitFor(() => slot(bot, 0)?.name === 'white_concrete', 5000);
+  await use(bot, 0);
+}
+
+async function newBoards() {
+  console.log('\n— Partie 15: die drei neuen Bretter zu dritt —');
+  const { Anna: anna, Bert: bert, Carl: carl } = bots;
+  const list = [anna, bert, carl];
+
+  // ---- Königssee: Fähre
+  let g = await boardGame(list, 20);
+  check('Königssee: Partie startet', g && g.board === 'koenigssee', g && g.board);
+  const ferry = fieldIndex(g, 'F', 0);
+  let who = g.current;
+  await landOn(g, ferry);
+  check('Königssee: Fähre im Chat (de/en)', await waitFor(() => sees(anna, new RegExp(`${who} nimmt die Fähre – quer über den See, \\d+ Felder voraus`)) &&
+    sees(bert, /takes the ferry/), 8000), anna.chats.slice(-3).join(' | '));
+  g = await phase((x) => x.current !== who || x.phase !== 'turn', 15000);
+  await sleep(3500);
+  g = await game();
+  check('Königssee: mindestens 6 Felder voraus auf einem einfachen Feld', g && pl(g, who).pos >= ferry + 6 && 'TVGP'.includes(g.fields[pl(g, who).pos]),
+    g && `${ferry} → ${pl(g, who).pos} (${g.fields[pl(g, who).pos]})`);
+  await cmd('mparty stopp');
+  await waitFor(() => list.every(inHub), 30000);
+
+  // ---- Wiesn: Riesenrad und Fahrgeschäft
+  g = await boardGame(list, 22);
+  check('Wiesn: Partie startet', g && g.board === 'wiesn', g && g.board);
+  const wheel = fieldIndex(g, 'R', 0);
+  who = g.current;
+  const others = g.players.filter((p) => p.name !== who).map((p) => p.name);
+  await cmd(`mparty feld ${others[0]} 30`, `mparty feld ${others[1]} 30`);
+  await landOn(g, wheel);
+  check('Wiesn: Riesenrad tauscht Plätze (de/en)', await waitFor(() => sees(anna, new RegExp(`${who} fährt Riesenrad und tauscht oben den Platz mit`)) &&
+    sees(bert, /rides the Ferris wheel/), 8000), anna.chats.slice(-3).join(' | '));
+  await sleep(2500);
+  g = await game();
+  check('Wiesn: nach dem Tausch auf Feld 30', g && pl(g, who).pos === 30 && others.some((n) => pl(g, n).pos === wheel),
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${p.pos}`)));
+  g = await phase((x) => x.phase === 'turn' && x.current !== who, 20000);
+  who = g.current;
+  const ride = fieldIndex(g, 'K', 0);
+  await landOn(g, ride);
+  check('Wiesn: Fahrgeschäft (Achterbahn, Autoscooter, Kettenkarussell oder Losbude)',
+    await waitFor(() => sees(anna, new RegExp(`${who} (fährt Achterbahn|rempelt im Autoscooter|fliegt im Kettenkarussell|zieht an der Losbude)`)), 8000),
+    anna.chats.slice(-3).join(' | '));
+  await cmd('mparty stopp');
+  await waitFor(() => list.every(inHub), 30000);
+
+  // ---- Wintersonnwend: Eis und Lawine
+  g = await boardGame(list, 24);
+  check('Wintersonnwend: Partie startet', g && g.board === 'wintersonnwend', g && g.board);
+  const ice = fieldIndex(g, 'E', 0);
+  let iceEnd = ice;
+  while (g.fields[iceEnd] === 'E') iceEnd++;
+  who = g.current;
+  await landOn(g, ice);
+  check('Wintersonnwend: Eis – rutscht weiter (de/en)', await waitFor(() => sees(anna, new RegExp(`${who} rutscht übers Eis`)) &&
+    sees(bert, /slides across the ice/), 8000), anna.chats.slice(-3).join(' | '));
+  g = await phase((x) => x.phase === 'turn' && x.current !== who, 20000);
+  const afterIce = pl(await game(), who).pos;
+  check('Wintersonnwend: bis ans Ende der Eisfläche', afterIce === iceEnd, `${ice} → ${afterIce} (Ende ${iceEnd})`);
+  who = g.current;
+  const aval = fieldIndex(g, 'A', 2);
+  const victim = g.players.find((p) => p.name !== who).name;
+  await cmd(`mparty feld ${victim} ${aval + 2}`);
+  await landOn(g, aval);
+  check('Wintersonnwend: Lawine (de/en)', await waitFor(() => sees(anna, new RegExp(`${who} tritt eine Lawine los! Zurück um 3: .*${victim}`)) &&
+    sees(bert, /sets off an avalanche/), 8000), anna.chats.slice(-3).join(' | '));
+  g = await phase((x) => x.phase === 'turn' && x.current !== who, 25000);
+  await sleep(1000);
+  g = await game();
+  check('Wintersonnwend: beide rutschen 3 zurück', g && pl(g, who).pos === aval - 3 && pl(g, victim).pos === aval - 1,
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${p.pos}`)));
+  await cmd('mparty stopp');
+  check('Neue Bretter: zurück auf den Festplatz', await waitFor(() => list.every(inHub), 30000));
+}
+
 /** Ergebniszeilen im Marathon („… → +10 Punkte“). */
-const resultLines2 = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Punkte|points)$/.test(c));
+const resultLines2 = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Punkte?|points?)$/.test(c));
 
 async function main() {
   await join('Anna');
@@ -1436,6 +1895,13 @@ async function main() {
   if (PARTS.includes(6)) await newMinis('Partie 6: neue Minispiele, Paket 3', PAKET3);
   if (PARTS.includes(7)) await marathon();
   if (PARTS.includes(8)) await teams();
+  if (PARTS.includes(9)) await seilschaft();
+  if (PARTS.includes(10)) await schnell();
+  if (PARTS.includes(11)) await bergduell();
+  if (PARTS.includes(12)) await huette();
+  if (PARTS.includes(13)) await turnier();
+  if (PARTS.includes(14)) await tatzelwurm();
+  if (PARTS.includes(15)) await newBoards();
   for (const b of Object.values(bots)) b.quit();
   await sleep(500);
   const failed = results.filter((r) => !r.ok).length;

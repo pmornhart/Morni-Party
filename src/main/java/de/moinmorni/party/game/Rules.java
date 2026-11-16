@@ -21,14 +21,21 @@ package de.moinmorni.party.game;
  * @param teamDraw        Team-Minispiel unentschieden: Taler für alle
  * @param soloWin         Einer gegen drei: Taler für den Einzelnen, wenn er gewinnt
  * @param soloFactor      Einer gegen drei: so oft zählen die Punkte des Einzelnen (sein Vorteil)
+ * @param lives           Hüttenaufstieg: Leben zu Beginn
  */
 public record Rules(int startTaler, int fieldPlus, int fieldMinus, int edelweissPrice, int duelStake, int steal,
         int luckTaler, int luckSteps, int shareTaler, int summitBonus, int maxItems, int raceMaxRounds, int[] awards,
-        int[] marathonPoints, int teamWin, int teamDraw, int soloWin, int soloFactor) {
+        int[] marathonPoints, int teamWin, int teamDraw, int soloWin, int soloFactor, int lives) {
 
     public static Rules defaults() {
         return new Rules(10, 3, 3, 20, 5, 7, 5, 3, 2, 5, 3, 20, new int[] {10, 6, 4, 3, 2, 1, 1, 1},
-                Marathon.DEFAULT_POINTS.clone(), 8, 3, 18, 4);
+                Marathon.DEFAULT_POINTS.clone(), 8, 3, 18, 4, Huette.DEFAULT_LIVES);
+    }
+
+    /** Dieselben Regeln mit anderen Start-Talern und anderem Edelweiß-Preis (Schnelle Partie). */
+    public Rules quick(int start, int price) {
+        return new Rules(start, fieldPlus, fieldMinus, price, duelStake, steal, luckTaler, luckSteps, shareTaler, summitBonus,
+                maxItems, raceMaxRounds, awards, marathonPoints, teamWin, teamDraw, soloWin, soloFactor, lives);
     }
 
     /** Taler für einen Platz (0 = erster). */

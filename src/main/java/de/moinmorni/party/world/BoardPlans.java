@@ -37,6 +37,11 @@ public final class BoardPlans {
             case LADEN -> "yellow_concrete";
             case GEGENSTAND -> "magenta_concrete";
             case ZIEL -> "gold_block";
+            case FAEHRE -> "cyan_concrete";
+            case RIESENRAD -> "pink_concrete";
+            case FAHRGESCHAEFT -> "purple_concrete";
+            case LAWINE -> "light_gray_concrete";
+            case EIS -> "packed_ice";
         };
     }
 
@@ -95,6 +100,9 @@ public final class BoardPlans {
             case ALMSOMMER -> alm(p, layout, t, r);
             case SCHLOSS -> castle(p, layout, t, r);
             case GOLDSTOLLEN -> mine(p, layout, t, r);
+            case KOENIGSSEE -> BoardPlans2.lake(p, layout, t, r);
+            case WIESN -> BoardPlans2.wiesn(p, layout, t, r);
+            case WINTERSONNWEND -> BoardPlans2.winter(p, layout, t, r);
         }
         p.connect();
         return p;
@@ -104,7 +112,9 @@ public final class BoardPlans {
         return switch (id) {
             case ALMSOMMER -> "stripped_spruce_wood[axis=y]";
             case SCHLOSS -> "polished_diorite";
-            case GOLDSTOLLEN -> "spruce_planks";
+            case GOLDSTOLLEN, KOENIGSSEE -> "spruce_planks";
+            case WIESN -> "stripped_oak_wood[axis=y]";
+            case WINTERSONNWEND -> "snow_block";
         };
     }
 
@@ -175,6 +185,20 @@ public final class BoardPlans {
             return tops[x + size][z + size];
         }
 
+        /** Nächstes Feld (Index) in der Nähe, oder -1. */
+        int nearestField(int x, int z) {
+            int best = -1;
+            double bd = 30;
+            for (Field f : layout.fields()) {
+                double d = Math.hypot(f.x() - x, f.z() - z);
+                if (d < bd) {
+                    bd = d;
+                    best = f.index();
+                }
+            }
+            return best;
+        }
+
         /** Höhe des nächsten Wegpunkts (nur in der Nähe des Wegs sinnvoll). */
         int pathHeight(int x, int z) {
             return (int) Math.round(pathY[x + size][z + size]);
@@ -210,7 +234,13 @@ public final class BoardPlans {
                 case ALMSOMMER -> 1.4;
                 case SCHLOSS -> 0.4;
                 case GOLDSTOLLEN -> 1.0;
+                case KOENIGSSEE -> 0.5;
+                case WIESN -> 0.35;
+                case WINTERSONNWEND -> 1.5;
             };
+            if (layout.id() == BoardId.KOENIGSSEE) {
+                return BoardPlans2.lakeTop(x, z, d, s, dist[x + size][z + size]);
+            }
             if (layout.id() == BoardId.SCHLOSS && base >= s.height() * CASTLE) {
                 // Burg: Terrassen mit senkrechten Mauern statt glattem Hang
                 return (int) (Math.round(base / STEP) * STEP);
@@ -288,6 +318,35 @@ public final class BoardPlans {
                 yield surface ? Decor.pick(r, "stone", "andesite", "tuff", "stone", "cobblestone", "gravel")
                         : Decor.rock(r, depth);
             }
+            case KOENIGSSEE -> BoardPlans2.lakeBlock(r, y, top, dist, x, z, t);
+            case WIESN -> {
+                if (surface && path) {
+                    yield dist <= PATH_CORE ? "dirt_path" : r.nextInt(4) == 0 ? "gravel" : "dirt_path";
+                }
+                if (surface) {
+                    yield r.nextInt(14) == 0 ? "moss_block" : "grass_block[snowy=false]";
+                }
+                yield depth <= 2 ? "dirt" : Decor.rock(r, depth);
+            }
+            case WINTERSONNWEND -> {
+                if (surface && path) {
+                    int field = t.nearestField(x, z);
+                    boolean icy = field >= 0 && t.layout.field(field).type() == FieldType.EIS;
+                    yield icy ? (dist <= PATH_CORE ? "blue_ice" : "packed_ice")
+                            : dist <= PATH_CORE ? "gravel" : r.nextInt(3) == 0 ? "andesite" : "light_gray_concrete_powder";
+                }
+                if (surface) {
+                    double band = Math.sin(x * 0.27 + z * 0.13) + Math.cos(x * 0.11 - z * 0.31);
+                    if (steep || band > 1.45) {
+                        yield Decor.pick(r, "stone", "andesite", "stone", "tuff", "snow_block");
+                    }
+                    if (band < -1.6) {
+                        yield r.nextBoolean() ? "packed_ice" : "snow_block";
+                    }
+                    yield "snow_block";
+                }
+                yield depth <= 1 && !steep ? "snow_block" : Decor.rock(r, depth);
+            }
         };
     }
 
@@ -295,6 +354,10 @@ public final class BoardPlans {
             Terrain t) {
         if (id == BoardId.SCHLOSS) {
             castleColumn(p, r, x, top, z, dist, h, t);
+            return;
+        }
+        if (id == BoardId.KOENIGSSEE) {
+            BoardPlans2.lakeColumn(p, r, x, top, z, dist, t);
             return;
         }
         if (dist <= PATH + 0.7) {
@@ -321,6 +384,30 @@ public final class BoardPlans {
                 if (!steep && dist > 3 && r.nextInt(60) == 0) {
                     p.setIfEmpty(x, top + 1, z, Decor.pick(r, "cobblestone_slab[type=bottom]", "brown_mushroom",
                             "dead_bush"));
+                }
+            }
+            case KOENIGSSEE -> {
+                // eigene Methode (lakeColumn)
+            }
+            case WIESN -> {
+                if (steep || Math.hypot(x, z) > t.island - 2) {
+                    return;
+                }
+                int roll = r.nextInt(100);
+                if (roll < 7) {
+                    p.setIfEmpty(x, top + 1, z, Decor.pick(r, "short_grass", "short_grass", "dandelion", "poppy",
+                            "oxeye_daisy", "red_tulip", "white_tulip"));
+                }
+            }
+            case WINTERSONNWEND -> {
+                if (Math.hypot(x, z) > t.island - 2) {
+                    return;
+                }
+                int roll = r.nextInt(100);
+                if (!steep && roll < 18) {
+                    p.setIfEmpty(x, top + 1, z, "snow[layers=" + (1 + r.nextInt(2)) + "]");
+                } else if (!steep && roll < 20 && dist > 5 && top < h * 0.78) {
+                    BoardPlans2.snowySpruce(p, x, top + 1, z, 5 + r.nextInt(4), r);
                 }
             }
         }
@@ -379,11 +466,11 @@ public final class BoardPlans {
     // ---------- Ausstattung je Brett ----------
 
     /** Ort in Polarkoordinaten (Abstand, Winkel) auf ganze Blöcke gerundet. */
-    private static int[] polar(double r, double a) {
+    static int[] polar(double r, double a) {
         return new int[] {(int) Math.round(Math.cos(a) * r), (int) Math.round(Math.sin(a) * r)};
     }
 
-    private static void foundation(Plan p, Terrain t, int x0, int z0, int x1, int z1, int floor, String block) {
+    static void foundation(Plan p, Terrain t, int x0, int z0, int x1, int z1, int floor, String block) {
         for (int x = x0; x <= x1; x++) {
             for (int z = z0; z <= z1; z++) {
                 int low = Math.abs(x) <= t.size && Math.abs(z) <= t.size ? t.top(x, z) : floor - 4;

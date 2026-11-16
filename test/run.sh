@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Echter Test von Morni Party: baut das Plugin und das Test-Netzwerk, richtet einen Paper-Server ein (offline, eigener
-# Port, RCON an), startet ihn, schickt Test-Spieler (mineflayer) durch drei Partien und hält ihn wieder an.
+# Port, RCON an), startet ihn, schickt Test-Spieler (mineflayer) durch bis zu 15 Partien und hält ihn wieder an.
 #
 #   test/run.sh                       # alles
 #   KEEP=1 test/run.sh                # Server danach laufen lassen (zum Nachschauen)
 #   KEEP=1 SKIP_TEST=1 test/run.sh    # nur Server starten
-#   PARTS=1,2 test/run.sh             # nur Partie 1 und 2 (3 = die restlichen acht Minispiele, 4–6 = neue Minispiele)
+#   PARTS=1,2 test/run.sh             # nur Partie 1 und 2 (3 = die restlichen acht Minispiele, 4–6 = neue Minispiele,
+#                                     # 7–14 = Spielarten, 15 = neue Bretter – Liste oben in party-test.cjs)
 #
 # Erwartet (Vorgaben für die MoinMorni-Sandbox, alles per Umgebungsvariable änderbar):
 #   PARTY_JAVA    Java 25 (Ordner; sonst die JDK 25 aus dem Cache, sonst JAVA_HOME)
@@ -82,6 +83,14 @@ edelweiss-jagd-runden: [2, 8]
 minispiel-marathon:
   runden: [3, 6]
   hoechstens: 16
+seilschaft:
+  runden: [3]
+schnelle-partie:
+  runden: 2
+bergduell:
+  runden: 2
+huettenaufstieg:
+  leben: 2
 zug:
   wuerfel-sekunden: 12
   menue-sekunden: 8
@@ -138,7 +147,7 @@ fi
 
 echo "== Test-Spieler"
 STATUS=0
-PARTS="${PARTS:-1,2,3,4,5,6,7}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
+PARTS="${PARTS:-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
 
 echo "== Fehler im Server-Log:"
 if grep -qE "ERROR|Exception" console.log; then

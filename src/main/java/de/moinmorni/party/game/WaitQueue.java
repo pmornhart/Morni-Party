@@ -86,19 +86,35 @@ public final class WaitQueue {
      */
     public List<UUID> take(int max) {
         List<UUID> out = new ArrayList<>();
+        takeGroups(max).forEach(out::addAll);
+        return out;
+    }
+
+    /** Wie {@link #take}, aber in Einheiten (Partys bleiben als Gruppe erkennbar, z. B. für Seilschaften). */
+    public List<List<UUID>> takeGroups(int max) {
+        List<List<UUID>> out = new ArrayList<>();
+        int n = 0;
         Iterator<List<UUID>> it = units.iterator();
         while (it.hasNext()) {
             List<UUID> u = it.next();
-            if (out.size() + u.size() <= max) {
-                out.addAll(u);
+            if (n + u.size() <= max) {
+                out.add(new ArrayList<>(u));
+                n += u.size();
                 it.remove();
             } else if (u.size() > max && out.isEmpty()) {
-                out.addAll(u.subList(0, max));
+                out.add(new ArrayList<>(u.subList(0, max)));
                 u.subList(0, max).clear();
                 break;
             }
         }
         return out;
+    }
+
+    /** Einheiten vorn wieder einreihen (wenn eine Partie sie doch nicht braucht). */
+    public void putBack(List<List<UUID>> groups) {
+        for (int i = groups.size() - 1; i >= 0; i--) {
+            units.addFirst(new ArrayList<>(groups.get(i)));
+        }
     }
 
     public void clear() {

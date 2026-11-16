@@ -56,7 +56,42 @@ public final class BoardLayout {
             case ALMSOMMER -> build(id, new Shape(42, 7, 30, 1.3, true, 0.25 * Math.PI), 0);
             case SCHLOSS -> build(id, new Shape(44, 9, 26, 1.2, true, 1.5 * Math.PI), 4);
             case GOLDSTOLLEN -> build(id, new Shape(42, 7, 26, 1.35, false, 0.9 * Math.PI), 8);
+            case KOENIGSSEE -> build(id, new Shape(46, 8, 3, 1.3, true, 0.75 * Math.PI), 2);
+            case WIESN -> build(id, new Shape(44, 9, 8, 1.25, true, 1.1 * Math.PI), 6);
+            case WINTERSONNWEND -> build(id, new Shape(42, 7, 32, 1.35, true, 0.4 * Math.PI), 10);
         };
+    }
+
+    /** Besondere Felder der neuen Bretter (ersetzen die übliche Folge an diesen Stellen). */
+    static java.util.Map<Integer, FieldType> specials(BoardId id) {
+        java.util.Map<Integer, FieldType> m = new java.util.HashMap<>();
+        switch (id) {
+            case KOENIGSSEE -> {
+                for (int i : new int[] {5, 16, 25}) {
+                    m.put(i, FieldType.FAEHRE);
+                }
+            }
+            case WIESN -> {
+                for (int i : new int[] {10, 26}) {
+                    m.put(i, FieldType.RIESENRAD);
+                }
+                for (int i : new int[] {4, 13, 20, 31}) {
+                    m.put(i, FieldType.FAHRGESCHAEFT);
+                }
+            }
+            case WINTERSONNWEND -> {
+                for (int i : new int[] {12, 23, 30}) {
+                    m.put(i, FieldType.LAWINE);
+                }
+                for (int i : new int[] {6, 7, 8, 17, 18, 27, 28}) {
+                    m.put(i, FieldType.EIS);
+                }
+            }
+            default -> {
+                // die ersten drei Bretter haben keine
+            }
+        }
+        return m;
     }
 
     static BoardLayout build(BoardId id, Shape s, int patternShift) {
@@ -73,6 +108,7 @@ public final class BoardLayout {
             }
         }
         double total = length[SAMPLES];
+        java.util.Map<Integer, FieldType> specials = specials(id);
         List<Field> fields = new ArrayList<>(FIELDS);
         int j = 0;
         for (int f = 0; f < FIELDS; f++) {
@@ -83,7 +119,7 @@ public final class BoardLayout {
             Sample p = samples.get(j);
             FieldType type = f == 0 ? FieldType.START
                     : f == FIELDS - 1 ? FieldType.ZIEL
-                    : PATTERN[(f - 1 + patternShift) % PATTERN.length];
+                    : specials.getOrDefault(f, PATTERN[(f - 1 + patternShift) % PATTERN.length]);
             fields.add(new Field(f, type, (int) Math.round(p.x()), (int) Math.round(p.y()), (int) Math.round(p.z())));
         }
         return new BoardLayout(id, s, fields, samples);
@@ -136,6 +172,35 @@ public final class BoardLayout {
     /** Index des Ziels. */
     public int goal() {
         return fields.size() - 1;
+    }
+
+    /** Königssee: so viele Felder bringt die Fähre mindestens voraus. */
+    public static final int FERRY = 6;
+
+    /**
+     * Königssee: wohin die Fähre von diesem Feld fährt – das erste einfache Feld (Taler, Verlust, Glück, Pech) mindestens
+     * {@link #FERRY} Felder weiter; das Boot fährt in gerader Linie über das Wasser. -1 = keine Fähre.
+     */
+    public int ferryTarget(int field) {
+        if (field < 0 || field >= fields.size() || fields.get(field).type() != FieldType.FAEHRE) {
+            return -1;
+        }
+        for (int j = field + FERRY; j < goal(); j++) {
+            FieldType t = fields.get(j).type();
+            if (t == FieldType.TALER || t == FieldType.VERLUST || t == FieldType.GLUECK || t == FieldType.PECH) {
+                return j;
+            }
+        }
+        return -1;
+    }
+
+    /** Wintersonnwend: Feld nach dem Ende der Eisfläche, auf der {@code field} liegt (oder {@code field} selbst). */
+    public int iceEnd(int field) {
+        int i = field;
+        while (i < goal() && fields.get(i).type() == FieldType.EIS) {
+            i++;
+        }
+        return i;
     }
 
     /** Felder, auf denen der Edelweiß-Stand stehen darf. */

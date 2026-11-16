@@ -31,8 +31,26 @@ public final class Engine {
 
     /** Was beim Draufkommen passiert. */
     public enum Kind {
-        NONE, TALER, LUCK, ITEM, DUEL, SHOP, GOAL
+        NONE, TALER, LUCK, ITEM, DUEL, SHOP, GOAL,
+        /** Königssee: Fähre (Position schon gesetzt, {@code steps} = so weit voraus). */
+        FERRY,
+        /** Wiesn: Riesenrad (Platz getauscht mit {@code others}). */
+        SWAP,
+        /** Wiesn: Fahrgeschäft ({@code ride}). */
+        RIDE,
+        /** Wintersonnwend: Lawine ({@code others}: wer wie weit zurückrutscht, auch man selbst). */
+        AVALANCHE,
+        /** Wintersonnwend: Eis ({@code steps} weiter rutschen). */
+        SLIDE
     }
+
+    /** Lawine: so weit rutscht man zurück, und so weit vor dem Auslöser reißt sie andere mit. */
+    public static final int AVALANCHE_BACK = 3;
+    public static final int AVALANCHE_REACH = 5;
+    /** Achterbahn: so weit vor. Autoscooter: so viele Felder dahinter, so viele Taler je Person. */
+    public static final int COASTER = 4;
+    public static final int BUMPER_REACH = 3;
+    public static final int BUMPER_TALER = 2;
 
     /**
      * Ergebnis eines Felds.
@@ -43,7 +61,12 @@ public final class Engine {
      * @param others  Taler-Änderung bei den anderen (Sammeln/Spendieren)
      */
     public record Outcome(FieldType field, Kind kind, int taler, int steps, ItemType item, Luck luck, boolean blocked,
-            Map<UUID, Integer> others) {
+            Map<UUID, Integer> others, Ride ride) {
+
+        public Outcome(FieldType field, Kind kind, int taler, int steps, ItemType item, Luck luck, boolean blocked,
+                Map<UUID, Integer> others) {
+            this(field, kind, taler, steps, item, luck, blocked, others, null);
+        }
     }
 
     /** Würfelduell. {@code winner} null = unentschieden. */
@@ -79,12 +102,61 @@ public final class Engine {
         this.players = new ArrayList<>(order);
         for (PartyPlayer p : players) {
             p.pos = 0;
-            p.taler = rules.startTaler();
+            p.purse.taler = rules.startTaler();
+            p.lives = rules.lives();
         }
         List<Integer> spots = board.standFields();
         // Der erste Stand steht nicht gleich am Anfang (nicht in den ersten 6 Feldern).
         List<Integer> far = spots.stream().filter(i -> i > DIE).toList();
         stand = (far.isEmpty() ? spots : far).get(rng.nextInt((far.isEmpty() ? spots : far).size()));
+    }
+
+    // ---------- Seilschaft ----------
+
+    /**
+     * Seilschaften bilden: je Gruppe ein gemeinsamer Geldbeutel (Start-Taler je Person zusammengelegt); die
+     * Zugreihenfolge wechselt zwischen den Seilschaften ({@link Seilschaft#order}).
+     */
+    public void team(List<List<UUID>> teams) {
+        List<PartyPlayer> ordered = new ArrayList<>();
+        for (List<UUID> member : Seilschaft.order(teams)) {
+            player(member.getFirst()).ifPresent(ordered::add);
+        }
+        for (int t = 0; t < teams.size(); t++) {
+            Purse shared = new Purse();
+            for (UUID u : teams.get(t)) {
+                Optional<PartyPlayer> p = player(u);
+                if (p.isPresent()) {
+                    p.get().purse = shared;
+                    p.get().team = t;
+                    shared.taler += rules.startTaler();
+                }
+            }
+        }
+        for (PartyPlayer p : players) {
+            if (!ordered.contains(p)) {
+                ordered.add(p);
+            }
+        }
+        players.clear();
+        players.addAll(ordered);
+        turn = 0;
+    }
+
+    /** Gehören zwei zur selben Seilschaft? */
+    public boolean mates(PartyPlayer a, PartyPlayer b) {
+        return a != b && a.team >= 0 && a.team == b.team;
+    }
+
+    /** Die Seilschaften (nur Aktive), in der Reihenfolge ihrer Nummer. */
+    public List<List<PartyPlayer>> teams() {
+        Map<Integer, List<PartyPlayer>> by = new java.util.TreeMap<>();
+        for (PartyPlayer p : active()) {
+            if (p.team >= 0) {
+                by.computeIfAbsent(p.team, k -> new ArrayList<>()).add(p);
+            }
+        }
+        return new ArrayList<>(by.values());
     }
 
     // ---------- Zustand ----------
@@ -167,6 +239,7 @@ public final class Engine {
      * Seilbahn zurück auf Feld 1 (mit Gipfel-Bonus).
      */
     public Step step(PartyPlayer p) {
+        p.walked++;
         if (p.pos == board.goal()) {
             if (mode == Mode.GIPFELRENNEN) {
                 return new Step(p.pos, false, false, true);
@@ -201,7 +274,7 @@ public final class Engine {
     // ---------- Edelweiß-Stand ----------
 
     public boolean canBuyEdelweiss(PartyPlayer p) {
-        return p.taler >= rules.edelweissPrice();
+        return p.taler() >= rules.edelweissPrice();
     }
 
     /** Ein Edelweiß kaufen; danach zieht der Stand weiter. */
@@ -209,8 +282,8 @@ public final class Engine {
         if (!canBuyEdelweiss(p)) {
             return false;
         }
-        p.taler -= rules.edelweissPrice();
-        p.edelweiss++;
+        p.purse.taler -= rules.edelweissPrice();
+        p.purse.edelweiss++;
         moveStand();
         return true;
     }
@@ -239,6 +312,9 @@ public final class Engine {
     /** Wirkung des Felds, auf dem {@code p} gerade steht. */
     public Outcome land(PartyPlayer p) {
         FieldType type = board.field(p.pos).type();
+        if (Teams.colour(type) == Teams.Colour.RED && type != FieldType.DUELL) {
+            p.redFields++;
+        }
         return switch (type) {
             case TALER -> new Outcome(type, Kind.TALER, p.addTaler(rules.fieldPlus()), 0, null, null, false, Map.of());
             case VERLUST -> {
@@ -262,6 +338,90 @@ public final class Engine {
             case LADEN -> new Outcome(type, Kind.SHOP, 0, 0, null, null, false, Map.of());
             case ZIEL -> new Outcome(type, Kind.GOAL, 0, 0, null, null, false, Map.of());
             case START -> new Outcome(type, Kind.NONE, 0, 0, null, null, false, Map.of());
+            case FAEHRE -> {
+                int to = board.ferryTarget(p.pos);
+                if (to < 0) {
+                    yield new Outcome(type, Kind.NONE, 0, 0, null, null, false, Map.of());
+                }
+                int steps = to - p.pos;
+                p.walked += steps;
+                p.pos = to;
+                yield new Outcome(type, Kind.FERRY, 0, steps, null, null, false, Map.of());
+            }
+            case RIESENRAD -> {
+                List<PartyPlayer> others = active().stream().filter(o -> o != p && !mates(o, p)).toList();
+                if (others.isEmpty()) {
+                    yield new Outcome(type, Kind.NONE, 0, 0, null, null, false, Map.of());
+                }
+                PartyPlayer o = others.get(rng.nextInt(others.size()));
+                if (consumeShield(o)) {
+                    yield new Outcome(type, Kind.SWAP, 0, 0, null, null, true, Map.of(o.uuid(), 0));
+                }
+                int mine = p.pos;
+                p.pos = o.pos;
+                o.pos = mine;
+                yield new Outcome(type, Kind.SWAP, 0, 0, null, null, false, Map.of(o.uuid(), 0));
+            }
+            case FAHRGESCHAEFT -> ride(p, Ride.values()[rng.nextInt(Ride.values().length)]);
+            case LAWINE -> {
+                Map<UUID, Integer> back = new LinkedHashMap<>();
+                boolean blocked = false;
+                for (PartyPlayer o : active()) {
+                    boolean hit = o == p || (o.pos > p.pos && o.pos <= p.pos + AVALANCHE_REACH);
+                    if (!hit) {
+                        continue;
+                    }
+                    if (consumeShield(o)) {
+                        blocked |= o == p;
+                        continue;
+                    }
+                    back.put(o.uuid(), Math.min(AVALANCHE_BACK, o.pos));
+                }
+                yield new Outcome(type, Kind.AVALANCHE, 0, -back.getOrDefault(p.uuid(), 0), null, null, blocked, back);
+            }
+            case EIS -> new Outcome(type, Kind.SLIDE, 0, board.iceEnd(p.pos) - p.pos, null, null, false, Map.of());
+        };
+    }
+
+    /** Ein Fahrgeschäft der Wiesn (öffentlich für Tests). */
+    public Outcome ride(PartyPlayer p, Ride ride) {
+        FieldType type = board.field(p.pos).type();
+        return switch (ride) {
+            case ACHTERBAHN -> new Outcome(type, Kind.RIDE, 0, Math.min(COASTER, board.goal() - p.pos), null, null, false,
+                    Map.of(), ride);
+            case AUTOSCOOTER -> {
+                Map<UUID, Integer> others = new LinkedHashMap<>();
+                int sum = 0;
+                for (PartyPlayer o : active()) {
+                    if (o == p || mates(o, p) || o.pos >= p.pos || o.pos < p.pos - BUMPER_REACH) {
+                        continue;
+                    }
+                    if (consumeShield(o)) {
+                        others.put(o.uuid(), 0);
+                        continue;
+                    }
+                    int paid = -o.addTaler(-BUMPER_TALER);
+                    others.put(o.uuid(), -paid);
+                    sum += paid;
+                }
+                p.addTaler(sum);
+                yield new Outcome(type, Kind.RIDE, sum, 0, null, null, false, others, ride);
+            }
+            case KETTENKARUSSELL -> {
+                int[] options = {-2, -1, 1, 2, 3};
+                int steps = options[rng.nextInt(options.length)];
+                steps = Math.max(-p.pos, Math.min(board.goal() - p.pos, steps));
+                yield new Outcome(type, Kind.RIDE, 0, steps, null, null, false, Map.of(), ride);
+            }
+            case LOSBUDE -> {
+                if (rng.nextBoolean()) {
+                    ItemType item = randomItem();
+                    if (giveItem(p, item)) {
+                        yield new Outcome(type, Kind.RIDE, 0, 0, item, null, false, Map.of(), ride);
+                    }
+                }
+                yield new Outcome(type, Kind.RIDE, p.addTaler(rules.luckTaler()), 0, null, null, false, Map.of(), ride);
+            }
         };
     }
 
@@ -278,7 +438,7 @@ public final class Engine {
             case SAMMELN -> {
                 int sum = 0;
                 for (PartyPlayer o : active()) {
-                    if (o != p) {
+                    if (o != p && !mates(o, p)) {
                         int paid = -o.addTaler(-rules.shareTaler());
                         others.put(o.uuid(), -paid);
                         sum += paid;
@@ -299,7 +459,7 @@ public final class Engine {
             case SPENDIEREN -> {
                 int sum = 0;
                 for (PartyPlayer o : active()) {
-                    if (o != p && p.taler >= rules.shareTaler()) {
+                    if (o != p && !mates(o, p) && p.taler() >= rules.shareTaler()) {
                         p.addTaler(-rules.shareTaler());
                         o.addTaler(rules.shareTaler());
                         others.put(o.uuid(), rules.shareTaler());
@@ -340,6 +500,7 @@ public final class Engine {
         }
         PartyPlayer win = a > b ? challenger : opponent;
         PartyPlayer lose = a > b ? opponent : challenger;
+        win.duelsWon++;
         if (consumeShield(lose)) {
             return new Duel(challenger.uuid(), opponent.uuid(), a, b, win.uuid(), 0, true);
         }
@@ -358,6 +519,7 @@ public final class Engine {
         }
         PartyPlayer win = winner.equals(challenger.uuid()) ? challenger : opponent;
         PartyPlayer lose = win == challenger ? opponent : challenger;
+        win.duelsWon++;
         if (consumeShield(lose)) {
             return new Duel(challenger.uuid(), opponent.uuid(), 0, 0, win.uuid(), 0, true);
         }
@@ -369,14 +531,14 @@ public final class Engine {
     // ---------- Laden und Gegenstände ----------
 
     public boolean canBuyItem(PartyPlayer p, ItemType item) {
-        return p.taler >= item.price() && p.items.size() < rules.maxItems();
+        return p.taler() >= item.price() && p.items.size() < rules.maxItems();
     }
 
     public boolean buyItem(PartyPlayer p, ItemType item) {
         if (!canBuyItem(p, item)) {
             return false;
         }
-        p.taler -= item.price();
+        p.purse.taler -= item.price();
         p.items.add(item);
         return true;
     }
@@ -406,6 +568,9 @@ public final class Engine {
             other = target == null ? null : player(target).filter(o -> !o.left && o != p).orElse(null);
             if (other == null) {
                 return new ItemUse(item, false, null, 0, false, "target");
+            }
+            if (item == ItemType.TALERKLAU && mates(p, other)) {
+                return new ItemUse(item, false, null, 0, false, "partner");
             }
         }
         if (item == ItemType.ZIELWUERFEL && (number < 1 || number > DIE)) {
@@ -545,6 +710,77 @@ public final class Engine {
         return got;
     }
 
+    /** Hüttenaufstieg: wer noch Leben hat (und nicht gegangen ist). */
+    public List<PartyPlayer> climbing() {
+        return active().stream().filter(p -> !p.out()).toList();
+    }
+
+    /** Ergebnis einer Hüttenaufstieg-Runde: wer ein Leben verlor, wer jetzt raus ist. */
+    public record Climb(List<UUID> lost, List<UUID> out) {
+    }
+
+    /**
+     * Hüttenaufstieg: nach dem Minispiel ({@code places}, nur wer noch klettert) verliert die untere Hälfte ein Leben
+     * ({@link Huette#losers}). Wer dabei auf 0 fällt, ist raus. Sieger des Minispiels zählen als Minispiel-Sieg.
+     */
+    public Climb climb(List<List<UUID>> places) {
+        List<UUID> lost = new ArrayList<>();
+        List<UUID> gone = new ArrayList<>();
+        if (!places.isEmpty()) {
+            for (UUID u : places.getFirst()) {
+                player(u).ifPresent(p -> p.minigamesWon++);
+            }
+        }
+        for (UUID u : Huette.losers(places)) {
+            Optional<PartyPlayer> p = player(u).filter(x -> !x.left && !x.out());
+            if (p.isEmpty()) {
+                continue;
+            }
+            p.get().lives--;
+            lost.add(u);
+            if (p.get().lives <= 0) {
+                p.get().lives = 0;
+                p.get().outRound = round;
+                gone.add(u);
+            }
+        }
+        if (climbing().size() <= 1) {
+            over = true;
+        }
+        return new Climb(lost, gone);
+    }
+
+    /**
+     * Turnier: {@code loser} ist in Runde {@code round} (1 = erste) ausgeschieden, {@code winner} hat ein Spiel
+     * gewonnen. Wer später ausscheidet, steht weiter vorn.
+     */
+    public void knockOut(UUID winner, UUID loser, int round) {
+        player(winner).ifPresent(p -> p.minigamesWon++);
+        player(loser).ifPresent(p -> p.outRound = Math.max(1, round));
+    }
+
+    /**
+     * Auszeichnungen vergeben (nur Edelweiß-Spielarten auf dem Brett): wer vorn liegt, bekommt ein Edelweiß dazu.
+     * Gibt die Vergabe zurück (zum Anzeigen).
+     */
+    public List<Awards.Award> awards(List<Awards.Type> enabled) {
+        if (!mode.board() || mode == Mode.GIPFELRENNEN) {
+            return List.of();
+        }
+        List<Awards.Award> out = Awards.pick(active(), enabled);
+        for (Awards.Award a : out) {
+            for (PartyPlayer p : a.winners()) {
+                p.purse.edelweiss++;
+            }
+        }
+        return out;
+    }
+
+    /** Gemeinsames Spiel: Treffer bzw. Punkte einer Person dazuzählen. */
+    public void addPoints(UUID u, int n) {
+        player(u).ifPresent(p -> p.minigamePoints += n);
+    }
+
     /** Nächste Runde (nach dem Minispiel). Danach prüfen, ob das Spiel vorbei ist. */
     public void nextRound() {
         round++;
@@ -569,14 +805,22 @@ public final class Engine {
     // ---------- Wertung ----------
 
     private Comparator<PartyPlayer> order() {
-        Comparator<PartyPlayer> byEdelweiss = Comparator.comparingInt((PartyPlayer p) -> -p.edelweiss);
-        Comparator<PartyPlayer> byTaler = Comparator.comparingInt((PartyPlayer p) -> -p.taler);
+        Comparator<PartyPlayer> byEdelweiss = Comparator.comparingInt((PartyPlayer p) -> -p.edelweiss());
+        Comparator<PartyPlayer> byTaler = Comparator.comparingInt((PartyPlayer p) -> -p.taler());
         if (mode == Mode.GIPFELRENNEN) {
             return Comparator.comparingInt((PartyPlayer p) -> p.finished == 0 ? Integer.MAX_VALUE : p.finished)
                     .thenComparingInt(p -> -p.pos).thenComparing(byEdelweiss).thenComparing(byTaler);
         }
         if (mode == Mode.MARATHON) {
             return Comparator.comparingInt((PartyPlayer p) -> -p.minigamePoints).thenComparingInt(p -> -p.minigamesWon);
+        }
+        if (mode == Mode.TATZELWURM) {
+            return Comparator.comparingInt((PartyPlayer p) -> 0); // gemeinsame Wertung: alle teilen sich den Platz
+        }
+        if (mode == Mode.HUETTE || mode == Mode.TURNIER) {
+            // Wer noch klettert, vor allen, die raus sind; dann mehr Leben; dann wer später rausflog
+            return Comparator.comparingInt((PartyPlayer p) -> p.out() ? 1 : 0).thenComparingInt(p -> -p.lives)
+                    .thenComparingInt(p -> -p.outRound);
         }
         return byEdelweiss.thenComparing(byTaler);
     }

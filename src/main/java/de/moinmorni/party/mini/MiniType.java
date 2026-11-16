@@ -40,7 +40,9 @@ public enum MiniType {
     /** Nur mit Seiten: 2 gegen 2 oder Duell. */
     TAUZIEHEN(Material.LEAD, 30, Scoring.Kind.POINTS, TauZiehen::new, TauZiehen::build),
     /** Nur einer gegen drei: der Einzelne jagt. */
-    GAMSJAGD(Material.GOAT_HORN, 45, Scoring.Kind.SURVIVAL, GamsJagd::new, GamsJagd::build);
+    GAMSJAGD(Material.GOAT_HORN, 45, Scoring.Kind.SURVIVAL, GamsJagd::new, GamsJagd::build),
+    /** Nur in der Spielart „Der Tatzelwurm“: alle zusammen gegen den Wurm. */
+    TATZELWURM(Material.DRAGON_HEAD, 240, Scoring.Kind.POINTS, false, TatzelwurmKampf::new, TatzelwurmKampf::build);
 
     private final Material icon;
     private final int seconds;
@@ -103,7 +105,7 @@ public enum MiniType {
      */
     public boolean fits(de.moinmorni.party.game.Teams.Format f) {
         return switch (f) {
-            case FREE -> this != TAUZIEHEN && this != GAMSJAGD;
+            case FREE -> this != TAUZIEHEN && this != GAMSJAGD && this != TATZELWURM;
             case TEAM -> java.util.List.of(TAUZIEHEN, SCHNEEBALLSCHLACHT, TALERREGEN, HOLZHACKER, GOLDWASCHEN, ENZIAN_SUCHE)
                     .contains(this);
             case SOLO -> java.util.List.of(GAMSJAGD, MURMELTIER, SCHEIBENSCHIESSEN, GOLDWASCHEN).contains(this);

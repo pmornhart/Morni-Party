@@ -26,11 +26,38 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param rules          Zahlen der Spielregeln
  * @param marathonRounds Minispiel-Marathon: Zahl der Minispiele zur Wahl
  * @param marathonMax    Minispiel-Marathon: höchstens so viele Leute (bis 16)
+ * @param seilschaftRounds Seilschaft: Rundenzahlen zur Wahl
+ * @param quick          Schnelle Partie: Runden, Start-Taler, Edelweiß-Preis, Minispiel-Dauer
+ * @param duelRounds     Bergduell: Runden
+ * @param hutMax         Hüttenaufstieg: spätestens nach so vielen Minispielen ist Schluss
+ * @param awards         Auszeichnungen am Ende einer Brett-Partie (leer = aus)
  */
 public record Settings(String world, int tables, int minPlayers, int maxPlayers, int countdown, int fullCountdown,
         boolean autoJoin, List<Integer> huntRounds, int turnSeconds, int menuSeconds, int stepTicks,
         List<MiniType> minigames, boolean fixedOrder, double miniFactor, Rules rules, List<Integer> marathonRounds,
-        int marathonMax) {
+        int marathonMax, List<Integer> seilschaftRounds, Quick quick, int duelRounds, int hutMax, List<de.moinmorni.party.game.Awards.Type> awards) {
+
+    /** Schnelle Partie: kurz und mit mehr Geld. */
+    public record Quick(int rounds, int startTaler, int edelweissPrice, double miniFactor) {
+    }
+
+    /** Dieselben Einstellungen für eine andere Welt/Tischzahl (Neuladen ändert Welt und Tische nicht). */
+    public Settings withPlace(String world, int tables) {
+        return new Settings(world, tables, minPlayers, maxPlayers, countdown, fullCountdown, autoJoin, huntRounds,
+                turnSeconds, menuSeconds, stepTicks, minigames, fixedOrder, miniFactor, rules, marathonRounds, marathonMax,
+                seilschaftRounds, quick, duelRounds, hutMax, awards);
+    }
+
+    /** Liste positiver Zahlen aus der config.yml (leer oder kaputt = Vorgabe). */
+    static List<Integer> numbers(FileConfiguration c, String path, List<Integer> fallback) {
+        List<Integer> out = new ArrayList<>();
+        for (Object o : c.getList(path, fallback)) {
+            if (o instanceof Number n && n.intValue() > 0 && !out.contains(n.intValue())) {
+                out.add(n.intValue());
+            }
+        }
+        return out.isEmpty() ? List.copyOf(fallback) : List.copyOf(out);
+    }
 
     public static Settings load(FileConfiguration c) {
         List<Integer> rounds = new ArrayList<>();
@@ -83,7 +110,8 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
                 Math.max(0, c.getInt("regeln.team-taler", d.teamWin())),
                 Math.max(0, c.getInt("regeln.team-unentschieden-taler", d.teamDraw())),
                 Math.max(0, c.getInt("regeln.einzel-taler", d.soloWin())),
-                Math.max(1, Math.min(5, c.getInt("regeln.einzel-faktor", d.soloFactor()))));
+                Math.max(1, Math.min(5, c.getInt("regeln.einzel-faktor", d.soloFactor()))),
+                Math.max(1, Math.min(9, c.getInt("huettenaufstieg.leben", d.lives()))));
         int min = Math.max(2, c.getInt("spieler.mindestens", 2));
         return new Settings(
                 c.getString("welt", "party"),
@@ -103,6 +131,32 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
                 rules,
                 List.copyOf(marathon),
                 Math.max(2, Math.min(de.moinmorni.party.game.Marathon.MAX_PLAYERS,
-                        c.getInt("minispiel-marathon.hoechstens", de.moinmorni.party.game.Marathon.MAX_PLAYERS))));
+                        c.getInt("minispiel-marathon.hoechstens", de.moinmorni.party.game.Marathon.MAX_PLAYERS))),
+                numbers(c, "seilschaft.runden", List.of(10, 15)),
+                new Quick(Math.max(1, c.getInt("schnelle-partie.runden", 5)),
+                        Math.max(0, c.getInt("schnelle-partie.start-taler", 20)),
+                        Math.max(1, c.getInt("schnelle-partie.edelweiss-preis", 15)),
+                        Math.max(0.2, Math.min(3.0, c.getDouble("schnelle-partie.dauer-faktor", 0.75)))),
+                Math.max(1, c.getInt("bergduell.runden", 8)),
+                Math.max(2, c.getInt("huettenaufstieg.hoechstens-minispiele", de.moinmorni.party.game.Huette.DEFAULT_MAX)),
+                awards(c));
+    }
+
+    private static List<de.moinmorni.party.game.Awards.Type> awards(FileConfiguration c) {
+        if (!c.getBoolean("auszeichnungen.an", true)) {
+            return List.of();
+        }
+        List<de.moinmorni.party.game.Awards.Type> out = new ArrayList<>();
+        List<String> wanted = c.isList("auszeichnungen.welche") ? c.getStringList("auszeichnungen.welche") : List.of();
+        if (wanted.isEmpty()) {
+            return List.of(de.moinmorni.party.game.Awards.Type.values());
+        }
+        for (String w : wanted) {
+            var t = de.moinmorni.party.game.Awards.Type.parse(w);
+            if (t != null && !out.contains(t)) {
+                out.add(t);
+            }
+        }
+        return List.copyOf(out);
     }
 }

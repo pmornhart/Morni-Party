@@ -101,7 +101,7 @@ public final class HubSigns {
         for (Store.Entry e : best) {
             c = c.append(Component.newline()).append(Texts.text(lang, "top.line", Placeholder.unparsed("pos",
                     String.valueOf(i++)), Placeholder.unparsed("name", e.name()),
-                    Placeholder.unparsed("wins", String.valueOf(e.wins())),
+                    Texts.count("wins", e.wins()),
                     Placeholder.unparsed("edelweiss", String.valueOf(e.edelweiss()))));
         }
         if (best.isEmpty()) {

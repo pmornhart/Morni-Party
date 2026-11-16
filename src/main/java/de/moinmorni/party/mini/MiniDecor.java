@@ -45,6 +45,7 @@ final class MiniDecor {
             case FOEHNSTURM -> foehnPeak(p, r);
             case TAUZIEHEN -> mudPit(p, r);
             case GAMSJAGD -> gamsRevier(p, r);
+            case TATZELWURM -> klamm(p, r);
         }
     }
 
@@ -1519,5 +1520,67 @@ final class MiniDecor {
             }
         }
         return 0;
+    }
+
+    /**
+     * Tatzelwurm: Felsenkessel in der Klamm – steile Felswände mit Moos, Glühflechten und Höhleneingängen, hängende
+     * Wurzeln, Tropfstein, Laternen, Fichten auf den Simsen; oben Schnee und Berge.
+     */
+    private static void klamm(Plan p, Random r) {
+        int h = TatzelwurmKampf.HALF;
+        for (int x = -60; x <= 60; x++) {
+            for (int z = -60; z <= 60; z++) {
+                double d = Math.hypot(x, z) + Math.sin(x * 0.23) * 1.5 + Math.cos(z * 0.19) * 1.5;
+                if (d < h + 2 || d > 58) {
+                    continue;
+                }
+                double t = Math.min(1, (d - h - 2) / 12.0);
+                int top = (int) Math.round(6 + 26 * Math.pow(t, 0.6) + Math.sin(x * 0.5 + z * 0.4) * 2);
+                for (int y = -6; y <= top; y++) {
+                    String b = Decor.rock(r, top - y);
+                    if (y == top) {
+                        b = top > 26 ? "snow_block" : top > 18 ? Decor.pick(r, "stone", "andesite", "gravel") : Decor.pick(r,
+                                "moss_block", "grass_block[snowy=false]", "mossy_cobblestone");
+                    }
+                    p.setIfEmpty(x, y, z, b);
+                }
+                // Glühflechten und Moos an der Wand zum Kessel hin
+                if (d < h + 5 && r.nextInt(5) == 0) {
+                    p.setIfEmpty(x, 2 + r.nextInt(5), z, r.nextBoolean() ? "moss_block" : "mossy_cobblestone");
+                }
+                if (top > 1 && top < 18 && r.nextInt(55) == 0) {
+                    Decor.spruce(p, x, top + 1, z, 5 + r.nextInt(4), r);
+                }
+            }
+        }
+        // Höhleneingänge (dunkle Löcher in der Wand) mit hängenden Wurzeln
+        for (int k = 0; k < 4; k++) {
+            double a = Math.toRadians(45 + k * 90);
+            int cx = (int) Math.round(Math.cos(a) * (h + 3));
+            int cz = (int) Math.round(Math.sin(a) * (h + 3));
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int y = 1; y <= 3; y++) {
+                    p.set(cx + dx, y, cz, "air");
+                    p.set(cx + dx, y, cz + (cz > 0 ? 1 : -1), "air");
+                }
+                p.set(cx + dx, 4, cz, "hanging_roots");
+            }
+            p.set(cx, 1, cz + (cz > 0 ? 2 : -2), "black_concrete");
+            p.set(cx, 2, cz + (cz > 0 ? 2 : -2), "black_concrete");
+        }
+        // Tropfsteine und Laternen am Rand des Kessels
+        for (int k = 0; k < 16; k++) {
+            double a = 2 * Math.PI * k / 16 + 0.1;
+            int x = (int) Math.round(Math.cos(a) * (h + 1.5));
+            int z = (int) Math.round(Math.sin(a) * (h + 1.5));
+            if (k % 2 == 0) {
+                p.setIfEmpty(x, 1, z, "pointed_dripstone[vertical_direction=up,thickness=tip]");
+            } else {
+                Decor.lanternPost(p, x, 1, z, "spruce_fence");
+            }
+        }
+        Decor.mountain(p, 0, 90, -6, 30, 70, r);
+        Decor.mountain(p, -80, 10, -6, 24, 56, r);
+        Decor.mountain(p, 80, 30, -6, 24, 60, r);
     }
 }

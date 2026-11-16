@@ -38,6 +38,9 @@ public final class Lobby {
     private final WaitQueue queue = new WaitQueue();
     private final Votes<BoardId> boardVotes = new Votes<>();
     private final Votes<GameKind> kindVotes = new Votes<>();
+    /** So oft wurde der Start schon verschoben, weil für die gewünschte Spielart Leute fehlen. */
+    private int postponed;
+    private static final int MAX_POSTPONE = 2;
     private final Random rng = new Random();
     private int countdown = -1;
 
@@ -66,12 +69,29 @@ public final class Lobby {
         out.add(new GameKind(Mode.GIPFELRENNEN, 0));
         plugin.settings().huntRounds().forEach(r -> out.add(new GameKind(Mode.EDELWEISS_JAGD, r)));
         plugin.settings().marathonRounds().forEach(r -> out.add(new GameKind(Mode.MARATHON, r)));
+        plugin.settings().seilschaftRounds().forEach(r -> out.add(new GameKind(Mode.SEILSCHAFT, r)));
+        out.add(new GameKind(Mode.SCHNELL, plugin.settings().quick().rounds()));
+        out.add(new GameKind(Mode.BERGDUELL, plugin.settings().duelRounds()));
+        out.add(new GameKind(Mode.HUETTE, 0));
+        out.add(new GameKind(Mode.TURNIER, 0));
+        out.add(new GameKind(Mode.TATZELWURM, 0));
         return out;
     }
 
     /** Höchstzahl für eine Spielart (Bretter 8, Marathon bis 16). */
     public int maxFor(Mode mode) {
-        return mode == Mode.MARATHON ? plugin.settings().marathonMax() : plugin.settings().maxPlayers();
+        return switch (mode) {
+            case MARATHON, HUETTE, TURNIER -> plugin.settings().marathonMax();
+            case SEILSCHAFT -> de.moinmorni.party.game.Seilschaft.evenMax(plugin.settings().maxPlayers());
+            default -> mode.fixedMax() > 0 ? Math.min(mode.fixedMax(), plugin.settings().maxPlayers())
+                    : plugin.settings().maxPlayers();
+        };
+    }
+
+    /** Ginge diese Spielart mit den Wartenden gerade (genug Leute, Seilschaft: gerade Zahl)? */
+    public boolean playable(Mode mode) {
+        int n = queue.fitting(maxFor(mode));
+        return mode == Mode.SEILSCHAFT ? n >= mode.minPlayers() : mode.fits(n);
     }
 
     /**
@@ -83,13 +103,13 @@ public final class Lobby {
         int marathon = 0;
         int other = 0;
         for (var e : count.entrySet()) {
-            if (e.getKey().mode() == Mode.MARATHON) {
+            if (maxFor(e.getKey().mode()) > plugin.settings().maxPlayers()) {
                 marathon = Math.max(marathon, e.getValue());
             } else {
                 other = Math.max(other, e.getValue());
             }
         }
-        return marathon > other ? maxFor(Mode.MARATHON) : plugin.settings().maxPlayers();
+        return marathon > other ? plugin.settings().marathonMax() : plugin.settings().maxPlayers();
     }
 
     /** Name einer Spielart mit Rundenzahl (für Menü und Seitenleiste). */
@@ -99,6 +119,12 @@ public final class Lobby {
             case EDELWEISS_JAGD -> Texts.text(lang, "mode.edelweiss-jagd.rounds", Placeholder.unparsed("n",
                     String.valueOf(k.rounds())));
             case MARATHON -> Texts.text(lang, "mode.marathon.rounds", Placeholder.unparsed("n", String.valueOf(k.rounds())));
+            case SEILSCHAFT -> Texts.text(lang, "mode.seilschaft.rounds", Placeholder.unparsed("n", String.valueOf(k.rounds())));
+            case SCHNELL -> Texts.text(lang, "mode.schnell.rounds", Placeholder.unparsed("n", String.valueOf(k.rounds())));
+            case BERGDUELL -> Texts.text(lang, "mode.bergduell.rounds", Placeholder.unparsed("n", String.valueOf(k.rounds())));
+            case HUETTE -> Texts.text(lang, "mode.huette");
+            case TURNIER -> Texts.text(lang, "mode.turnier");
+            case TATZELWURM -> Texts.text(lang, "mode.tatzelwurm");
         };
     }
 
@@ -297,8 +323,42 @@ public final class Lobby {
             }
             return false;
         }
-        GameKind kind = kindVotes.winner(kinds(), queue.all(), rng);
-        List<UUID> ids = queue.take(maxFor(kind.mode()));
+        List<GameKind> possible = kinds().stream().filter(k -> playable(k.mode())).toList();
+        // Liegt eine Spielart vorn, für die noch Leute fehlen (Seilschaft, Bergduell …), wird erst noch gewartet –
+        // höchstens zweimal, dann startet die beliebteste, die schon geht.
+        Map<GameKind, Integer> count = kindVotes.count(kinds(), queue.all());
+        int best = count.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        List<GameKind> top = count.entrySet().stream().filter(e -> best > 0 && e.getValue() == best).map(Map.Entry::getKey)
+                .toList();
+        if (!top.isEmpty() && top.stream().noneMatch(k -> playable(k.mode())) && postponed < MAX_POSTPONE) {
+            postponed++;
+            countdown = plugin.settings().countdown();
+            for (UUID u : queue.all()) {
+                Player p = plugin.getServer().getPlayer(u);
+                if (p != null) {
+                    String lang = plugin.lang(p);
+                    p.sendMessage(Texts.msg(lang, "queue.waitmode", Placeholder.component("mode", kindName(lang, top.getFirst())),
+                            Placeholder.unparsed("n", String.valueOf(top.getFirst().mode().minPlayers()))));
+                }
+            }
+            return false;
+        }
+        postponed = 0;
+        List<GameKind> wanted = top.stream().filter(k -> playable(k.mode())).toList();
+        GameKind kind = !wanted.isEmpty() ? wanted.get(rng.nextInt(wanted.size()))
+                : kindVotes.winner(possible.isEmpty() ? kinds() : possible, queue.all(), rng);
+        List<List<UUID>> groups = queue.takeGroups(maxFor(kind.mode()));
+        if (kind.mode() == Mode.SEILSCHAFT) {
+            groups = evenGroups(groups);
+            if (groups.stream().mapToInt(List::size).sum() < kind.mode().minPlayers()) {
+                // doch zu wenige (Partys passen nicht auf): ganz normale Edelweiß-Jagd
+                queue.putBack(groups);
+                kind = new GameKind(Mode.EDELWEISS_JAGD, kind.rounds());
+                groups = queue.takeGroups(maxFor(kind.mode()));
+            }
+        }
+        List<UUID> ids = new ArrayList<>();
+        groups.forEach(ids::addAll);
         List<Player> players = new ArrayList<>();
         for (UUID u : ids) {
             Player p = plugin.getServer().getPlayer(u);
@@ -317,11 +377,26 @@ public final class Lobby {
             boardVotes.forget(u);
             kindVotes.forget(u);
         });
-        Game g = new Game(plugin, table, board, kind, players);
+        Game g = new Game(plugin, table, board, kind, players, groups);
         plugin.games().add(g);
         g.start();
         refreshAll();
         return true;
+    }
+
+    /** Seilschaft: bei ungerader Zahl die letzte Einheit ungerader Größe wieder warten lassen. */
+    private List<List<UUID>> evenGroups(List<List<UUID>> groups) {
+        List<List<UUID>> out = new ArrayList<>(groups);
+        if (out.stream().mapToInt(List::size).sum() % 2 == 0) {
+            return out;
+        }
+        for (int i = out.size() - 1; i >= 0; i--) {
+            if (out.get(i).size() % 2 == 1) {
+                queue.putBack(List.of(out.remove(i)));
+                break;
+            }
+        }
+        return out;
     }
 
     // ---------- Abstimmung ----------
@@ -330,7 +405,8 @@ public final class Lobby {
         String lang = plugin.lang(p);
         Menu m = new Menu(3, Texts.text(lang, "vote.board.title"));
         Map<BoardId, Integer> count = boardVotes.count(List.of(BoardId.values()), queue.all());
-        Material[] icons = {Material.GRASS_BLOCK, Material.QUARTZ_BRICKS, Material.GOLD_ORE};
+        Material[] icons = {Material.GRASS_BLOCK, Material.QUARTZ_BRICKS, Material.GOLD_ORE, Material.WATER_BUCKET,
+            Material.CAKE, Material.SNOW_BLOCK};
         BoardId[] all = BoardId.values();
         for (int i = 0; i < all.length; i++) {
             BoardId b = all[i];
@@ -338,7 +414,7 @@ public final class Lobby {
             List<Component> lore = new ArrayList<>(Texts.lines(lang, "board." + b.id() + ".desc"));
             lore.add(Texts.text(lang, "vote.count", Placeholder.unparsed("n", String.valueOf(count.get(b)))));
             lore.add(Texts.text(lang, mine ? "vote.mine" : "vote.click"));
-            m.set(11 + i * 2, Items.glow(Items.named(icons[i], Math.max(1, count.get(b)), Texts.text(lang, "board." + b.id()),
+            m.set((i < 3 ? 11 : 20) + (i % 3) * 2, Items.glow(Items.named(icons[i], Math.max(1, count.get(b)), Texts.text(lang, "board." + b.id()),
                     lore), mine), who -> vote(who, () -> boardVotes.vote(who.getUniqueId(), b), Texts.text(plugin.lang(who),
                             "board." + b.id())));
         }
@@ -366,6 +442,11 @@ public final class Lobby {
                 Component name = kindName(lang, k);
                 List<Component> lore = new ArrayList<>(Texts.lines(lang, "mode." + k.mode().id() + ".desc"));
                 lore.add(Texts.text(lang, "vote.count", Placeholder.unparsed("n", String.valueOf(count.get(k)))));
+                if (!playable(mode)) {
+                    lore.add(Texts.text(lang, mode == Mode.SEILSCHAFT ? "vote.need.pairs" : mode == Mode.BERGDUELL ? "vote.need.two"
+                            : "vote.need", Placeholder.unparsed("n",
+                            String.valueOf(mode.minPlayers()))));
+                }
                 lore.add(Texts.text(lang, mine ? "vote.mine" : "vote.click"));
                 m.set(base + j, Items.glow(Items.named(icon(mode), Math.max(1, count.get(k)), name, lore), mine),
                         who -> vote(who, () -> kindVotes.vote(who.getUniqueId(), k), name));
@@ -379,6 +460,12 @@ public final class Lobby {
             case GIPFELRENNEN -> Material.LEATHER_BOOTS;
             case EDELWEISS_JAGD -> Material.LILY_OF_THE_VALLEY;
             case MARATHON -> Material.GOLDEN_BOOTS;
+            case SEILSCHAFT -> Material.LEAD;
+            case SCHNELL -> Material.CLOCK;
+            case BERGDUELL -> Material.IRON_SWORD;
+            case HUETTE -> Material.SPRUCE_DOOR;
+            case TURNIER -> Material.GOLDEN_HELMET;
+            case TATZELWURM -> Material.DRAGON_HEAD;
         };
     }
 
@@ -432,7 +519,7 @@ public final class Lobby {
         int i = 1;
         for (Store.Entry e : plugin.store().top(10)) {
             top.add(Texts.text(lang, "top.line", Placeholder.unparsed("pos", String.valueOf(i++)),
-                    Placeholder.unparsed("name", e.name()), Placeholder.unparsed("wins", String.valueOf(e.wins())),
+                    Placeholder.unparsed("name", e.name()), Texts.count("wins", e.wins()),
                     Placeholder.unparsed("edelweiss", String.valueOf(e.edelweiss()))));
         }
         if (top.isEmpty()) {
@@ -452,8 +539,8 @@ public final class Lobby {
         for (Mode mode : Mode.values()) {
             if (s.modeGames(mode.id()) > 0) {
                 out.add(Texts.text(lang, "stats.mode", Placeholder.component("mode", Texts.text(lang, "mode." + mode.id())),
-                        Placeholder.unparsed("games", String.valueOf(s.modeGames(mode.id()))),
-                        Placeholder.unparsed("wins", String.valueOf(s.modeWins(mode.id())))));
+                        Texts.count("games", s.modeGames(mode.id())),
+                        Texts.count("wins", s.modeWins(mode.id()))));
             }
         }
         return out;

@@ -25,7 +25,7 @@ final class Commands implements TabExecutor {
 
     private static final String ADMIN = "moinmorni.party.admin";
     private static final List<String> ADMIN_SUB = List.of("info", "zustand", "start", "stopp", "wuerfel", "taler",
-            "edelweiss", "feld", "stand", "gegenstand", "minispiel", "seiten", "neubauen", "neuladen");
+            "edelweiss", "feld", "stand", "gegenstand", "minispiel", "seiten", "wurm", "neubauen", "neuladen");
     private final PartyPlugin plugin;
 
     Commands(PartyPlugin plugin) {
@@ -126,7 +126,7 @@ final class Commands implements TabExecutor {
         int i = 1;
         for (Store.Entry e : top) {
             s.sendMessage(Texts.text(lang, "top.line", Placeholder.unparsed("pos", String.valueOf(i++)),
-                    Placeholder.unparsed("name", e.name()), Placeholder.unparsed("wins", String.valueOf(e.wins())),
+                    Placeholder.unparsed("name", e.name()), Texts.count("wins", e.wins()),
                     Placeholder.unparsed("edelweiss", String.valueOf(e.edelweiss()))));
         }
     }
@@ -204,6 +204,11 @@ final class Commands implements TabExecutor {
                 }
                 plugin.games().all().forEach(g -> g.forceFormat(f));
                 s.sendMessage(Texts.msg(lang, "admin.ok"));
+            }
+            case "wurm" -> {
+                Integer n = args.length > 1 ? number(args[1]) : null;
+                boolean ok = n != null && plugin.games().all().stream().anyMatch(g -> g.mini() != null && g.mini().adminSet("hp", n));
+                s.sendMessage(Texts.msg(lang, ok ? "admin.ok" : "admin.nogame"));
             }
             case "neubauen" -> {
                 s.sendMessage(Texts.msg(lang, "admin.rebuild"));

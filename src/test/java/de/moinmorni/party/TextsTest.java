@@ -25,8 +25,10 @@ import java.util.stream.Stream;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
 
 class TextsTest {
@@ -40,6 +42,9 @@ class TextsTest {
     /** Schlüssel in den Quelltexten: "mini.out", "queue.joined" … */
     // https://regex101.com/?flavor=java&regex=%22(%5Ba-z%5D%5Ba-z0-9-%5D*(%3F%3A%5C.%5Ba-z0-9-%5D%2B)%2B)%22&testString=Texts.msg(lang%2C%20%22queue.joined%22)
     private static final Pattern KEY = Pattern.compile("\"([a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)+)\"");
+    /** Einzahl/Mehrzahl: {@code <points_pl:'0#Punkte|1#Punkt|1<Punkte'/>} (Zahl dazu in {@code <points>}). */
+    // https://regex101.com/?flavor=java&regex=%3C(%5Ba-z_%5D%2B)_pl%3A'(%5B%5E'%5D*)'%2F%3E&testString=(%3Cpoints%3E%20%3Cpoints_pl%3A'0%23Punkte%7C1%23Punkt%7C1%3CPunkte'%2F%3E)
+    private static final Pattern CHOICE = Pattern.compile("<([a-z_]+)_pl:'([^']*)'/>");
 
     private static Set<String> placeholders(String text) {
         Set<String> out = new TreeSet<>();
@@ -77,12 +82,49 @@ class TextsTest {
                 String text = Texts.raw(lang, key);
                 TagResolver.Builder resolvers = TagResolver.builder();
                 placeholders(text).forEach(p -> resolvers.resolver(Placeholder.unparsed(p, "x")));
+                Matcher c = CHOICE.matcher(text);
+                while (c.find()) {
+                    resolvers.resolver(Formatter.choice(c.group(1) + "_pl", 2));
+                }
                 TagResolver all = resolvers.build();
                 for (String line : text.split("\n")) {
                     assertDoesNotThrow(() -> strict.deserialize(line, all), lang + " " + key + ": " + line);
                 }
             }
         }
+    }
+
+    /** Jedes gezählte Wort steht neben seiner Zahl und hat Formen für 0, 1 und mehr. */
+    @Test
+    void countedWordsHaveTheirNumber() {
+        for (String key : Texts.keys()) {
+            for (String lang : new String[] {"de", "en"}) {
+                String text = Texts.raw(lang, key);
+                Matcher c = CHOICE.matcher(text);
+                while (c.find()) {
+                    assertTrue(placeholders(text).contains(c.group(1)), lang + " " + key + ": <" + c.group(1) + "> fehlt");
+                    assertTrue(c.group(2).matches("0#[^|]+\\|1#[^|]+\\|1<[^|]+"), lang + " " + key + ": " + c.group(2));
+                }
+            }
+        }
+    }
+
+    @Test
+    void singularAndPluralReadNaturally() {
+        PlainTextComponentSerializer plain = PlainTextComponentSerializer.plainText();
+        TagResolver line = TagResolver.resolver(Placeholder.unparsed("pos", "1"), Placeholder.unparsed("name", "Anna"),
+                Placeholder.unparsed("prize", "+1"), Placeholder.unparsed("edelweiss", "2"));
+        assertTrue(plain.serialize(Texts.text("de", "mini.line.points", line, Texts.count("points", 1))).contains("(1 Punkt)"));
+        assertTrue(plain.serialize(Texts.text("de", "mini.line.points", line, Texts.count("points", 0))).contains("(0 Punkte)"));
+        assertTrue(plain.serialize(Texts.text("en", "mini.line.points", line, Texts.count("points", 7))).contains("(7 points)"));
+        assertEquals("+1 coin", plain.serialize(Texts.text("en", "mini.prize.taler", Texts.count("n", 1))));
+        assertEquals("+4 coins", plain.serialize(Texts.text("en", "mini.prize.taler", Texts.count("n", 4))));
+        assertEquals("1 Feld weit", plain.serialize(Texts.text("de", "roll.sub", Texts.count("n", 1))));
+        assertEquals("12 Felder weit", plain.serialize(Texts.text("de", "roll.sub", Texts.count("n", 12))));
+        assertTrue(plain.serialize(Texts.text("de", "top.line", line, Texts.count("wins", 1))).contains("1 Sieg ·"));
+        assertTrue(plain.serialize(Texts.text("de", "stats.mode", Placeholder.unparsed("mode", "Seilschaft"),
+                Texts.count("games", 1), Texts.count("wins", 0))).endsWith("1 Partie · 0 Siege"));
+        assertEquals("1 duel won", plain.serialize(Texts.text("en", "award.duellkoenig.value", Texts.count("n", 1))));
     }
 
     /** Minecraft zeigt nur Zeichen der „Basic Multilingual Plane“ – Emoji wie 🏆 wären ein leeres Kästchen. */
@@ -151,7 +193,7 @@ class TextsTest {
                             || k.endsWith(".properties") || k.endsWith(".net") || k.contains("block.")
                             || k.startsWith("entity.") || k.startsWith("ui.") || k.startsWith("item.armor")
                             || k.startsWith("regeln.") || k.startsWith("spieler.") || k.startsWith("warten.")
-                            || k.startsWith("zug.") || k.startsWith("minispiele.") || k.startsWith("minispiel-marathon.")
+                            || k.startsWith("zug.") || k.startsWith("minispiele.") || k.startsWith("minispiel-marathon.") || k.startsWith("seilschaft.") || k.startsWith("schnelle-partie.") || k.startsWith("bergduell.") || k.startsWith("huettenaufstieg.") || k.startsWith("auszeichnungen.")
                             || k.endsWith(".");
                     if (!code && !Texts.keys().contains(k)) {
                         missing.add(k + " (" + f.getFileName() + ")");

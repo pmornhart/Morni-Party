@@ -9,11 +9,15 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.Tag;
+import net.kyori.adventure.text.minimessage.tag.resolver.Formatter;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
 /**
  * Alle Texte für Spieler, auf Deutsch und Englisch, als MiniMessage. Eigene Farben: {@code <em>} Smaragd,
  * {@code <au>} Gold, {@code <bl>} Weiß-Blau, {@code <ed>} Edelweiß-Weiß. Namen von Spielern kommen immer als {@code Placeholder.unparsed} hinein.
+ * Gezählte Wörter stehen mit Einzahl und Mehrzahl im Text: {@code <points> <points_pl:'0#Punkte|1#Punkt|1<Punkte'/>}
+ * (Zahl und Wort kommen zusammen über {@link #count}).
  */
 public final class Texts {
 
@@ -166,12 +170,27 @@ public final class Texts {
                 "<em>Gold Mine</em>");
         t("board.goldstollen.desc", "<gray>Ein offenes Bergwerk: der Weg führt vorbei an</gray>\n<gray>Erzadern hinab zur Goldkammer.</gray>",
                 "<gray>An open mine: the path leads past ore veins</gray>\n<gray>down to the gold chamber.</gray>");
+        t("board.koenigssee", "<em>Königssee</em>", "<em>Königssee</em>");
+        t("board.koenigssee.short", "<em>Königssee</em>", "<em>Königssee</em>");
+        t("board.koenigssee.desc", "<gray>Auf Stegen über den Bergsee bis zur Kapelle</gray>\n<gray>auf der Insel – die Fähre kürzt ab.</gray>",
+                "<gray>Along jetties across the mountain lake to the</gray>\n<gray>chapel on the island – the ferry takes a shortcut.</gray>");
+        t("board.wiesn", "<em>Wiesn</em>", "<em>Wiesn</em>");
+        t("board.wiesn.short", "<em>Wiesn</em>", "<em>Wiesn</em>");
+        t("board.wiesn.desc", "<gray>Festwiese mit Bierzelten und Fahrgeschäften –</gray>\n<gray>das Riesenrad tauscht Plätze.</gray>",
+                "<gray>A fairground with beer tents and rides –</gray>\n<gray>the Ferris wheel swaps places.</gray>");
+        t("board.wintersonnwend", "<em>Wintersonnwend</em>", "<em>Winter Solstice</em>");
+        t("board.wintersonnwend.short", "<em>Wintersonnwend</em>", "<em>Winter Solstice</em>");
+        t("board.wintersonnwend.desc", "<gray>Verschneiter Berg mit Eis und Lawinen hinauf</gray>\n<gray>zum großen Sonnwendfeuer.</gray>",
+                "<gray>A snowy mountain with ice and avalanches up</gray>\n<gray>to the great solstice bonfire.</gray>");
         t("goal.almsommer", "das Gipfelkreuz",
                 "the summit cross");
         t("goal.schloss", "die Turmplattform",
                 "the tower platform");
         t("goal.goldstollen", "die Goldkammer",
                 "the gold chamber");
+        t("goal.koenigssee", "die Inselkapelle", "the island chapel");
+        t("goal.wiesn", "das Riesenrad", "the Ferris wheel");
+        t("goal.wintersonnwend", "das Sonnwendfeuer", "the solstice bonfire");
 
         // ---------- Spielarten ----------
         t("mode.gipfelrennen", "<au>Gipfelrennen</au>",
@@ -200,6 +219,185 @@ public final class Texts {
                 "<gray>Edelweiss Hunt in pairs: coins and edelweiss</gray>\n<gray>belong to both, minigames two against two.</gray>\n<gray>Parties of two are one rope team.</gray>");
         t("game.goal.seilschaft", "<gray>Ihr spielt in Seilschaften: Taler und Edelweiß gehören euch beiden. Nach <white><n></white> Runden gewinnt die Seilschaft mit den meisten Edelweiß (Stand: <au><price> Taler</au>). Minispiele sind zwei gegen zwei.</gray>",
                 "<gray>You play in rope teams: coins and edelweiss belong to both of you. After <white><n></white> rounds the team with the most edelweiss wins (stand: <au><price> coins</au>). Minigames are two against two.</gray>");
+        t("mode.schnell", "<yellow>Schnelle Partie</yellow>",
+                "<yellow>Quick Game</yellow>");
+        t("mode.schnell.rounds", "<yellow>Schnelle Partie</yellow> <gray>· <white><n></white> Runden</gray>",
+                "<yellow>Quick Game</yellow> <gray>· <white><n></white> rounds</gray>");
+        t("mode.schnell.line", "<yellow>Schnelle Partie</yellow> <gray>– <n> Runden, mehr Taler, günstigeres Edelweiß</gray>",
+                "<yellow>Quick Game</yellow> <gray>– <n> rounds, more coins, cheaper edelweiss</gray>");
+        t("mode.schnell.desc", "<gray>Edelweiß-Jagd für zwischendurch: wenige Runden,</gray>\n<gray>mehr Start-Taler, günstigeres Edelweiß</gray>\n<gray>und kürzere Minispiele.</gray>",
+                "<gray>Edelweiss Hunt for a quick break: few rounds,</gray>\n<gray>more starting coins, cheaper edelweiss</gray>\n<gray>and shorter minigames.</gray>");
+        t("game.goal.schnell", "<gray>Schnelle Partie: nur <white><n></white> Runden! Ihr startet mit mehr Talern, <ed>Edelweiß</ed> kostet nur <au><price> Taler</au>. Wer am Ende die meisten hat, gewinnt.</gray>",
+                "<gray>Quick game: only <white><n></white> rounds! You start with more coins and <ed>edelweiss</ed> costs only <au><price> coins</au>. Whoever has the most at the end wins.</gray>");
+        t("mode.bergduell", "<red>Bergduell</red>",
+                "<red>Mountain Duel</red>");
+        t("mode.bergduell.rounds", "<red>Bergduell</red> <gray>· 1 gegen 1, <white><n></white> Runden</gray>",
+                "<red>Mountain Duel</red> <gray>· 1 vs 1, <white><n></white> rounds</gray>");
+        t("mode.bergduell.line", "<red>Bergduell</red> <gray>– 1 gegen 1, <n> Runden, jedes Minispiel ein Duell</gray>",
+                "<red>Mountain Duel</red> <gray>– 1 vs 1, <n> rounds, every minigame a duel</gray>");
+        t("mode.bergduell.desc", "<gray>Nur ihr zwei auf dem Brett: Edelweiß-Jagd</gray>\n<gray>eins gegen eins, nach jeder Runde ein Duell-</gray>\n<gray>Minispiel (Tauziehen, Scheibenschießen …).</gray>",
+                "<gray>Just the two of you on the board: Edelweiss</gray>\n<gray>Hunt one against one, a duel minigame after</gray>\n<gray>every round (tug of war, target throwing …).</gray>");
+        t("game.goal.bergduell", "<gray>Bergduell: ihr zwei gegeneinander, <white><n></white> Runden. Nach jeder Runde ein Duell-Minispiel – der Sieger bekommt Taler. <ed>Edelweiß</ed> am Stand für <au><price> Taler</au>; wer mehr hat, gewinnt.</gray>",
+                "<gray>Mountain duel: the two of you against each other, <white><n></white> rounds. A duel minigame after every round – the winner gets coins. <ed>Edelweiss</ed> at the stand for <au><price> coins</au>; whoever has more wins.</gray>");
+        t("queue.waitmode", "<gray>Gewünscht ist</gray> <mode><gray> – dafür fehlen noch Leute (mindestens <n>). Wir warten noch etwas …</gray>",
+                "<gray>The vote is for</gray> <mode><gray> – there aren't enough players yet (at least <n>). Waiting a little longer …</gray>");
+        t("vote.need.two", "<red>Für genau zwei Leute (weitere warten auf die nächste Partie).</red>",
+                "<red>For exactly two players (others wait for the next game).</red>");
+        t("team.won.duel", "<au>★</au> <white><names></white> <gray>gewinnt das Duell –</gray> <au><n> Taler</au><gray>.</gray>",
+                "<au>★</au> <white><names></white> <gray>wins the duel –</gray> <au><n> coins</au><gray>.</gray>");
+        t("mode.huette", "<gold>Hüttenaufstieg</gold>",
+                "<gold>Hut Climb</gold>");
+        t("mode.huette.line", "<gold>Hüttenaufstieg</gold> <gray>– <n> Leben, die untere Hälfte verliert eins, wer zuletzt übrig ist, gewinnt</gray>",
+                "<gold>Hut Climb</gold> <gray>– <n> lives, the bottom half loses one, the last one standing wins</gray>");
+        t("mode.huette.desc", "<gray>Ohne Spielbrett: jeder hat Leben. Wer im</gray>\n<gray>Minispiel in der unteren Hälfte landet, verliert</gray>\n<gray>eins. Wer zuletzt übrig ist, erreicht die Hütte.</gray>",
+                "<gray>No board: everyone has lives. Whoever ends</gray>\n<gray>up in the bottom half of a minigame loses one.</gray>\n<gray>The last one standing reaches the hut.</gray>");
+        t("game.goal.huette", "<gray>Auf zur Hütte! Jeder hat <red><lives> ❤</red>. Nach jedem Minispiel verliert die untere Hälfte ein Leben – wer keins mehr hat, schaut zu. Wer zuletzt übrig ist, gewinnt.</gray>",
+                "<gray>Up to the hut! Everyone has <red><lives> ❤</red>. After every minigame the bottom half loses a life – whoever has none left watches. The last one standing wins.</gray>");
+        t("huette.next", "<gray>Etappe</gray> <white><n></white> <gray>·</gray> <white><left></white> <gray>noch dabei</gray>",
+                "<gray>Stage</gray> <white><n></white> <gray>·</gray> <white><left></white> <gray>still climbing</gray>");
+        t("huette.lost", "<white><name></white> <gray>verliert ein Leben –</gray> <red><hearts></red>",
+                "<white><name></white> <gray>loses a life –</gray> <red><hearts></red>");
+        t("huette.out", "<white><name></white> <gray>hat kein Leben mehr und schaut ab jetzt zu.</gray>",
+                "<white><name></white> <gray>has no lives left and watches from now on.</gray>");
+        t("huette.out.title", "<red>Keine Leben mehr</red>",
+                "<red>No lives left</red>");
+        t("huette.out.sub", "<gray>Du schaust jetzt zu – wer erreicht die Hütte?</gray>",
+                "<gray>You're watching now – who reaches the hut?</gray>");
+        t("huette.sub.lost", "<gray>Ein Leben weniger:</gray> <red><hearts></red>",
+                "<gray>One life less:</gray> <red><hearts></red>");
+        t("huette.sub.safe", "<gray>Sicher –</gray> <red><hearts></red>",
+                "<gray>Safe –</gray> <red><hearts></red>");
+        t("huette.standing", "<gold>━━ Noch <left> unterwegs zur Hütte ━━</gold>",
+                "<gold>━━ <left> still on the way to the hut ━━</gold>");
+        t("huette.standing.line", "<white><name></white> <red><hearts></red>",
+                "<white><name></white> <red><hearts></red>");
+        t("mini.prize.life", "<red>−1 ❤</red>", "<red>−1 ❤</red>");
+        t("mini.prize.safe", "<green>sicher</green>", "<green>safe</green>");
+        t("side.huette", "<gray>Etappe</gray> <white><round></white> <gray>· <left> dabei</gray>",
+                "<gray>Stage</gray> <white><round></white> <gray>· <left> left</gray>");
+        t("side.player.huette", "<name> <red><hearts></red>", "<name> <red><hearts></red>");
+        t("side.player.huette.out", "<dark_gray><st><name></st></dark_gray>", "<dark_gray><st><name></st></dark_gray>");
+        t("end.line.huette", "<au><pos>.</au> <white><name></white> <red><hearts></red> <gray>· <minis> <minis_pl:'0#Minispiele|1#Minispiel|1<Minispiele'/> gewonnen</gray>",
+                "<au><pos>.</au> <white><name></white> <red><hearts></red> <gray>· <minis> <minis_pl:'0#minigames|1#minigame|1<minigames'/> won</gray>");
+        t("mode.turnier", "<au>Gipfel-Turnier</au>",
+                "<au>Summit Cup</au>");
+        t("mode.turnier.line", "<au>Gipfel-Turnier</au> <gray>– <n> Leute im K.-o.-System, jedes Spiel ein Duell</gray>",
+                "<au>Summit Cup</au> <gray>– <n> players, knock-out, every match a duel</gray>");
+        t("mode.turnier.desc", "<gray>Ohne Spielbrett: K.-o.-Turnier aus</gray>\n<gray>Duell-Minispielen für 2 bis 16 Leute.</gray>\n<gray>Wer verliert, schaut zu – bis zum Finale.</gray>",
+                "<gray>No board: a knock-out cup of duel</gray>\n<gray>minigames for 2 to 16 players. Lose and</gray>\n<gray>you watch – all the way to the final.</gray>");
+        t("game.goal.turnier", "<gray>Gipfel-Turnier! Jedes Spiel ist ein Duell-Minispiel eins gegen eins – wer gewinnt, kommt weiter, wer verliert, schaut zu. Den Turnierbaum seht ihr auf der Tafel.</gray>",
+                "<gray>Summit Cup! Every match is a one-on-one duel minigame – win and you go through, lose and you watch. The bracket is on the board.</gray>");
+        t("turnier.round.1", "<au>Finale</au>", "<au>Final</au>");
+        t("turnier.round.2", "<gold>Halbfinale</gold>", "<gold>Semi-final</gold>");
+        t("turnier.round.3", "<yellow>Viertelfinale</yellow>", "<yellow>Quarter-final</yellow>");
+        t("turnier.round.4", "<yellow>Achtelfinale</yellow>", "<yellow>Round of 16</yellow>");
+        t("turnier.round", "<yellow>Runde <n></yellow>", "<yellow>Round <n></yellow>");
+        t("turnier.round.done", "<au>Turnier vorbei</au>", "<au>Cup over</au>");
+        t("turnier.match", "<round> <gray>–</gray> <white><one></white> <gray>gegen</gray> <white><two></white>",
+                "<round> <gray>–</gray> <white><one></white> <gray>vs</gray> <white><two></white>");
+        t("turnier.draw", "<gray>Unentschieden zwischen</gray> <white><one></white> <gray>und</gray> <white><two></white> <gray>– es gibt ein neues Duell!</gray>",
+                "<gray>A draw between</gray> <white><one></white> <gray>and</gray> <white><two></white> <gray>– there's a new duel!</gray>");
+        t("turnier.lot", "<gray>Wieder unentschieden – das Los schickt</gray> <white><winner></white> <gray>weiter.</gray>",
+                "<gray>A draw again – the lot sends</gray> <white><winner></white> <gray>through.</gray>");
+        t("turnier.through", "<white><winner></white> <gray>kommt weiter,</gray> <white><loser></white> <gray>ist raus.</gray>",
+                "<white><winner></white> <gray>goes through,</gray> <white><loser></white> <gray>is out.</gray>");
+        t("turnier.champion", "<au>★ <winner> gewinnt das Gipfel-Turnier! ★</au>",
+                "<au>★ <winner> wins the Summit Cup! ★</au>");
+        t("turnier.sub.through", "<green>Eine Runde weiter</green>", "<green>Through to the next round</green>");
+        t("turnier.sub.champion", "<au>Turniersieg!</au>", "<au>Cup winner!</au>");
+        t("turnier.sub.out", "<gray>Du schaust jetzt zu</gray>", "<gray>You're watching now</gray>");
+        t("turnier.reached.won", "<au>Turniersieg</au>", "<au>Cup winner</au>");
+        t("turnier.reached", "<gray>raus im</gray> <round>", "<gray>out in the</gray> <round>");
+        t("turnier.tafel.title", "<au><b>⛰ Gipfel-Turnier ⛰</b></au>", "<au><b>⛰ Summit Cup ⛰</b></au>");
+        t("turnier.tafel.vs", " <dark_gray>–</dark_gray> ", " <dark_gray>–</dark_gray> ");
+        t("turnier.tafel.won", "<green><b><name> ✔</b></green>", "<green><b><name> ✔</b></green>");
+        t("turnier.tafel.lost", "<gray><st><name></st></gray>", "<gray><st><name></st></gray>");
+        t("turnier.tafel.open", "<white><name></white>", "<white><name></white>");
+        t("turnier.tafel.bye", "<dark_gray>Freilos</dark_gray>", "<dark_gray>bye</dark_gray>");
+        t("turnier.tafel.champion", "<au>★ <name> ★</au>", "<au>★ <name> ★</au>");
+        t("side.turnier", "<round>", "<round>");
+        t("side.player.turnier", "<name> <green><wins>✔</green>", "<name> <green><wins>✔</green>");
+        t("end.line.turnier", "<au><pos>.</au> <white><name></white> <gray>–</gray> <reached>",
+                "<au><pos>.</au> <white><name></white> <gray>–</gray> <reached>");
+        t("mode.tatzelwurm", "<dark_green>Der Tatzelwurm</dark_green>",
+                "<dark_green>The Tatzelwurm</dark_green>");
+        t("mode.tatzelwurm.line", "<dark_green>Der Tatzelwurm</dark_green> <gray>– alle zusammen gegen den Wurm in der Klamm</gray>",
+                "<dark_green>The Tatzelwurm</dark_green> <gray>– everyone together against the worm in the gorge</gray>");
+        t("mode.tatzelwurm.desc", "<gray>Gemeinsam gegen den Tatzelwurm:</gray>\n<gray>drei Abschnitte, eine gemeinsame Wertung</gray>\n<gray>mit bis zu drei Sternen.</gray>",
+                "<gray>Together against the Tatzelwurm:</gray>\n<gray>three stages, one shared result</gray>\n<gray>with up to three stars.</gray>");
+        t("game.goal.tatzelwurm", "<gray>In der Klamm haust der Tatzelwurm! Haut ihn alle zusammen in drei Abschnitten, bevor die Zeit abläuft – je schneller und vorsichtiger, desto mehr Sterne.</gray>",
+                "<gray>The Tatzelwurm lives in the gorge! Beat it together in three stages before time runs out – the faster and more careful, the more stars.</gray>");
+        t("mini.tatzelwurm", "<dark_green>Der Tatzelwurm</dark_green>",
+                "<dark_green>The Tatzelwurm</dark_green>");
+        t("mini.tatzelwurm.desc", "<gray>Haut auf den Kopf, wenn er aus dem Boden bricht, auf die leuchtenden Schuppen, wenn er durch die Klamm jagt, und auf den Kopf, wenn er am Boden liegt. Schatten am Boden: ein Felsbrocken kommt! Bodenwellen: drüberspringen.</gray>",
+                "<gray>Hit the head when it bursts out of the ground, the glowing scales when it races through the gorge, and the head when it lies on the ground. Shadow on the ground: a boulder is coming! Shock waves: jump over them.</gray>");
+        t("mini.tatzelwurm.item", "<au>Wanderstock</au> <gray>– zuschlagen</gray>",
+                "<au>Walking stick</au> <gray>– hit</gray>");
+        t("mini.tatzelwurm.bar", "<dark_green>Tatzelwurm</dark_green> <red><hp></red><gray>/<max></gray> <gray>· deine Treffer:</gray> <au><hits></au>",
+                "<dark_green>Tatzelwurm</dark_green> <red><hp></red><gray>/<max></gray> <gray>· your hits:</gray> <au><hits></au>");
+        t("mini.tatzelwurm.closed", "<gray>Jetzt nicht – warte, bis der Kopf unten ist!</gray>",
+                "<gray>Not now – wait until the head is down!</gray>");
+        t("mini.tatzelwurm.scales", "<gray>Harte Schuppen – nur die leuchtenden sind verwundbar.</gray>",
+                "<gray>Hard scales – only the glowing ones can be hurt.</gray>");
+        t("mini.tatzelwurm.stunned", "<red>Benommen!</red>", "<red>Stunned!</red>");
+        t("mini.tatzelwurm.won", "<au>★</au> <white><name></white> <gray>landet den letzten Treffer – der Tatzelwurm ist besiegt!</gray>",
+                "<au>★</au> <white><name></white> <gray>lands the final hit – the Tatzelwurm is beaten!</gray>");
+        t("mini.tatzelwurm.phase.1", "<dark_green>Aus dem Boden!</dark_green>", "<dark_green>Out of the ground!</dark_green>");
+        t("mini.tatzelwurm.phase.1.sub", "<gray>Haut auf den Kopf, wenn er herausbricht</gray>",
+                "<gray>Hit the head when it bursts out</gray>");
+        t("mini.tatzelwurm.phase.2", "<gold>Die Jagd!</gold>", "<gold>The chase!</gold>");
+        t("mini.tatzelwurm.phase.2.sub", "<gray>Trefft die leuchtenden Schuppen – Vorsicht vor dem Kopf</gray>",
+                "<gray>Hit the glowing scales – watch out for the head</gray>");
+        t("mini.tatzelwurm.phase.3", "<red>Der Zorn!</red>", "<red>The rage!</red>");
+        t("mini.tatzelwurm.phase.3.sub", "<gray>Springt über die Wellen, haut auf den Kopf, wenn er am Boden liegt</gray>",
+                "<gray>Jump the waves, hit the head when it lies on the ground</gray>");
+        t("wurm.won", "<au>Geschafft!</au> <gray>Der Tatzelwurm ist besiegt – in</gray> <white><time></white><gray>,</gray> <white><stuns></white> <gray>mal benommen:</gray> <au><stars></au>",
+                "<au>Done!</au> <gray>The Tatzelwurm is beaten – in</gray> <white><time></white><gray>, stunned</gray> <white><stuns></white> <gray>times:</gray> <au><stars></au>");
+        t("wurm.lost", "<gray>Die Zeit ist um – der Tatzelwurm hat noch</gray> <red><hp>/<max></red><gray>. Beim nächsten Mal!</gray>",
+                "<gray>Time's up – the Tatzelwurm still has</gray> <red><hp>/<max></red><gray>. Next time!</gray>");
+        t("wurm.title.won", "<au>Tatzelwurm besiegt!</au>", "<au>Tatzelwurm beaten!</au>");
+        t("wurm.title.lost", "<red>Entkommen …</red>", "<red>It got away …</red>");
+        t("end.line.wurm", "<white><name></white> <gray>–</gray> <au><points> Treffer</au>",
+                "<white><name></white> <gray>–</gray> <au><points> <points_pl:'0#hits|1#hit|1<hits'/></au>");
+        t("award.header", "<au>━━ Auszeichnungen – je ein Edelweiß extra! ━━</au>",
+                "<au>━━ Awards – one extra edelweiss each! ━━</au>");
+        t("award.line", "<ed>✿</ed> <award><gray>:</gray> <white><names></white> <gray>(<what>)</gray>",
+                "<ed>✿</ed> <award><gray>:</gray> <white><names></white> <gray>(<what>)</gray>");
+        t("award.sub", "<white><names></white> <gray>– <what> –</gray> <ed>+1 ✿</ed>",
+                "<white><names></white> <gray>– <what> –</gray> <ed>+1 ✿</ed>");
+        t("award.wanderer", "<green>Wanderer</green>", "<green>Hiker</green>");
+        t("award.wanderer.value", "<n> <n_pl:'0#Felder|1#Feld|1<Felder'/> gelaufen", "<n> <n_pl:'0#fields|1#field|1<fields'/> walked");
+        t("award.minispiel-meister", "<au>Minispiel-Meister</au>", "<au>Minigame Master</au>");
+        t("award.minispiel-meister.value", "<n> <n_pl:'0#Minispiele|1#Minispiel|1<Minispiele'/> gewonnen",
+                "<n> <n_pl:'0#minigames|1#minigame|1<minigames'/> won");
+        t("award.pechvogel", "<gray>Pechvogel</gray>", "<gray>Unlucky Bird</gray>");
+        t("award.pechvogel.value", "<n>× auf roten Feldern", "<n>× on red fields");
+        t("award.duellkoenig", "<gold>Duellkönig</gold>", "<gold>Duel King</gold>");
+        t("award.duellkoenig.value", "<n> <n_pl:'0#Duelle|1#Duell|1<Duelle'/> gewonnen", "<n> <n_pl:'0#duels|1#duel|1<duels'/> won");
+        t("land.ferry", "<white><name></white> <gray>nimmt die Fähre – quer über den See,</gray> <white><n></white> <gray>Felder voraus!</gray>",
+                "<white><name></white> <gray>takes the ferry – across the lake,</gray> <white><n></white> <gray>fields ahead!</gray>");
+        t("land.wheel", "<white><name></white> <gray>fährt Riesenrad und tauscht oben den Platz mit</gray> <white><other></white><gray>!</gray>",
+                "<white><name></white> <gray>rides the Ferris wheel and swaps places with</gray> <white><other></white> <gray>at the top!</gray>");
+        t("land.wheel.blocked", "<white><name></white> <gray>will mit</gray> <white><other></white> <gray>tauschen – aber der</gray> <bl>Schild</bl> <gray>hält.</gray>",
+                "<white><name></white> <gray>wants to swap with</gray> <white><other></white> <gray>– but the</gray> <bl>shield</bl> <gray>holds.</gray>");
+        t("land.ice", "<white><name></white> <gray>rutscht übers Eis –</gray> <white><n></white> <gray>Felder weiter!</gray>",
+                "<white><name></white> <gray>slides across the ice –</gray> <white><n></white> <gray>fields on!</gray>");
+        t("land.avalanche", "<white><name></white> <gray>tritt eine Lawine los! Zurück um</gray> <white><n></white><gray>:</gray> <white><names></white>",
+                "<white><name></white> <gray>sets off an avalanche! Back by</gray> <white><n></white><gray>:</gray> <white><names></white>");
+        t("land.avalanche.blocked", "<white><name></white> <gray>tritt eine Lawine los – aber der</gray> <bl>Schild</bl> <gray>hält sie auf.</gray>",
+                "<white><name></white> <gray>sets off an avalanche – but the</gray> <bl>shield</bl> <gray>stops it.</gray>");
+        t("ride.achterbahn", "<white><name></white> <gray>fährt Achterbahn –</gray> <white><n></white> <gray>Felder vor!</gray>",
+                "<white><name></white> <gray>rides the roller coaster –</gray> <white><n></white> <gray>fields ahead!</gray>");
+        t("ride.achterbahn.title", "<light_purple>Achterbahn!</light_purple>", "<light_purple>Roller coaster!</light_purple>");
+        t("ride.autoscooter", "<white><name></white> <gray>rempelt im Autoscooter</gray> <white><count></white> <gray>an und kassiert</gray> <au><taler> Taler</au><gray>.</gray>",
+                "<white><name></white> <gray>bumps</gray> <white><count></white> <gray>in the bumper cars and collects</gray> <au><taler> coins</au><gray>.</gray>");
+        t("ride.autoscooter.title", "<light_purple>Autoscooter!</light_purple>", "<light_purple>Bumper cars!</light_purple>");
+        t("ride.kettenkarussell", "<white><name></white> <gray>fliegt im Kettenkarussell davon –</gray> <white><n></white> <gray>Felder weit!</gray>",
+                "<white><name></white> <gray>flies off the chain carousel –</gray> <white><n></white> <gray>fields away!</gray>");
+        t("ride.kettenkarussell.title", "<light_purple>Kettenkarussell!</light_purple>", "<light_purple>Chain carousel!</light_purple>");
+        t("ride.losbude", "<white><name></white> <gray>zieht an der Losbude:</gray> <item><au><taler></au>",
+                "<white><name></white> <gray>draws a ticket at the lottery stall:</gray> <item><au><taler></au>");
+        t("ride.losbude.title", "<light_purple>Losbude!</light_purple>", "<light_purple>Lottery stall!</light_purple>");
         t("rope.team", "<green>⛓</green> <white><names></white> <gray>– gemeinsam</gray> <au><taler> Taler</au>",
                 "<green>⛓</green> <white><names></white> <gray>– together</gray> <au><taler> coins</au>");
         t("side.rope", "<gray><pos>.</gray> <names> <ed>✿<edelweiss></ed> <au>●<taler></au>",
@@ -230,8 +428,8 @@ public final class Texts {
                 "<gray>Minigame <white><n></white> of <white><of></white></gray>");
         t("marathon.standing", "<au>━━ Zwischenstand nach <n> von <of> Minispielen ━━</au>",
                 "<au>━━ Standings after <n> of <of> minigames ━━</au>");
-        t("marathon.standing.line", "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> Punkte</au>",
-                "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> points</au>");
+        t("marathon.standing.line", "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> <points_pl:'0#Punkte|1#Punkt|1<Punkte'/></au>",
+                "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> <points_pl:'0#points|1#point|1<points'/></au>");
         t("game.goal.edelweiss-jagd", "<gray>Sammle Taler und kauf am wandernden Stand <ed>Edelweiß</ed> für <au><price> Taler</au>. Nach <white><n></white> Runden gewinnt, wer die meisten hat.</gray>",
                 "<gray>Collect coins and buy <ed>Edelweiss</ed> at the moving stand for <au><price> coins</au>. After <white><n></white> rounds, whoever has the most wins.</gray>");
         t("game.order", "<gray>Reihenfolge: <white><names></white></gray>",
@@ -250,8 +448,8 @@ public final class Texts {
                 "<au><s> s left – then the game rolls for you</au>");
         t("turn.auto", "<gray>Die Zeit ist um – das Spiel hat für dich gewürfelt.</gray>",
                 "<gray>Time's up – the game rolled for you.</gray>");
-        t("roll.sub", "<gray><n> Felder weit</gray>",
-                "<gray><n> fields</gray>");
+        t("roll.sub", "<gray><n> <n_pl:'0#Felder|1#Feld|1<Felder'/> weit</gray>",
+                "<gray><n> <n_pl:'0#fields|1#field|1<fields'/></gray>");
         t("roll.done", "<white><name></white> <gray>würfelt</gray> <au><dice></au><gray>.</gray>",
                 "<white><name></white> <gray>rolls</gray> <au><dice></au><gray>.</gray>");
         t("move.cablecar", "<white><name></white> <gray>ist oben angekommen und fährt mit der Seilbahn zurück ins Tal – <au>+<n> Taler</au> Gipfelbonus!</gray>",
@@ -312,6 +510,21 @@ public final class Texts {
                 "<yellow>Shop</yellow>");
         t("field.laden.sign", "<yellow><b>Krämerladen</b></yellow>\n<gray>Gegenstände kaufen</gray>",
                 "<yellow><b>Shop</b></yellow>\n<gray>Buy items</gray>");
+        t("field.faehre", "<aqua>Fähre</aqua>", "<aqua>Ferry</aqua>");
+        t("field.faehre.sign", "<aqua><b>Fähre</b></aqua>\n<gray>Quer über den See voraus</gray>",
+                "<aqua><b>Ferry</b></aqua>\n<gray>Across the lake, ahead</gray>");
+        t("field.riesenrad", "<light_purple>Riesenrad</light_purple>", "<light_purple>Ferris wheel</light_purple>");
+        t("field.riesenrad.sign", "<light_purple><b>Riesenrad</b></light_purple>\n<gray>Platz mit jemandem tauschen</gray>",
+                "<light_purple><b>Ferris wheel</b></light_purple>\n<gray>Swap places with someone</gray>");
+        t("field.fahrgeschaeft", "<dark_purple>Fahrgeschäft</dark_purple>", "<dark_purple>Ride</dark_purple>");
+        t("field.fahrgeschaeft.sign", "<dark_purple><b>Fahrgeschäft</b></dark_purple>\n<gray>Achterbahn, Autoscooter …</gray>",
+                "<dark_purple><b>Ride</b></dark_purple>\n<gray>Roller coaster, bumper cars …</gray>");
+        t("field.lawine", "<white>Lawine</white>", "<white>Avalanche</white>");
+        t("field.lawine.sign", "<white><b>Lawine</b></white>\n<gray>Alle in der Nähe rutschen zurück</gray>",
+                "<white><b>Avalanche</b></white>\n<gray>Everyone nearby slides back</gray>");
+        t("field.eis", "<aqua>Eis</aqua>", "<aqua>Ice</aqua>");
+        t("field.eis.sign", "<aqua><b>Eis</b></aqua>\n<gray>Rutsch weiter bis ans Ende</gray>",
+                "<aqua><b>Ice</b></aqua>\n<gray>Slide on to the end</gray>");
         t("field.gegenstand", "<light_purple>Fundstück</light_purple>",
                 "<light_purple>Lucky find</light_purple>");
         t("field.gegenstand.sign", "<light_purple><b>Fundstück</b></light_purple>\n<gray>Ein Gegenstand gratis</gray>",
@@ -336,16 +549,16 @@ public final class Texts {
         // ---------- Glück und Pech ----------
         t("luck.geschenk", "<em>Glück!</em> <gray>Der Almwirt spendiert <white><name></white></gray> <au><n> Taler</au><gray>.</gray>",
                 "<em>Lucky!</em> <gray>The innkeeper gives <white><name></white></gray> <au><n> coins</au><gray>.</gray>");
-        t("luck.rueckenwind", "<em>Glück!</em> <gray>Rückenwind – <white><name></white> zieht <white><steps></white> Felder weiter.</gray>",
-                "<em>Lucky!</em> <gray>Tailwind – <white><name></white> moves <white><steps></white> fields ahead.</gray>");
+        t("luck.rueckenwind", "<em>Glück!</em> <gray>Rückenwind – <white><name></white> zieht <white><steps></white> <steps_pl:'0#Felder|1#Feld|1<Felder'/> weiter.</gray>",
+                "<em>Lucky!</em> <gray>Tailwind – <white><name></white> moves <white><steps></white> <steps_pl:'0#fields|1#field|1<fields'/> ahead.</gray>");
         t("luck.sammeln", "<em>Glück!</em> <gray>Alle anderen geben <white><name></white> etwas ab – zusammen</gray> <au><n> Taler</au><gray>.</gray>",
                 "<em>Lucky!</em> <gray>Everyone else chips in for <white><name></white> –</gray> <au><n> coins</au> <gray>in total.</gray>");
         t("luck.fund", "<em>Glück!</em> <gray><white><name></white> findet etwas:</gray> <item>",
                 "<em>Lucky!</em> <gray><white><name></white> finds something:</gray> <item>");
         t("luck.steinschlag", "<red>Pech!</red> <gray>Steinschlag – <white><name></white> verliert</gray> <red><n> Taler</red><gray>.</gray>",
                 "<red>Bad luck!</red> <gray>Falling rocks – <white><name></white> loses</gray> <red><n> coins</red><gray>.</gray>");
-        t("luck.nebel", "<red>Pech!</red> <gray>Dichter Nebel – <white><name></white> muss <white><steps></white> Felder zurück.</gray>",
-                "<red>Bad luck!</red> <gray>Thick fog – <white><name></white> has to go back <white><steps></white> fields.</gray>");
+        t("luck.nebel", "<red>Pech!</red> <gray>Dichter Nebel – <white><name></white> muss <white><steps></white> <steps_pl:'0#Felder|1#Feld|1<Felder'/> zurück.</gray>",
+                "<red>Bad luck!</red> <gray>Thick fog – <white><name></white> has to go back <white><steps></white> <steps_pl:'0#fields|1#field|1<fields'/>.</gray>");
         t("luck.spendieren", "<red>Pech!</red> <gray><white><name></white> gibt eine Runde aus –</gray> <red><n> Taler</red> <gray>für die anderen.</gray>",
                 "<red>Bad luck!</red> <gray><white><name></white> buys a round –</gray> <red><n> coins</red> <gray>for the others.</gray>");
         t("luck.verloren", "<red>Pech!</red> <gray>Aus dem Rucksack von <white><name></white> fällt etwas heraus: <item> (oder ein paar Taler).</gray>",
@@ -529,20 +742,20 @@ public final class Texts {
                 "<au>━━ Result: <name> ━━</au>");
         t("mini.line", "<au><pos>.</au> <white><name></white> <gray>→</gray> <au><prize></au>",
                 "<au><pos>.</au> <white><name></white> <gray>→</gray> <au><prize></au>");
-        t("mini.line.points", "<au><pos>.</au> <white><name></white> <gray>(<points> Punkte) →</gray> <au><prize></au>",
-                "<au><pos>.</au> <white><name></white> <gray>(<points> points) →</gray> <au><prize></au>");
+        t("mini.line.points", "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#Punkte|1#Punkt|1<Punkte'/>) →</gray> <au><prize></au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#points|1#point|1<points'/>) →</gray> <au><prize></au>");
         t("mini.line.finish", "<au><pos>.</au> <white><name></white> <gray>(im Ziel nach <time> s) →</gray> <au><prize></au>",
                 "<au><pos>.</au> <white><name></white> <gray>(finished in <time> s) →</gray> <au><prize></au>");
-        t("mini.line.way", "<au><pos>.</au> <white><name></white> <gray>(<points> Blöcke weit) →</gray> <au><prize></au>",
-                "<au><pos>.</au> <white><name></white> <gray>(<points> blocks far) →</gray> <au><prize></au>");
+        t("mini.line.way", "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#Blöcke|1#Block|1<Blöcke'/> weit) →</gray> <au><prize></au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#blocks|1#block|1<blocks'/> far) →</gray> <au><prize></au>");
         t("mini.line.top", "<au><pos>.</au> <white><name></white> <gray>(oben nach <time> s) →</gray> <au><prize></au>",
                 "<au><pos>.</au> <white><name></white> <gray>(at the top in <time> s) →</gray> <au><prize></au>");
-        t("mini.line.height", "<au><pos>.</au> <white><name></white> <gray>(<points> Blöcke hoch) →</gray> <au><prize></au>",
-                "<au><pos>.</au> <white><name></white> <gray>(<points> blocks high) →</gray> <au><prize></au>");
+        t("mini.line.height", "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#Blöcke|1#Block|1<Blöcke'/> hoch) →</gray> <au><prize></au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#blocks|1#block|1<blocks'/> high) →</gray> <au><prize></au>");
         t("mini.prize.taler", "+<n> Taler",
-                "+<n> coins");
-        t("mini.prize.points", "+<n> Punkte",
-                "+<n> points");
+                "+<n> <n_pl:'0#coins|1#coin|1<coins'/>");
+        t("mini.prize.points", "+<n> <n_pl:'0#Punkte|1#Punkt|1<Punkte'/>",
+                "+<n> <n_pl:'0#points|1#point|1<points'/>");
         t("mini.got.points", "<au>+<n> Punkte</au>",
                 "<au>+<n> points</au>");
         t("mini.won", "<au>Gewonnen!</au>",
@@ -681,8 +894,8 @@ public final class Texts {
                 "<gray>Your stock: <colour></gray>");
         t("mini.eisstockschiessen.round", "<au>Wurf <n> von <of></au>",
                 "<au>Throw <n> of <of></au>");
-        t("mini.eisstockschiessen.lead", "<gray>Nach Wurf <n> liegt <white><name></white> vorn: <au><points> Punkte</au>.</gray>",
-                "<gray>After throw <n>, <white><name></white> leads: <au><points> points</au>.</gray>");
+        t("mini.eisstockschiessen.lead", "<gray>Nach Wurf <n> liegt <white><name></white> vorn: <au><points> <points_pl:'0#Punkte|1#Punkt|1<Punkte'/></au>.</gray>",
+                "<gray>After throw <n>, <white><name></white> leads: <au><points> <points_pl:'0#points|1#point|1<points'/></au>.</gray>");
         t("mini.eisstockschiessen.nobody", "<gray>Nach Wurf <n> liegt noch kein Stock in den Ringen.</gray>",
                 "<gray>After throw <n>, no stone is inside the rings yet.</gray>");
         t("mini.eisstockschiessen.item", "<em>Eisstock</em>",
@@ -767,8 +980,8 @@ public final class Texts {
                 "<au><b>Final lap!</b></au>");
         t("mini.schlittenrennen.lap.bar", "<aqua>Runde <white><n></white>/<of> · Tor <white><gate></white>/<gates></aqua>",
                 "<aqua>Lap <white><n></white>/<of> · gate <white><gate></white>/<gates></aqua>");
-        t("mini.line.gates", "<au><pos>.</au> <white><name></white> <gray>(<points> Tore) →</gray> <au><prize></au>",
-                "<au><pos>.</au> <white><name></white> <gray>(<points> gates) →</gray> <au><prize></au>");
+        t("mini.line.gates", "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#Tore|1#Tor|1<Tore'/>) →</gray> <au><prize></au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> <points_pl:'0#gates|1#gate|1<gates'/>) →</gray> <au><prize></au>");
         t("mini.enziansuche", "<au>Enzian-Suche</au>",
                 "<au>Gentian Hunt</au>");
         t("mini.enziansuche.desc", "<gray>Auf der bunten Almwiese wachsen blaue Enziane – versteckt im hohen Gras, hinter Felsen und Büschen. Finden und pflücken (Schlag oder Rechtsklick)! Jeder ist ein Punkt.</gray>",
@@ -854,8 +1067,8 @@ public final class Texts {
                 "<au>━━ The game is over! ━━</au>");
         t("end.line", "<au><pos>.</au> <white><name></white> <gray>–</gray> <ed>✿ <edelweiss></ed> <au>● <taler></au> <gray>· Feld <field></gray>",
                 "<au><pos>.</au> <white><name></white> <gray>–</gray> <ed>✿ <edelweiss></ed> <au>● <taler></au> <gray>· field <field></gray>");
-        t("end.line.marathon", "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> Punkte</au> <gray>· <minis> Minispiele gewonnen</gray>",
-                "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> points</au> <gray>· <minis> minigames won</gray>");
+        t("end.line.marathon", "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> <points_pl:'0#Punkte|1#Punkt|1<Punkte'/></au> <gray>· <minis> <minis_pl:'0#Minispiele|1#Minispiel|1<Minispiele'/> gewonnen</gray>",
+                "<au><pos>.</au> <white><name></white> <gray>–</gray> <au><points> <points_pl:'0#points|1#point|1<points'/></au> <gray>· <minis> <minis_pl:'0#minigames|1#minigame|1<minigames'/> won</gray>");
         t("end.won", "<au><b>Gewonnen!</b></au>",
                 "<au><b>You won!</b></au>");
         t("end.title", "<gray>Vorbei!</gray>",
@@ -884,14 +1097,14 @@ public final class Texts {
                 "<au>━━ Stats of <white><name></white> ━━</au>");
         t("stats.lines", "<gray>Partien: <white><games></white> · Siege: <white><wins></white></gray>\n<gray>Edelweiß gesamt: <ed><edelweiss></ed> · Bestwert: <ed><best></ed></gray>\n<gray>Minispiele gewonnen: <white><minis></white> · Gipfel: <white><summits></white></gray>",
                 "<gray>Games: <white><games></white> · Wins: <white><wins></white></gray>\n<gray>Edelweiss total: <ed><edelweiss></ed> · Best: <ed><best></ed></gray>\n<gray>Minigames won: <white><minis></white> · Summits: <white><summits></white></gray>");
-        t("stats.mode", "<gray><mode>: <white><games></white> Partien · <white><wins></white> Siege</gray>",
-                "<gray><mode>: <white><games></white> games · <white><wins></white> wins</gray>");
+        t("stats.mode", "<gray><mode>: <white><games></white> <games_pl:'0#Partien|1#Partie|1<Partien'/> · <white><wins></white> <wins_pl:'0#Siege|1#Sieg|1<Siege'/></gray>",
+                "<gray><mode>: <white><games></white> <games_pl:'0#games|1#game|1<games'/> · <white><wins></white> <wins_pl:'0#wins|1#win|1<wins'/></gray>");
         t("stats.none", "<gray><white><name></white> hat noch keine Partie gespielt.</gray>",
                 "<gray><white><name></white> hasn't played a game yet.</gray>");
         t("top.title", "<au>★ Bestenliste (Siege)</au>",
                 "<au>★ Leaderboard (wins)</au>");
-        t("top.line", "<au><pos>.</au> <white><name></white> <gray><wins> Siege · </gray><ed>✿<edelweiss></ed>",
-                "<au><pos>.</au> <white><name></white> <gray><wins> wins · </gray><ed>✿<edelweiss></ed>");
+        t("top.line", "<au><pos>.</au> <white><name></white> <gray><wins> <wins_pl:'0#Siege|1#Sieg|1<Siege'/> · </gray><ed>✿<edelweiss></ed>",
+                "<au><pos>.</au> <white><name></white> <gray><wins> <wins_pl:'0#wins|1#win|1<wins'/> · </gray><ed>✿<edelweiss></ed>");
         t("top.empty", "<gray>Noch frei – sei die oder der Erste!</gray>",
                 "<gray>Still empty – be the first!</gray>");
         t("sign.welcome", "<ed><b>✿</b></ed> <au><b>Morni Party</b></au> <ed><b>✿</b></ed>\n<gray>Würfeln, Taler sammeln, <ed>Edelweiß</ed> kaufen</gray>\n<gray>und nach jeder Runde ein Minispiel!</gray>\n<gray><white>Farbe</white>: mitspielen · <white>Karte/Uhr</white>: abstimmen</gray>",
@@ -929,6 +1142,14 @@ public final class Texts {
         t("admin.reloaded", "<gray>Einstellungen neu geladen (gilt für neue Partien).</gray>",
                 "<gray>Settings reloaded (for new games).</gray>");
 
+    }
+
+    /**
+     * Eine Zahl als Platzhalter {@code <key>} und dazu {@code <key_pl:'…'/>}, das im Text das passende Wort wählt
+     * (Java-{@code ChoiceFormat}: {@code 0#Punkte|1#Punkt|1<Punkte}) – „1 Punkt“, „2 Punkte“, in jeder Sprache richtig.
+     */
+    public static TagResolver count(String key, long n) {
+        return TagResolver.resolver(Placeholder.unparsed(key, String.valueOf(n)), Formatter.choice(key + "_pl", n));
     }
 
     /** Alle Schlüssel (für Tests). */

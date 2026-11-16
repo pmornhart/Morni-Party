@@ -248,10 +248,7 @@ public final class PartyPlugin extends JavaPlugin {
     void reloadSettings() {
         reloadConfig();
         Settings fresh = Settings.load(getConfig());
-        settings = new Settings(settings.world(), settings.tables(), fresh.minPlayers(), fresh.maxPlayers(),
-                fresh.countdown(), fresh.fullCountdown(), fresh.autoJoin(), fresh.huntRounds(), fresh.turnSeconds(),
-                fresh.menuSeconds(), fresh.stepTicks(), fresh.minigames(), fresh.fixedOrder(), fresh.miniFactor(),
-                fresh.rules(), fresh.marathonRounds(), fresh.marathonMax());
+        settings = fresh.withPlace(settings.world(), settings.tables());
     }
 
     /** /mparty neubauen: alles abbrechen und frisch bauen. */

@@ -13,8 +13,10 @@ public final class PartyPlayer {
     private final String name;
     private final int colour;
     int pos;
-    int taler;
-    int edelweiss;
+    /** Taler und Edelweiß (in der Seilschaft mit dem Partner geteilt). */
+    Purse purse = new Purse();
+    /** Seilschaft: Nummer der Seilschaft (-1 = keine). */
+    int team = -1;
     final List<ItemType> items = new ArrayList<>();
     boolean shield;
     boolean doubleDice;
@@ -25,6 +27,13 @@ public final class PartyPlayer {
     int finished;
     int minigamesWon;
     int minigamePoints;
+    /** Für die Auszeichnungen: gelaufene Felder, rote Felder, gewonnene Duelle. */
+    int walked;
+    int redFields;
+    int duelsWon;
+    /** Hüttenaufstieg: Leben übrig (0 = raus) und in welchem Minispiel jemand rausflog. */
+    int lives;
+    int outRound;
     /** Nur für Tests/Verwaltung: feste nächste Würfe. */
     final Deque<Integer> fixed = new ArrayDeque<>();
 
@@ -52,11 +61,16 @@ public final class PartyPlayer {
     }
 
     public int taler() {
-        return taler;
+        return purse.taler;
     }
 
     public int edelweiss() {
-        return edelweiss;
+        return purse.edelweiss;
+    }
+
+    /** Seilschaft: Nummer der Seilschaft (-1 = keine). */
+    public int team() {
+        return team;
     }
 
     public List<ItemType> items() {
@@ -92,6 +106,21 @@ public final class PartyPlayer {
         return minigamePoints;
     }
 
+    /** Hüttenaufstieg: Leben übrig. */
+    public int lives() {
+        return lives;
+    }
+
+    /** Hüttenaufstieg/Turnier: in welcher Runde jemand rausflog (0 = noch dabei). */
+    public int outRound() {
+        return outRound;
+    }
+
+    /** Hüttenaufstieg: kein Leben mehr (schaut zu)? */
+    public boolean out() {
+        return outRound > 0;
+    }
+
     public int minigamesWon() {
         return minigamesWon;
     }
@@ -103,11 +132,15 @@ public final class PartyPlayer {
     }
 
     public void setTaler(int taler) {
-        this.taler = Math.max(0, taler);
+        purse.taler = Math.max(0, taler);
     }
 
     public void setEdelweiss(int edelweiss) {
-        this.edelweiss = Math.max(0, edelweiss);
+        purse.edelweiss = Math.max(0, edelweiss);
+    }
+
+    public void setLives(int lives) {
+        this.lives = Math.max(0, lives);
     }
 
     public void fixNextRoll(int value) {
@@ -116,8 +149,8 @@ public final class PartyPlayer {
 
     /** Taler ändern, nie unter 0; gibt die echte Änderung zurück. */
     int addTaler(int delta) {
-        int before = taler;
-        taler = Math.max(0, taler + delta);
-        return taler - before;
+        int before = purse.taler;
+        purse.taler = Math.max(0, purse.taler + delta);
+        return purse.taler - before;
     }
 }
