@@ -190,6 +190,26 @@ public final class Texts {
                 "<au>Minigame Marathon</au> <gray>– <n> minigames, most points wins</gray>");
         t("mode.marathon.desc", "<gray>Ohne Spielbrett: ein Minispiel nach dem anderen,</gray>\n<gray>Platz-Punkte nach jedem – für 2 bis 16 Leute.</gray>",
                 "<gray>No game board: one minigame after another,</gray>\n<gray>place points after each – for 2 to 16 players.</gray>");
+        t("mode.seilschaft", "<green>Seilschaft</green>",
+                "<green>Rope Team</green>");
+        t("mode.seilschaft.rounds", "<green>Seilschaft</green> <gray>· <white><n></white> Runden zu zweit</gray>",
+                "<green>Rope Team</green> <gray>· <white><n></white> rounds in pairs</gray>");
+        t("mode.seilschaft.line", "<green>Seilschaft</green> <gray>– <n> Runden zu zweit, gemeinsame Taler und Edelweiß</gray>",
+                "<green>Rope Team</green> <gray>– <n> rounds in pairs, shared coins and edelweiss</gray>");
+        t("mode.seilschaft.desc", "<gray>Edelweiß-Jagd zu zweit: Taler und Edelweiß</gray>\n<gray>gehören beiden, Minispiele zwei gegen zwei.</gray>\n<gray>Partys aus zwei sind eine Seilschaft.</gray>",
+                "<gray>Edelweiss Hunt in pairs: coins and edelweiss</gray>\n<gray>belong to both, minigames two against two.</gray>\n<gray>Parties of two are one rope team.</gray>");
+        t("game.goal.seilschaft", "<gray>Ihr spielt in Seilschaften: Taler und Edelweiß gehören euch beiden. Nach <white><n></white> Runden gewinnt die Seilschaft mit den meisten Edelweiß (Stand: <au><price> Taler</au>). Minispiele sind zwei gegen zwei.</gray>",
+                "<gray>You play in rope teams: coins and edelweiss belong to both of you. After <white><n></white> rounds the team with the most edelweiss wins (stand: <au><price> coins</au>). Minigames are two against two.</gray>");
+        t("rope.team", "<green>⛓</green> <white><names></white> <gray>– gemeinsam</gray> <au><taler> Taler</au>",
+                "<green>⛓</green> <white><names></white> <gray>– together</gray> <au><taler> coins</au>");
+        t("side.rope", "<gray><pos>.</gray> <names> <ed>✿<edelweiss></ed> <au>●<taler></au>",
+                "<gray><pos>.</gray> <names> <ed>✿<edelweiss></ed> <au>●<taler></au>");
+        t("vote.need", "<red>Braucht mindestens <n> Leute.</red>",
+                "<red>Needs at least <n> players.</red>");
+        t("vote.need.pairs", "<red>Braucht mindestens <n> Leute in gerader Zahl.</red>",
+                "<red>Needs at least <n> players, an even number.</red>");
+        t("bag.problem.partner", "<gray>Deinem Partner nimmst du nichts weg.</gray>",
+                "<gray>You don't steal from your partner.</gray>");
         t("mode.edelweiss-jagd.rounds", "<ed>Edelweiß-Jagd</ed> <gray>· <white><n></white> Runden</gray>",
                 "<ed>Edelweiss Hunt</ed> <gray>· <white><n></white> rounds</gray>");
         t("mode.edelweiss-jagd.line", "<ed>Edelweiß-Jagd</ed> <gray>– <n> Runden, die meisten Edelweiß gewinnen</gray>",

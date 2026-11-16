@@ -44,7 +44,7 @@ final class MiniDecor {
             case MUSTERWEBER -> weaving(p, r);
             case FOEHNSTURM -> foehnPeak(p, r);
             case TAUZIEHEN -> mudPit(p, r);
-            case GAMSJAGD -> alm(p, r);
+            case GAMSJAGD -> gamsRevier(p, r);
         }
     }
 
@@ -1329,49 +1329,195 @@ final class MiniDecor {
         Decor.mountain(p, 4, -56, -40, 14, 36, r);
     }
 
-    /** Tauziehen: Festwiese mit Schlammgrube, Zuschauerbänke, Heuballen, Fahnen, Hütten und Fichten. */
-    private static void mudPit(Plan p, Random r) {
-        pad(p, -16, -12, 16, 12, 0, GRASS, r);
-        ring(p, 17, 36, 0, GRASS, r);
-        flowers(p, -34, -34, 34, 34, 0, 10, r);
-        // Zuschauerbänke vorn und hinten
-        for (int z : new int[] {-7, 7}) {
-            for (int x = -8; x <= 8; x++) {
-                if (Math.abs(x) <= 1) {
+    /**
+     * Talkessel: flache Wiese bis {@code flat}, dann steigen ringsum Hänge an (Gras, darüber Fels, oben Schnee) bis
+     * {@code radius} – so liegt die Spielfläche in einem Tal und nirgends sieht man den Rand der schwebenden Insel.
+     * Darunter Fels, der nach unten spitz zuläuft.
+     */
+    private static void valley(Plan p, int flat, int radius, int slopeHeight, Random r) {
+        for (int x = -radius - 2; x <= radius + 2; x++) {
+            for (int z = -radius - 2; z <= radius + 2; z++) {
+                double d = Math.hypot(x, z) + Math.sin(x * 0.21) * 2.2 + Math.cos(z * 0.17) * 2.2;
+                if (d > radius + 1.5) {
                     continue;
                 }
-                p.setIfEmpty(x, 1, z, "spruce_stairs[facing=" + (z < 0 ? "north" : "south") + ",half=bottom,shape=straight]");
+                double t = Math.max(0, (d - flat) / Math.max(1, radius - flat));
+                int top = (int) Math.round(slopeHeight * Math.pow(t, 1.4) + (t > 0 ? Math.sin(x * 0.4 + z * 0.3) * 1.2 * t : 0));
+                if (d > radius - 1) {
+                    top = Math.max(0, top - 2);
+                }
+                String surface;
+                if (top > slopeHeight * 0.72) {
+                    surface = r.nextInt(5) == 0 ? "powder_snow" : "snow_block";
+                } else if (top > slopeHeight * 0.42) {
+                    surface = Decor.pick(r, "stone", "andesite", "stone", "tuff", "gravel");
+                } else {
+                    surface = r.nextInt(9) == 0 ? "moss_block" : GRASS;
+                }
+                if (surface.equals("powder_snow")) {
+                    surface = "snow_block";
+                }
+                p.setIfEmpty(x, top, z, surface);
+                int depth = 3 + (int) Math.round(10 * (1 - Math.min(1, d / (radius + 1)))) + r.nextInt(3);
+                for (int y = top - 1; y >= -depth; y--) {
+                    p.setIfEmpty(x, y, z, y == top - 1 && surface.equals(GRASS) ? "dirt" : Decor.rock(r, top - y + 2));
+                }
+                if (surface.equals(GRASS) && top > 1 && r.nextInt(70) == 0) {
+                    Decor.spruce(p, x, top + 1, z, 5 + r.nextInt(4), r);
+                } else if (surface.equals(GRASS) && r.nextInt(22) == 0) {
+                    p.setIfEmpty(x, top + 1, z, Decor.pick(r, "short_grass", "fern", "poppy", "allium", "dandelion",
+                            "oxeye_daisy"));
+                } else if (top > 0 && !surface.equals(GRASS) && !surface.startsWith("snow") && r.nextInt(30) == 0) {
+                    p.setIfEmpty(x, top + 1, z, "spruce_leaves[persistent=true]");
+                }
             }
         }
-        // Heuballen an den Enden der Stege
+    }
+
+    /** Gipfelkreuz aus dunklem Holz auf einem Felsen. */
+    private static void summitCross(Plan p, int x, int y, int z) {
+        for (int k = 0; k <= 5; k++) {
+            p.set(x, y + k, z, "dark_oak_fence");
+        }
+        p.set(x - 1, y + 4, z, "dark_oak_fence");
+        p.set(x + 1, y + 4, z, "dark_oak_fence");
+        p.set(x, y + 6, z, "lightning_rod");
+    }
+
+    /** Wimpelkette: weiß-blaue Fähnchen an einer Schnur zwischen zwei Punkten (gleiche Höhe). */
+    private static void bunting(Plan p, int x1, int x2, int y, int z, String facing) {
+        for (int x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+            p.setIfEmpty(x, y, z, "iron_chain[axis=x]");
+            if (Math.floorMod(x, 2) == 0) {
+                p.setIfEmpty(x, y - 1, z, (Math.floorMod(x, 4) == 0 ? "white" : "blue") + "_wall_banner[facing=" + facing + "]");
+            }
+        }
+    }
+
+    /**
+     * Tauziehen: Festwiese im Talkessel – Schlammgrube mit Brettersteg, Zuschauertribünen mit Bänken auf beiden
+     * Längsseiten, Schiedsrichter-Hochstuhl, Fahnenmasten in Blau und Rot, Wimpelketten, Heuballen, Bierbänke,
+     * Brotzeit-Hütte, Fichten und Berge ringsum.
+     */
+    private static void mudPit(Plan p, Random r) {
+        valley(p, 22, 48, 26, r);
+        int end = TauZiehen.END;
+        // Tribünen (drei Stufen) auf beiden Längsseiten
+        for (int side : new int[] {-1, 1}) {
+            for (int step = 0; step < 3; step++) {
+                int z = side * (TauZiehen.WIDTH + 4 + step);
+                for (int x = -end + 1; x <= end - 1; x++) {
+                    for (int y = 0; y < step; y++) {
+                        p.set(x, y + 1, z, "spruce_planks");
+                    }
+                    p.set(x, step + 1, z, "spruce_stairs[facing=" + (side < 0 ? "north" : "south")
+                            + ",half=bottom,shape=straight]");
+                }
+            }
+            // Rückwand mit Wimpelkette
+            int back = side * (TauZiehen.WIDTH + 7);
+            for (int x = -end + 1; x <= end - 1; x++) {
+                for (int y = 1; y <= 3; y++) {
+                    p.set(x, y, back, y == 3 ? "spruce_slab[type=bottom]" : "spruce_planks");
+                }
+            }
+            for (int x : new int[] {-end + 1, end - 1}) {
+                for (int y = 1; y <= 6; y++) {
+                    p.set(x, y, back, "stripped_spruce_log[axis=y]");
+                }
+            }
+            bunting(p, -end + 2, end - 2, 6, back, side < 0 ? "south" : "north");
+        }
+        // Schiedsrichter-Hochstuhl an der Mittellinie (hinter der Tribüne, gut sichtbar)
+        int rz = -(TauZiehen.WIDTH + 2);
+        p.set(0, 1, rz, "spruce_fence");
+        p.set(0, 2, rz, "spruce_fence");
+        p.set(0, 3, rz, "spruce_stairs[facing=north,half=bottom,shape=straight]");
+        p.set(1, 1, rz, "bell[attachment=floor,facing=south]");
+        p.set(-1, 1, rz, "lectern[facing=south]");
+        // Fahnenmasten in Blau und Rot an den Enden, mit Banner
         for (int sx : new int[] {-1, 1}) {
-            for (int z = -2; z <= 2; z++) {
-                p.setIfEmpty(sx * (TauZiehen.END + 2), 1, z, "hay_block[axis=z]");
+            int mx = sx * (end + 3);
+            for (int y = 1; y <= 9; y++) {
+                p.set(mx, y, 0, "spruce_fence");
             }
-            p.setIfEmpty(sx * (TauZiehen.END + 2), 2, 0, "hay_block[axis=x]");
-            // Fahnenmasten in Blau und Rot
-            for (int y = 1; y <= 6; y++) {
-                p.setIfEmpty(sx * (TauZiehen.END + 4), y, -5, "spruce_fence");
-                p.setIfEmpty(sx * (TauZiehen.END + 4), y, 5, "spruce_fence");
+            String colour = sx < 0 ? "blue" : "red";
+            for (int y = 5; y <= 8; y++) {
+                p.set(mx, y, sx < 0 ? 1 : -1, colour + "_wool");
+                p.set(mx, y, sx < 0 ? 2 : -2, y > 5 ? colour + "_wool" : "air");
             }
-            String wool = sx < 0 ? "blue_wool" : "red_wool";
-            for (int y = 4; y <= 6; y++) {
-                p.setIfEmpty(sx * (TauZiehen.END + 4), y, -4, wool);
-                p.setIfEmpty(sx * (TauZiehen.END + 4), y, 4, wool);
+            p.set(mx, 10, 0, "lantern[hanging=false]");
+            // Heuballen-Wall hinter den Stegen
+            for (int z = -3; z <= 3; z++) {
+                p.set(sx * (end + 1), 1, z, "hay_block[axis=z]");
+                if (Math.abs(z) <= 1) {
+                    p.set(sx * (end + 1), 2, z, "hay_block[axis=x]");
+                }
             }
         }
-        hut(p, -24, 0, -16, 3, 2, "spruce_planks", "spruce_stairs", "spruce_slab");
-        hut(p, 24, 0, 16, 3, 2, "spruce_planks", "spruce_stairs", "spruce_slab");
-        for (int k = 0; k < 14; k++) {
-            double a = Math.toRadians(r.nextInt(360));
-            int x = (int) Math.round(Math.cos(a) * (26 + r.nextInt(8)));
-            int z = (int) Math.round(Math.sin(a) * (26 + r.nextInt(8)));
-            if (z < -16 && Math.abs(x) < 10) {
-                continue;
+        // Bierbänke und Tische neben dem Platz
+        for (int sx : new int[] {-1, 1}) {
+            for (int k = 0; k < 2; k++) {
+                int bx = sx * (end + 7);
+                int bz = -4 + k * 8;
+                for (int dz = -2; dz <= 2; dz++) {
+                    p.set(bx, 1, bz + dz, "spruce_slab[type=top]");
+                    p.set(bx - 1, 1, bz + dz, "spruce_stairs[facing=east,half=bottom,shape=straight]");
+                    p.set(bx + 1, 1, bz + dz, "spruce_stairs[facing=west,half=bottom,shape=straight]");
+                }
+                p.set(bx, 2, bz, "decorated_pot");
+                p.set(bx, 2, bz + 2, "candle[candles=3,lit=false]");
             }
-            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
         }
-        Decor.mountain(p, 0, 60, -14, 20, 54, r);
-        Decor.mountain(p, -46, 34, -14, 14, 40, r);
+        // Brotzeit-Hütte mit Fass und Laternen
+        hut(p, 0, 0, 22, 4, 3, "spruce_planks", "spruce_stairs", "spruce_slab");
+        p.set(-3, 1, 18, "barrel[facing=up]");
+        p.set(3, 1, 18, "barrel[facing=up]");
+        Decor.lanternPost(p, -6, 1, 17, "spruce_fence");
+        Decor.lanternPost(p, 6, 1, 17, "spruce_fence");
+        // Gipfelkreuz auf dem Hang im Norden
+        summitCross(p, -18, 21, 38);
+        Decor.mountain(p, 0, 74, -8, 26, 60, r);
+        Decor.mountain(p, -62, 34, -8, 18, 44, r);
+        Decor.mountain(p, 64, 24, -8, 20, 48, r);
+    }
+
+    /**
+     * Gamsjagd: Gamsrevier im Talkessel – Felshänge mit Latschen, Gämsen auf den Felsen, Jagdhütte mit Holzstoß,
+     * Gipfelkreuz und Berge ringsum.
+     */
+    private static void gamsRevier(Plan p, Random r) {
+        valley(p, GamsRevier.HALF + 4, 50, 30, r);
+        // Gämsen (Ziegen) auf den Hängen, ohne KI
+        int[][] goats = {{-26, 18}, {24, 22}, {30, -12}, {-30, -16}, {6, 34}, {-12, 36}};
+        for (int[] g : goats) {
+            int y = slopeTop(p, g[0], g[1]);
+            p.creature(g[0] + 0.5, y + 1, g[1] + 0.5, "goat", r.nextInt(360));
+        }
+        // Jagdhütte mit Holzstoß und Bank
+        hut(p, -14, 0, -26, 4, 3, "spruce_planks", "spruce_stairs", "spruce_slab");
+        for (int x = -9; x <= -7; x++) {
+            for (int y = 1; y <= 2; y++) {
+                p.setIfEmpty(x, y, -24, "oak_log[axis=z]");
+            }
+        }
+        p.setIfEmpty(-16, 1, -22, "spruce_stairs[facing=north,half=bottom,shape=straight]");
+        p.setIfEmpty(-15, 1, -22, "spruce_stairs[facing=north,half=bottom,shape=straight]");
+        Decor.lanternPost(p, -10, 1, -21, "spruce_fence");
+        summitCross(p, 22, slopeTop(p, 22, 40) + 1, 40);
+        Decor.mountain(p, 0, 80, -8, 28, 64, r);
+        Decor.mountain(p, -70, 20, -8, 22, 50, r);
+        Decor.mountain(p, 70, -10, -8, 22, 54, r);
+        Decor.mountain(p, -10, -80, -8, 26, 46, r);
+    }
+
+    /** Oberste belegte Höhe an einer Stelle der Kulisse (für Tiere und Kreuze). */
+    private static int slopeTop(Plan p, int x, int z) {
+        for (int y = 40; y >= -4; y--) {
+            if (p.get(x, y, z) != null) {
+                return y;
+            }
+        }
+        return 0;
     }
 }

@@ -29,7 +29,7 @@ final class TauZiehen extends MiniRun {
     static final int HALF_PIT = 2;
     static final int END = 10;
     static final int WIDTH = 3;
-    private static final double ROPE_Y = 1.35;
+    private static final double ROPE_Y = 1.95;
     /** So weit wandert der Knoten höchstens (bis über den Rand der Grube). */
     private static final double SWING = HALF_PIT + 2.5;
 
@@ -48,24 +48,41 @@ final class TauZiehen extends MiniRun {
             for (int z = -WIDTH; z <= WIDTH; z++) {
                 boolean pit = Math.abs(x) <= HALF_PIT;
                 boolean edge = Math.abs(z) == WIDTH || Math.abs(x) == END;
-                p.set(x, -2, z, "mud");
-                p.set(x, -1, z, pit ? "mud" : "spruce_planks");
-                p.set(x, 0, z, pit ? "air" : edge ? "stripped_spruce_log[axis=x]" : "spruce_planks");
-                if (!pit && edge) {
-                    p.set(x, 1, z, "spruce_fence");
+                // nichts von der Kulisse auf dem Platz (Blumen, Gras)
+                for (int y = 1; y <= 4; y++) {
+                    p.set(x, y, z, "air");
+                }
+                p.set(x, -3, z, "dirt");
+                p.set(x, -2, z, pit ? "mud" : "spruce_log[axis=z]");
+                if (pit) {
+                    // Schlamm mit Pfützen und Wurzeln, am Rand festgetreten
+                    int m = Math.floorMod(x * 7 + z * 5, 9);
+                    p.set(x, -1, z, Math.abs(x) == HALF_PIT ? "packed_mud" : m == 0 || m == 4 ? "water"
+                            : m == 6 ? "muddy_mangrove_roots" : "mud");
+                    p.set(x, 0, z, "air");
+                } else {
+                    p.set(x, -1, z, "spruce_planks");
+                    p.set(x, 0, z, edge ? "stripped_spruce_log[axis=x]" : Math.floorMod(x, 3) == 0 ? "stripped_spruce_wood"
+                            : "spruce_planks");
+                    if (edge) {
+                        p.set(x, 1, z, "spruce_fence");
+                    }
                 }
             }
         }
-        // Pfähle am Rand der Grube
+        // Pfähle mit Laternen am Rand der Grube
         for (int sx : new int[] {-HALF_PIT - 1, HALF_PIT + 1}) {
             for (int sz : new int[] {-WIDTH, WIDTH}) {
                 p.set(sx, 1, sz, "spruce_log[axis=y]");
-                p.set(sx, 2, sz, "lantern");
+                p.set(sx, 2, sz, "spruce_log[axis=y]");
+                p.set(sx, 3, sz, "lantern[hanging=false]");
             }
         }
-        // Mitte markieren
-        p.set(0, -1, -WIDTH - 1, "red_wool");
-        p.set(0, -1, WIDTH + 1, "red_wool");
+        // Mittellinie: rote Pflöcke vor und hinter der Grube
+        p.set(0, 0, -WIDTH - 1, "red_terracotta");
+        p.set(0, 0, WIDTH + 1, "red_terracotta");
+        p.set(0, 1, -WIDTH - 1, "red_candle[candles=1,lit=false]");
+        p.set(0, 1, WIDTH + 1, "red_candle[candles=1,lit=false]");
     }
 
     @Override
@@ -78,7 +95,7 @@ final class TauZiehen extends MiniRun {
             double x = (side == 0 ? -1 : 1) * (HALF_PIT + 3 + i * 2.2);
             reset(p);
             p.setGameMode(gameMode());
-            p.teleport(facing(x + 0.5, 0, 0.5 + (i % 2 == 0 ? 0.6 : -0.6), 0.5, 1, 0.5));
+            p.teleport(facing(x + 0.5, 1, 0.5 + (i % 2 == 0 ? 0.6 : -0.6), 0.5, 1, 0.5));
             equip(p);
             teamCap(p);
         }
@@ -176,6 +193,24 @@ final class TauZiehen extends MiniRun {
             b.append(i == k ? "</gray><red>◆</red><gray>" : i == cells / 2 ? "|" : "─");
         }
         return b.append("</gray> <red>▶</red>").toString();
+    }
+
+    /** Ende: die Verlierer landen im Schlamm (nur zum Spaß – gleich danach geht es zurück aufs Brett). */
+    @Override
+    protected void onFinish() {
+        Teams.Outcome o = teamOutcome();
+        if (o == Teams.Outcome.DRAW) {
+            return;
+        }
+        int i = 0;
+        for (java.util.UUID u : split.losers(o)) {
+            Player p = plugin.getServer().getPlayer(u);
+            if (p != null && p.isOnline() && players.contains(p)) {
+                p.teleport(facing(-1 + 2 * (i++ % 2) + 0.5, 0.1, 0.5 + (i > 2 ? 1 : -1), 0.5, 1, 0.5));
+                world.spawnParticle(Particle.SPLASH, p.getLocation(), 30, 0.4, 0.2, 0.4, 0.1);
+            }
+        }
+        soundAll("minecraft:block.mud.fall", 0.8f);
     }
 
     @Override

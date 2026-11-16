@@ -5,7 +5,6 @@ import de.moinmorni.party.Texts;
 import de.moinmorni.party.Ui;
 import de.moinmorni.party.game.Teams;
 import de.moinmorni.party.world.Plan;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -36,28 +35,36 @@ final class GamsJagd extends MiniRun {
     }
 
     static void build(Plan p) {
-        EnzianSuche.build(p);
+        int h = GamsRevier.HALF;
+        for (int x = -h - 1; x <= h + 1; x++) {
+            for (int z = -h - 1; z <= h + 1; z++) {
+                boolean edge = Math.abs(x) == h + 1 || Math.abs(z) == h + 1;
+                p.set(x, -1, z, "dirt");
+                p.set(x, 0, z, edge ? "mossy_cobblestone" : "grass_block[snowy=false]");
+                for (int y = 1; y <= 7; y++) {
+                    p.set(x, y, z, edge && y == 1 ? "cobblestone_wall" : edge && y <= 6 ? "barrier" : "air");
+                }
+            }
+        }
+        for (GamsRevier.Cell c : GamsRevier.cells()) {
+            p.set(c.x(), c.y(), c.z(), c.block());
+        }
     }
 
     @Override
     public void prepare() {
         place(plugin.arenaPlan(type));
-        List<Location> gams = new ArrayList<>(super.spawns(3));
-        int k = 0;
+        List<double[]> spots = GamsRevier.spawns();
+        int k = 1;
         for (Player p : players) {
             reset(p);
             p.setGameMode(gameMode());
             boolean isHunter = p.getUniqueId().equals(hunter);
-            p.teleport(isHunter ? facing(0.5, 1, 0.5, 0.5, 1, 6) : gamsSpot(k++));
+            double[] at = isHunter ? spots.getFirst() : spots.get(Math.min(spots.size() - 1, k++));
+            p.teleport(isHunter ? facing(0.5, 1, 0.5, 0.5, 1, 6) : facing(at[0] + 0.5, 1, at[1] + 0.5, 0.5, 1, 0.5));
             equip(p);
             teamCap(p);
         }
-    }
-
-    private Location gamsSpot(int k) {
-        double r = EnzianSuche.HALF - 2;
-        double a = 2 * Math.PI * k / 3 + Math.PI / 6;
-        return facing(0.5 + Math.cos(a) * r, 1, 0.5 + Math.sin(a) * r, 0.5, 1, 0.5);
     }
 
     @Override
@@ -146,6 +153,6 @@ final class GamsJagd extends MiniRun {
 
     @Override
     public Location viewPoint() {
-        return facing(0.5, 14, -EnzianSuche.HALF - 9, 0.5, 0, 0.5);
+        return facing(0.5, 14, -GamsRevier.HALF - 9, 0.5, 0, 0.5);
     }
 }
