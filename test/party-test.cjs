@@ -10,6 +10,8 @@
  *   Partie 2: Gipfelrennen, Almsommer, zu viert (Bergsprint, Bröckelboden), Dora geht mittendrin
  *   Partie 3: Edelweiß-Jagd, 8 Runden, Goldstollen – die restlichen acht Minispiele
  *   Partie 4: neue Minispiele (Paket 1): Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen
+ *   Partie 5: Paket 2 – Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht
+ *   Partie 6: Paket 3 – Schlittenrennen, Enzian-Suche, Musterweber, Föhnsturm
  *
  * Verfasst mit Claude 🤖
  */
@@ -780,6 +782,25 @@ const tpTo = (b, x, y, z) => cmd(`execute at ${b.username} run tp ${b.username} 
 /** Lawinenhang: Oberfläche (y relativ) an einer Stelle z (relativ). */
 const slope = (z) => 1 + Math.max(0, Math.min(80, 2 * (Math.floor(z) + 20))) / 8;
 
+/** Schlittenrennen: Punkt der Mittellinie bei Strecke s (wie mini/Rennbahn.point). */
+const TRACK_LENGTH = 80 + 28 * Math.PI;
+function track(s) {
+  const t = ((s % TRACK_LENGTH) + TRACK_LENGTH) % TRACK_LENGTH;
+  const R = 14;
+  const curve = Math.PI * R;
+  if (t < 20) return [t, -R];
+  if (t < 20 + curve) {
+    const a = (t - 20) / R - Math.PI / 2;
+    return [20 + Math.cos(a) * R, Math.sin(a) * R];
+  }
+  if (t < 60 + curve) return [20 - (t - 20 - curve), R];
+  if (t < 60 + 2 * curve) {
+    const a = (t - 60 - curve) / R + Math.PI / 2;
+    return [-20 + Math.cos(a) * R, Math.sin(a) * R];
+  }
+  return [t - TRACK_LENGTH, -R];
+}
+
 /** Was die Test-Spieler im Minispiel tun; gibt eine Stopp-Funktion zurück. Alles Gesehene landet in seen. */
 function playNew(id, g, list, seen) {
   const [ox, oy, oz] = g.miniAt;
@@ -982,6 +1003,99 @@ function playNew(id, g, list, seen) {
       seen.hit = bert.bars.some((t) => /Hit by Anna/.test(t));
     });
   }
+  if (id === 'schlittenrennen') {
+    run(async () => {
+      await sleep(1500);
+      seen.seated = [anna, bert, carl].filter((x) => x.vehicle).length;
+      seen.boats = ents(anna, 'spruce_boat', 60).length + ents(anna, 'birch_boat', 60).length + ents(anna, 'oak_boat', 60).length;
+      // Bert fährt hin und her über die Ziellinie – das zählt nicht
+      for (let i = 0; i < 3; i++) {
+        let p = track(-2);
+        await tpTo(bert, ox + 0.5 + p[0], oy + 1.1, oz + 0.5 + p[1]);
+        await sleep(400);
+        p = track(3);
+        await tpTo(bert, ox + 0.5 + p[0], oy + 1.1, oz + 0.5 + p[1]);
+        await sleep(400);
+      }
+      // Anna fährt durch alle Tore, zweimal herum
+      for (let k = 1; k <= 12 && !stop; k++) {
+        for (const extra of [-6, 3]) {
+          const p = track((TRACK_LENGTH * k) / 6 + extra);
+          await tpTo(anna, ox + 0.5 + p[0], oy + 1.1, oz + 0.5 + p[1]);
+          await sleep(350);
+        }
+      }
+      seen.reseated = await waitFor(() => anna.vehicle != null, 3000);
+    });
+  } else if (id === 'enzian-suche') {
+    for (const b of [anna, bert]) {
+      run(async () => {
+        const flower = b.registry.blocksByName.cornflower.id;
+        while (!stop) {
+          const f = b.findBlock({ matching: flower, maxDistance: 40 });
+          if (!f) {
+            await sleep(300);
+            continue;
+          }
+          await tpTo(b, f.position.x + 0.5, oy + 1, f.position.z - 0.8);
+          await sleep(300);
+          const blk = b.blockAt(f.position);
+          if (blk?.name === 'cornflower') {
+            if (b === anna) {
+              b.dig(blk, true).catch(() => {});
+              await sleep(150);
+              b.stopDigging();
+            } else {
+              await b.activateBlock(blk).catch(() => {});
+            }
+            seen[b.username] = (seen[b.username] ?? 0) + 1;
+          }
+          await sleep(250);
+        }
+      });
+    }
+  } else if (id === 'musterweber') {
+    for (const b of [anna, bert]) {
+      run(async () => {
+        const colours = ['red', 'white', 'blue', 'yellow'];
+        const ids = colours.map((c) => b.registry.blocksByName[`${c}_wool`].id);
+        let seenRounds = 0;
+        while (!stop) {
+          const shows = b.titles.filter((t) => /Merk dir das Muster|Remember the pattern/.test(t)).length;
+          if (shows > seenRounds) {
+            seenRounds = shows;
+            await sleep(600);
+            const cells = b.findBlocks({ matching: ids, maxDistance: 5.5, count: 32 }).map((v) => ({ v, name: b.blockAt(v).name }));
+            seen[`${b.username}cells`] = cells.length;
+            await waitFor(() => b.titles.filter((t) => /Jetzt weben|Weave now/.test(t)).length >= seenRounds, 8000, 100);
+            await sleep(400);
+            // Anna legt alles richtig nach, Bert nur jedes zweite Feld
+            for (const [i, c] of cells.entries()) {
+              if (b === bert && i % 2 === 1) continue;
+              const slotIdx = b.inventory.slots.findIndex((it, si) => si >= 36 && si < 45 && it?.name === c.name);
+              if (slotIdx < 0) continue;
+              b.setQuickBarSlot(slotIdx - 36);
+              await sleep(60);
+              await b.activateBlock(b.blockAt(c.v)).catch(() => {});
+              await sleep(90);
+            }
+          }
+          await sleep(100);
+        }
+      });
+    }
+  } else if (id === 'foehnsturm') {
+    run(async () => {
+      anna.setControlState('sneak', true);
+      await waitFor(() => anna.titles.some((t) => /Föhnböe/.test(t)), 12000);
+      seen.gust = true;
+      await sleep(1000);
+      // Carl stellt sich an den Rand und fällt hinunter
+      await tpTo(carl, ox + 12.5, oy + 1, oz + 0.5);
+      seen.out = await waitFor(() => anna.chats.some((c) => /Carl ist raus/.test(c)), 6000);
+      anna.setControlState('sneak', false);
+    });
+  }
   return async () => {
     stop = true;
     await Promise.all(jobs);
@@ -1072,6 +1186,28 @@ async function newMinis(title, ids) {
       check('Schneeballschlacht: Treffer (Bert wird getroffen)', seen.hit, bert.bars.slice(-3).join(' | '));
       check('Schneeballschlacht: Anna hat Punkte', /^1\. Anna \([1-9]/.test(lines[0] ?? ''), lines.join(' | '));
     }
+    if (id === 'schlittenrennen') {
+      check('Schlittenrennen: alle sitzen im Schlitten', seen.seated === 3 && seen.boats >= 2, `${seen.seated} sitzen, ${seen.boats} Boote`);
+      check('Schlittenrennen: Anna fährt zwei Runden durch alle Tore', /^1\. Anna \(im Ziel/.test(lines[0] ?? ''), lines.join(' | '));
+      check('Schlittenrennen: hin und her über die Linie zählt nicht', lines.some((l) => /Bert \(0 Tore\)/.test(l)), lines.join(' | '));
+      check('Schlittenrennen: wer herausfällt, sitzt gleich wieder', seen.reseated);
+      check('Englisch: „gates“', bert.chats.some((c) => /Bert \(0 gates\)/.test(c)));
+    }
+    if (id === 'enzian-suche') {
+      check('Enzian-Suche: Enziane gefunden und gepflückt (Schlag und Rechtsklick)', (seen.Anna ?? 0) >= 2 && (seen.Bert ?? 0) >= 2,
+        `${seen.Anna}/${seen.Bert}`);
+      check('Enzian-Suche: Punkte für Anna und Bert', lines.filter((l) => /(Anna|Bert) \([1-9]\d* Punkte\)/.test(l)).length === 2, lines.join(' | '));
+    }
+    if (id === 'musterweber') {
+      check('Musterweber: Muster gezeigt (16 Felder)', seen.Annacells === 16, String(seen.Annacells));
+      check('Musterweber: Anna legt alles richtig nach', anna.bars.some((t) => /Alles richtig/.test(t)), anna.bars.filter((t) => /richtig/.test(t)).join(' | '));
+      check('Musterweber: drei Runden, Anna vorn', /^1\. Anna \((6[0-9]|5\d) Punkte\)/.test(lines[0] ?? ''), lines.join(' | '));
+    }
+    if (id === 'foehnsturm') {
+      check('Föhnsturm: Böe angekündigt (Titel und Richtung)', seen.gust && anna.titles.some((t) => /aus (Norden|Nordosten|Osten|Südosten|Süden|Südwesten|Westen|Nordwesten)/.test(t)));
+      check('Föhnsturm: wer hinunterfällt, ist raus', seen.out, anna.chats.filter((c) => /raus/.test(c)).join(' | '));
+      check('Föhnsturm: Carl ist Letzter', /^3\. Carl/.test(lines[2] ?? ''), lines.join(' | '));
+    }
     g = await phase((x) => x.phase === 'turn' || x.phase === 'end', 30000);
   }
   await cmd('mparty stopp');
@@ -1080,6 +1216,7 @@ async function newMinis(title, ids) {
 
 const PAKET1 = ['lawinenhang', 'maibaumkraxeln', 'eisstockschiessen', 'murmeltier'];
 const PAKET2 = ['goldwaschen', 'schuhplattler', 'brueckenbau', 'schneeballschlacht'];
+const PAKET3 = ['schlittenrennen', 'enzian-suche', 'musterweber', 'foehnsturm'];
 
 async function main() {
   await join('Anna');
@@ -1092,6 +1229,7 @@ async function main() {
   if (PARTS.includes(3)) await part3();
   if (PARTS.includes(4)) await newMinis('Partie 4: neue Minispiele, Paket 1', PAKET1);
   if (PARTS.includes(5)) await newMinis('Partie 5: neue Minispiele, Paket 2', PAKET2);
+  if (PARTS.includes(6)) await newMinis('Partie 6: neue Minispiele, Paket 3', PAKET3);
   for (const b of Object.values(bots)) b.quit();
   await sleep(500);
   const failed = results.filter((r) => !r.ok).length;

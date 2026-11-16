@@ -32,7 +32,11 @@ public enum MiniType {
     GOLDWASCHEN(Material.GOLD_NUGGET, 40, Scoring.Kind.POINTS, GoldWaschen::new, GoldWaschen::build),
     SCHUHPLATTLER(Material.NOTE_BLOCK, 50, Scoring.Kind.POINTS, SchuhPlattler::new, SchuhPlattler::build),
     BRUECKENBAU(Material.OAK_PLANKS, 60, Scoring.Kind.RACE, BrueckenBau::new, BrueckenBau::build),
-    SCHNEEBALLSCHLACHT(Material.SNOW_BLOCK, 45, Scoring.Kind.POINTS, SchneeballSchlacht::new, SchneeballSchlacht::build);
+    SCHNEEBALLSCHLACHT(Material.SNOW_BLOCK, 45, Scoring.Kind.POINTS, SchneeballSchlacht::new, SchneeballSchlacht::build),
+    SCHLITTENRENNEN(Material.SPRUCE_BOAT, 60, Scoring.Kind.RACE, SchlittenRennen::new, SchlittenRennen::build),
+    ENZIAN_SUCHE(Material.CORNFLOWER, 40, Scoring.Kind.POINTS, EnzianSuche::new, EnzianSuche::build),
+    MUSTERWEBER(Material.LOOM, 60, Scoring.Kind.POINTS, false, MusterWeber::new, MusterWeber::build),
+    FOEHNSTURM(Material.FEATHER, 60, Scoring.Kind.SURVIVAL, FoehnSturm::new, FoehnSturm::build);
 
     private final Material icon;
     private final int seconds;

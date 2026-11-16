@@ -64,6 +64,12 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
   Treffer mit Rückstoß, danach 1,5 s geschützt). Gefunden beim echten Test: ein abgefangener Linksklick verhindert im
   Überlebensmodus das Abbau-Ereignis – Klick-Minispiele werten den Linksklick jetzt selbst aus. Bau-Version 4.
   54 Unit-Tests; echt Partie 5 alle vier Minispiele (Goldwaschen nach der Korrektur 6/6).
+- **Paket 3** (16.11.): Schlittenrennen (echte Holzboote auf Packeis/Blaueis – gehen auf Java jeder Version und
+  Bedrock gleich; Oval mit sechs Toren, Wertung und Abkürzungsschutz in `mini/Rennbahn`; wer herausfällt, sitzt nach
+  einer Sekunde in einem neuen Boot), Enzian-Suche (feste Almwiese `mini/EnzianWiese` mit Verstecken neben hohem Gras,
+  Felsen, Büschen; Kornblume als blauer Enzian, sonst nichts Blaues), Musterweber (16 Webrahmen an vier Wänden, Muster
+  4×4 in 2/3/4 Farben, Regeln in `mini/Webmuster`), Föhnsturm (acht Windrichtungen, Schutz hinter Felsen und Ducken in
+  `mini/Wind`). Bau-Version 5. 63 Unit-Tests, echt Partie 6: 23/23.
 
 ## Offen
 

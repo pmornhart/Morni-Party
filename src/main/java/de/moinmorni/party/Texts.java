@@ -681,6 +681,59 @@ public final class Texts {
                 "<gray>Your pockets are full.</gray>");
         t("mini.schneeballschlacht.hit", "<aqua>Getroffen von <white><name></white>!</aqua>",
                 "<aqua>Hit by <white><name></white>!</aqua>");
+        // ---------- Neue Minispiele (Paket 3) ----------
+        t("mini.schlittenrennen", "<au>Schlittenrennen</au>",
+                "<au>Sled Race</au>");
+        t("mini.schlittenrennen.desc", "<gray>Zwei Runden im Schlitten über die Eisbahn! Lenken mit den Lauftasten. Die Tore zählen nur der Reihe nach – Abkürzen bringt nichts. Wer herausfällt, sitzt gleich wieder in einem neuen Schlitten.</gray>",
+                "<gray>Two laps in a sled on the ice track! Steer with your movement keys. The gates only count in order – shortcuts don't help. If you fall out, you're back in a new sled right away.</gray>");
+        t("mini.schlittenrennen.go", "<em><b>Ab die Post!</b></em>",
+                "<em><b>Off you go!</b></em>");
+        t("mini.schlittenrennen.lap", "<gray>Runde <n> von <of></gray>",
+                "<gray>Lap <n> of <of></gray>");
+        t("mini.schlittenrennen.last", "<au><b>Letzte Runde!</b></au>",
+                "<au><b>Final lap!</b></au>");
+        t("mini.schlittenrennen.lap.bar", "<aqua>Runde <white><n></white>/<of> · Tor <white><gate></white>/<gates></aqua>",
+                "<aqua>Lap <white><n></white>/<of> · gate <white><gate></white>/<gates></aqua>");
+        t("mini.line.gates", "<au><pos>.</au> <white><name></white> <gray>(<points> Tore) →</gray> <au>+<taler> Taler</au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> gates) →</gray> <au>+<taler> coins</au>");
+        t("mini.enziansuche", "<au>Enzian-Suche</au>",
+                "<au>Gentian Hunt</au>");
+        t("mini.enziansuche.desc", "<gray>Auf der bunten Almwiese wachsen blaue Enziane – versteckt im hohen Gras, hinter Felsen und Büschen. Finden und pflücken (Schlag oder Rechtsklick)! Jeder ist ein Punkt.</gray>",
+                "<gray>Blue gentians grow on the colourful alpine meadow – hidden in tall grass, behind rocks and bushes. Find them and pick them (hit or right-click)! Each one is a point.</gray>");
+        t("mini.enziansuche.item", "<em>Gartenschere</em>",
+                "<em>Garden shears</em>");
+        t("mini.musterweber", "<au>Musterweber</au>",
+                "<au>Pattern Weaver</au>");
+        t("mini.musterweber.desc", "<gray>Auf deinem Webrahmen erscheint kurz ein Muster – merk es dir! Dann ist er leer: Farbe in der Schnellleiste wählen und die Felder anklicken. Jedes richtige Feld ist ein Punkt, ganz richtig gibt 4 dazu.</gray>",
+                "<gray>A pattern appears on your loom for a moment – remember it! Then it's blank: pick a colour in your hotbar and click the squares. Every right square is a point, all right gives 4 extra.</gray>");
+        t("mini.musterweber.remember", "<au><b>Merk dir das Muster!</b></au>",
+                "<au><b>Remember the pattern!</b></au>");
+        t("mini.musterweber.round", "<gray>Runde <n> von <of></gray>",
+                "<gray>Round <n> of <of></gray>");
+        t("mini.musterweber.weave", "<em><b>Jetzt weben!</b></em>",
+                "<em><b>Weave now!</b></em>");
+        t("mini.musterweber.weave.sub", "<gray>Farbe wählen, Felder anklicken</gray>",
+                "<gray>Pick a colour, click the squares</gray>");
+        t("mini.musterweber.left", "<gray>Noch <white><s> s</white></gray>",
+                "<gray><white><s> s</white> left</gray>");
+        t("mini.musterweber.result", "<gray><white><n></white> von <of> richtig · Punkte: <au><points></au></gray>",
+                "<gray><white><n></white> of <of> right · points: <au><points></au></gray>");
+        t("mini.musterweber.perfect", "<au><b>Alles richtig! +4</b></au> <gray>(<n> von <of>) · Punkte: <points></gray>",
+                "<au><b>All right! +4</b></au> <gray>(<n> of <of>) · points: <points></gray>");
+        t("mini.foehnsturm", "<au>Föhnsturm</au>",
+                "<au>Foehn Storm</au>");
+        t("mini.foehnsturm.desc", "<gray>Oben am Gipfel bläst der Föhn! Vor jeder Böe ziehen Wolken, der Titel sagt, woher sie kommt. Stell dich hinter einen Felsen oder duck dich – wer hinunterfällt, ist raus.</gray>",
+                "<gray>The foehn wind is blowing on the summit! Clouds come before every gust, and the title tells you where it comes from. Hide behind a rock or duck – whoever falls off is out.</gray>");
+        t("mini.foehnsturm.gust", "<aqua><b>Föhnböe!</b></aqua>",
+                "<aqua><b>Foehn gust!</b></aqua>");
+        t("mini.foehnsturm.from.n", "<gray>aus Norden ↓</gray>", "<gray>from the north ↓</gray>");
+        t("mini.foehnsturm.from.ne", "<gray>aus Nordosten ↙</gray>", "<gray>from the north-east ↙</gray>");
+        t("mini.foehnsturm.from.e", "<gray>aus Osten ←</gray>", "<gray>from the east ←</gray>");
+        t("mini.foehnsturm.from.se", "<gray>aus Südosten ↖</gray>", "<gray>from the south-east ↖</gray>");
+        t("mini.foehnsturm.from.s", "<gray>aus Süden ↑</gray>", "<gray>from the south ↑</gray>");
+        t("mini.foehnsturm.from.sw", "<gray>aus Südwesten ↗</gray>", "<gray>from the south-west ↗</gray>");
+        t("mini.foehnsturm.from.w", "<gray>aus Westen →</gray>", "<gray>from the west →</gray>");
+        t("mini.foehnsturm.from.nw", "<gray>aus Nordwesten ↘</gray>", "<gray>from the north-west ↘</gray>");
         t("colour.red", "<red><b>Rot</b></red>",
                 "<red><b>Red</b></red>");
         t("colour.yellow", "<yellow><b>Gelb</b></yellow>",

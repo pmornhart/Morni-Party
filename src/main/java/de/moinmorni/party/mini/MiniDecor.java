@@ -39,6 +39,10 @@ final class MiniDecor {
             case SCHUHPLATTLER -> festTent(p, r);
             case BRUECKENBAU -> gorgeBridge(p, r);
             case SCHNEEBALLSCHLACHT -> winterField(p, r);
+            case SCHLITTENRENNEN -> sledTrack(p, r);
+            case ENZIAN_SUCHE -> alm(p, r);
+            case MUSTERWEBER -> weaving(p, r);
+            case FOEHNSTURM -> foehnPeak(p, r);
         }
     }
 
@@ -1164,5 +1168,162 @@ final class MiniDecor {
         Decor.mountain(p, -6, 50, -14, 17, 48, r);
         Decor.mountain(p, 38, 26, -14, 13, 36, r);
         Decor.mountain(p, -40, 24, -14, 12, 34, r);
+    }
+    /** Schlittenrennen: verschneiter Wald um die Eisbahn, Tribüne und Hütte im Innenfeld, Berge dahinter. */
+    private static void sledTrack(Plan p, Random r) {
+        int ex = (int) (Rennbahn.STRAIGHT + Rennbahn.RADIUS + 16);
+        int ez = (int) (Rennbahn.RADIUS + 16);
+        for (int x = -ex; x <= ex; x++) {
+            for (int z = -ez; z <= ez; z++) {
+                double d = Rennbahn.offCenter(x + 0.5, z + 0.5);
+                if (d <= Rennbahn.HALF_WIDTH + 1.2) {
+                    p.setIfEmpty(x, -2, z, Decor.rock(r, 3));
+                    continue;
+                }
+                p.setIfEmpty(x, 0, z, "snow_block");
+                p.setIfEmpty(x, -1, z, "snow_block");
+                for (int k = 2; k <= 3 + r.nextInt(3); k++) {
+                    p.setIfEmpty(x, -k, z, Decor.rock(r, k + 2));
+                }
+                if (r.nextInt(4) == 0) {
+                    p.setIfEmpty(x, 1, z, "snow[layers=" + (1 + r.nextInt(2)) + "]");
+                }
+            }
+        }
+        // Tribüne im Innenfeld (an der Ziellinie) und eine Hütte
+        for (int step = 0; step < 4; step++) {
+            for (int x = -6; x <= 6; x++) {
+                p.set(x, step + 1, -(int) Rennbahn.RADIUS + 7 + step, "spruce_stairs[facing=north,half=bottom,shape=straight]");
+                for (int y = 1; y <= step; y++) {
+                    p.set(x, y, -(int) Rennbahn.RADIUS + 7 + step, "spruce_planks");
+                }
+            }
+        }
+        hut(p, 0, 0, 6, 4, 3, "spruce_planks", "dark_oak_stairs", "dark_oak_slab");
+        p.set(6, 1, 2, "campfire[lit=true]");
+        stall(p, -10, 0, 4, true, "red", "barrel[facing=up]");
+        // Fichten außen und im Innenfeld
+        for (int k = 0; k < 40; k++) {
+            int x = r.nextInt(2 * ex) - ex;
+            int z = r.nextInt(2 * ez) - ez;
+            double d = Rennbahn.offCenter(x + 0.5, z + 0.5);
+            boolean inside = Math.abs(z) < Rennbahn.RADIUS - 6 && Math.abs(x) < Rennbahn.STRAIGHT + 6;
+            if (d > Rennbahn.HALF_WIDTH + 3 && !(inside && Math.abs(x) < 12) && !(z < -Rennbahn.RADIUS - 8 && Math.abs(x) < 10)) {
+                Decor.spruce(p, x, 1, z, 6 + r.nextInt(5), r);
+            }
+        }
+        Decor.mountain(p, 0, ez + 30, -14, 20, 52, r);
+        Decor.mountain(p, -ex - 14, 10, -14, 15, 40, r);
+        Decor.mountain(p, ex + 14, 6, -14, 15, 42, r);
+    }
+
+    /** Enzian-Suche: weite Almwiese, Holzzaun, Kühe, Almhütte, Berge (die Wiese selbst gehört zum Spiel). */
+    private static void alm(Plan p, Random r) {
+        ring(p, EnzianWiese.HALF + 2, 34, 0, GRASS, r);
+        flowers(p, -34, -34, 34, 34, 0, 16, r);
+        hut(p, 22, 0, 14, 4, 3, "spruce_planks", "spruce_stairs", "spruce_slab");
+        for (int k = 0; k < 6; k++) {
+            p.creature(-22 + k * 2.5, 1, 18 + (k % 2) * 3 + 0.5, "cow", r.nextInt(360));
+        }
+        for (int x = -28; x <= -10; x++) {
+            p.setIfEmpty(x, 1, 14, "spruce_fence");
+            p.setIfEmpty(x, 1, 26, "spruce_fence");
+        }
+        for (int z = 14; z <= 26; z++) {
+            p.setIfEmpty(-28, 1, z, "spruce_fence");
+            p.setIfEmpty(-10, 1, z, "spruce_fence");
+        }
+        for (int k = 0; k < 12; k++) {
+            double a = Math.toRadians(r.nextInt(360));
+            int x = (int) Math.round(Math.cos(a) * (24 + r.nextInt(8)));
+            int z = (int) Math.round(Math.sin(a) * (24 + r.nextInt(8)));
+            if (z < -16 && Math.abs(x) < 10) {
+                continue;
+            }
+            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
+        }
+        Decor.mountain(p, 0, 58, -14, 20, 56, r);
+        Decor.mountain(p, -44, 30, -14, 14, 40, r);
+        Decor.mountain(p, 44, 34, -14, 15, 42, r);
+    }
+
+    /** Musterweber: Weberei – Fachwerk-Außenwände, Wollballen, Garten, Bäume. */
+    private static void weaving(Plan p, Random r) {
+        int w = MusterWeber.W + 1;
+        ring(p, w + 2, 30, 0, GRASS, r);
+        pad(p, -w - 1, -w - 1, w + 1, w + 1, 0, "stone", r);
+        // Fachwerk an den Außenwänden (außen vor die Bretterwand)
+        for (int i = -w - 1; i <= w + 1; i++) {
+            for (int[] c : new int[][] {{i, -w - 1}, {i, w + 1}, {-w - 1, i}, {w + 1, i}}) {
+                for (int y = 0; y <= 6; y++) {
+                    boolean beam = y == 0 || y == 6 || Math.floorMod(i, 4) == 0;
+                    p.setIfEmpty(c[0], y, c[1], beam ? "dark_oak_log[axis=y]" : y == 3 ? "glass" : "white_terracotta");
+                }
+            }
+        }
+        // Wollballen und Spulen vor dem Haus
+        String[] wool = {"red_wool", "white_wool", "blue_wool", "yellow_wool"};
+        for (int k = 0; k < 10; k++) {
+            int x = -w - 4 - r.nextInt(3);
+            int z = -10 + k * 2;
+            p.setIfEmpty(x, 1, z, wool[k % wool.length]);
+            if (k % 3 == 0) {
+                p.setIfEmpty(x, 2, z, wool[(k + 1) % wool.length]);
+            }
+        }
+        for (int[] c : new int[][] {{w + 6, -8}, {w + 7, 6}, {-6, w + 7}, {8, w + 6}}) {
+            Decor.broadTree(p, c[0], 1, c[1], "oak_log", "oak_leaves", 4, 3, r);
+        }
+        flowers(p, -30, -30, 30, 30, 0, 10, r);
+        Decor.mountain(p, 6, 52, -14, 17, 46, r);
+        Decor.mountain(p, -40, 26, -14, 13, 34, r);
+    }
+
+    /** Föhnsturm: Gipfel hoch über den Wolken, Felsen darunter, Föhnmauer und Linsenwolken, Nachbargipfel. */
+    private static void foehnPeak(Plan p, Random r) {
+        for (int y = -4; y >= -60; y--) {
+            double rr = FoehnSturm.RADIUS - 3 + (-4 - y) * 0.45;
+            int e = (int) Math.ceil(rr) + 1;
+            for (int x = -e; x <= e; x++) {
+                for (int z = -e; z <= e; z++) {
+                    double d = Math.hypot(x, z) + Math.sin(x * 0.7 + y * 0.3) * 1.2;
+                    if (d <= rr) {
+                        p.setIfEmpty(x, y, z, y > -14 && r.nextInt(4) == 0 ? "snow_block" : Decor.rock(r, -y));
+                    }
+                }
+            }
+        }
+        // Wolkenmeer weit unten, Föhnmauer im Süden, Linsenwolken
+        for (int x = -60; x <= 60; x += 1) {
+            for (int z = -60; z <= 60; z += 1) {
+                double d = Math.hypot(x, z);
+                if (d > 24 && d < 60 && r.nextInt(9) == 0) {
+                    p.setIfEmpty(x, -32 - r.nextInt(2), z, "white_wool");
+                }
+            }
+        }
+        for (int x = -40; x <= 40; x++) {
+            int top = 4 + (int) Math.round(6 * Math.sin(x * 0.12) + 3 * Math.cos(x * 0.31));
+            for (int y = -30; y <= top; y++) {
+                if (r.nextInt(3) > 0) {
+                    p.setIfEmpty(x, y, 52 + r.nextInt(3), y > top - 3 ? "white_wool" : "light_gray_wool");
+                }
+            }
+        }
+        for (int[] c : new int[][] {{-30, -20, 18}, {34, -6, 22}, {-10, 34, 26}}) {
+            for (int dx = -7; dx <= 7; dx++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    if (dx * dx / 49.0 + dz * dz / 9.0 <= 1) {
+                        p.setIfEmpty(c[0] + dx, c[2], c[1] + dz, "white_wool");
+                        if (dx * dx / 25.0 + dz * dz / 4.0 <= 1) {
+                            p.setIfEmpty(c[0] + dx, c[2] + 1, c[1] + dz, "white_wool");
+                        }
+                    }
+                }
+            }
+        }
+        Decor.mountain(p, -46, 24, -40, 16, 44, r);
+        Decor.mountain(p, 44, 30, -40, 15, 40, r);
+        Decor.mountain(p, 4, -56, -40, 14, 36, r);
     }
 }

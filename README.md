@@ -80,6 +80,10 @@ Jedes Brett hat 36 Felder auf einem Spiralweg:
 | Schuhplattler | Punkte | Im Dreivierteltakt: Springen, Ducken, Klatschen (Klick) oder Stillstehen auf den nächsten Stampfer – genau = 2, knapp = 1. | Festzelt mit weiß-blauem Dach, Musikbühne und Bänken |
 | Brückenbau | Rennen | Mit Brettern eine eigene Brücke über die Schlucht bauen; wer fällt, fängt am Start wieder an (die Brücke bleibt). | Tiefe Schlucht mit Felswänden, Fluss und Wasserfall |
 | Schneeballschlacht | Punkte | Jeder gegen jeden, Schneebälle aus den Schneewehen holen; Treffer = Punkt, Getroffene leuchten kurz und sind so lange sicher. | Winterwiese mit Schneemännern, Iglu und verschneiten Fichten |
+| Schlittenrennen | Rennen | Zwei Runden im Schlitten (Holzboot) über die Eisbahn; sechs Tore zählen nur der Reihe nach; wer herausfällt, sitzt gleich wieder. | Verschneiter Wald, Tribüne und Hütte im Innenfeld, Torbögen |
+| Enzian-Suche | Punkte | Blaue Enziane auf der Almwiese finden und pflücken – im hohen Gras, hinter Felsen und Büschen versteckt. | Weite Alm mit Kühen, Holzzaun und Almhütte |
+| Musterweber | Punkte | Ein 4×4-Muster kurz anschauen, dann am eigenen Webrahmen aus dem Gedächtnis nachlegen; drei Runden mit 2, 3, 4 Farben. | Weberei mit Fachwerk, Wollballen und Garten |
+| Föhnsturm | Überleben | Windböen (vorher Wolken, Ton und Richtung im Titel) schieben vom Gipfel; Schutz hinter Felsen oder geduckt. | Gipfel über dem Wolkenmeer mit Föhnmauer und Linsenwolken |
 
 Wertung: **Punkte** – wer die meisten hat; **Überleben** – wer am längsten dabei bleibt; **Rennen** – wer zuerst
 ankommt, danach alle anderen nach der geschafften Strecke.
@@ -127,7 +131,8 @@ Paper-26.1.2-Server ein (offline, Port 25770, RCON 25870) und schickt vier Test-
 (`test/party-test.cjs`): Edelweiß-Jagd auf Schloss Weißenstein, Gipfelrennen auf dem Almsommer und eine lange
 Edelweiß-Jagd im Goldstollen – dabei kommt jedes der zwölf ersten Minispiele einmal dran. Partie 4 spielt die neuen
 Minispiele (Paket 1: Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen), Partie 5 Paket 2
-(Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht). `PARTS=1,2` spielt nur einen Teil,
+(Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht), Partie 6 Paket 3 (Schlittenrennen, Enzian-Suche,
+Musterweber, Föhnsturm). `PARTS=1,2` spielt nur einen Teil,
 `ONLY=lawinenhang,murmeltier` nur diese Minispiele aus den Partien 4 bis 6.
 
 ## Einstellungen
