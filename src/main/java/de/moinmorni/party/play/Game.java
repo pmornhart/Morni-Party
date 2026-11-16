@@ -1059,10 +1059,10 @@ public final class Game {
             for (List<UUID> g : places) {
                 for (UUID u : g) {
                     String name = engine.player(u).map(PartyPlayer::name).orElse("?");
-                    String key = run.type().kind() == de.moinmorni.party.mini.Scoring.Kind.POINTS ? "mini.line.points"
-                            : "mini.line";
-                    a.sendMessage(Texts.text(lang, key, Placeholder.unparsed("pos", String.valueOf(place)),
-                            Placeholder.unparsed("name", name), Placeholder.unparsed("points", String.valueOf(run.score().points(u))),
+                    long at = run.score().finishTick(u);
+                    a.sendMessage(Texts.text(lang, run.resultKey(u), Placeholder.unparsed("pos", String.valueOf(place)),
+                            Placeholder.unparsed("name", name), Placeholder.unparsed("points", String.valueOf(run.shownPoints(u))),
+                            Placeholder.unparsed("time", Ui.seconds(Math.max(0, at) * 50, lang)),
                             Placeholder.unparsed("taler", String.valueOf(got.getOrDefault(u, 0)))));
                 }
                 place += g.size();

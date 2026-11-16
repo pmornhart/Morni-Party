@@ -2,7 +2,7 @@ name: MorniParty
 version: '${project.version}'
 main: de.moinmorni.party.PartyPlugin
 api-version: '1.21'
-description: Morni Party für das MoinMorni-Netzwerk – Brettspiel für 2–8 mit Edelweiß, Talern und zwölf Minispielen.
+description: Morni Party für das MoinMorni-Netzwerk – Brettspiel für 2–8 mit Edelweiß, Talern und vielen Minispielen.
 authors: [MoinMorni]
 website: https://moinmorni.net
 # Läuft mit dem Netzwerk-Plugin (Sprache, Party, Statistik) und auch allein.

@@ -8,7 +8,9 @@ import de.moinmorni.party.menu.Menu;
 import de.moinmorni.party.mini.MiniRun;
 import de.moinmorni.party.play.Game;
 import de.moinmorni.party.world.Places;
+import com.destroystokyo.paper.event.player.PlayerJumpEvent;
 import io.papermc.paper.event.player.AsyncPlayerSpawnLocationEvent;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -25,11 +27,13 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 
 /** Ankommen, Gehen, Knöpfe, Menüs, Bewegung (Einfrieren auf dem Brett, Sturz vom Festplatz). */
@@ -127,6 +131,48 @@ public final class PlayerListener implements Listener {
         } else if (plugin.games().watching(p.getUniqueId()).isEmpty()) {
             plugin.lobby().use(p, action);
         }
+    }
+
+    /** Das Minispiel, in dem diese Person gerade (noch) mitspielt. */
+    private Optional<MiniRun> playing(Player p) {
+        return plugin.games().of(p.getUniqueId()).filter(g -> g.phase() == Game.Phase.MINI).map(Game::mini)
+                .filter(m -> m != null && m.running() && m.score().alive(p.getUniqueId()));
+    }
+
+    /** Rechtsklick auf ein Wesen (Murmeltier, Schlitten …): nur das Minispiel entscheidet. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onUseEntity(PlayerInteractEntityEvent e) {
+        Optional<MiniRun> m = playing(e.getPlayer());
+        if (m.isEmpty()) {
+            return;
+        }
+        if (e.getHand() == EquipmentSlot.HAND) {
+            m.get().onEntityClick(e.getPlayer(), e.getRightClicked());
+        }
+        e.setCancelled(true);
+    }
+
+    /** Schlag auf ein Wesen oder eine Klickfläche (kommt vor jedem Schaden, auch bei Wesen ohne Leben). */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onAttack(PrePlayerAttackEntityEvent e) {
+        if (e.getAttacked() instanceof Player) {
+            return; // Schaden an Mitspielenden regelt das Minispiel über das Schadens-Ereignis
+        }
+        Optional<MiniRun> m = playing(e.getPlayer());
+        if (m.isPresent()) {
+            e.setCancelled(true);
+            m.get().onEntityClick(e.getPlayer(), e.getAttacked());
+        }
+    }
+
+    @EventHandler
+    public void onSneak(PlayerToggleSneakEvent e) {
+        playing(e.getPlayer()).ifPresent(m -> m.onSneak(e.getPlayer(), e.isSneaking()));
+    }
+
+    @EventHandler
+    public void onJump(PlayerJumpEvent e) {
+        playing(e.getPlayer()).ifPresent(m -> m.onJump(e.getPlayer()));
     }
 
     private boolean debounce(Player p) {

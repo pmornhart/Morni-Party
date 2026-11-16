@@ -62,7 +62,7 @@ Jedes Brett hat 36 Felder auf einem Spiralweg:
 |---|---|---|---|
 | Bröckelboden | Überleben | Drei Böden übereinander, wo du stehst, bröckelt es weg. | Gletscher mit Eiszacken und verschneiten Gipfeln |
 | Talerregen | Punkte | Goldtaler fallen vom Himmel – einsammeln (Goldbarren = 3). | Marktplatz mit Ständen und Schatzhaus |
-| Bergsprint | Ziel | Wettlauf den Almweg hinauf über Heuballen. | Felsen, Hütte am Start, Gipfel mit Fahnen am Ziel |
+| Bergsprint | Rennen | Wettlauf den Almweg hinauf über Heuballen. | Felsen, Hütte am Start, Gipfel mit Fahnen am Ziel |
 | Pfeilhagel | Überleben | Pfeile prasseln herab – ausweichen. | Burghof mit Mauern, Türmen und Bannern |
 | Heiße Brezn | Überleben | Mit einem Schlag weitergeben; wer sie hält, wenn die Zeit abläuft, ist raus. | Bäckerei mit rauchendem Ofen, Brezn-Theke, Biertische |
 | Trachtenfarben | Überleben | Farbe merken – danach verschwinden alle anderen. | Tanzplatz mit Maibaum, Wimpeln und Musikbühne |
@@ -72,6 +72,13 @@ Jedes Brett hat 36 Felder auf einem Spiralweg:
 | Holzhacker | Punkte | Drei Hiebe spalten einen Holzklotz. | Sägewerk mit Wasserrad, Holzstapel, Fichtenwald |
 | Rempelei | Überleben | Die anderen von der Plattform schubsen; der Rand bröckelt. | Felsnadel über einer Schlucht |
 | Scheibenschießen | Punkte | Mit Schneebällen auf Zielscheiben werfen. | Schützenfest mit Bierzelt, Riesenrad und Preisregal |
+| Lawinenhang | Rennen | Den Schneehang hinauf; rollende Schneebrocken schieben dich ein Stück zurück. | Bergflanke mit Lawinenzäunen, Starthütte, Bergwacht-Hütte oben |
+| Maibaumkraxeln | Rennen | An Leitern und Ranken den Maibaum hinauf zum Kranz; Stücke brechen weg und wachsen nach. | Dorfplatz mit Häusern, Zwiebelturm, Wirtsgarten und Wimpeln |
+| Eisstockschießen | Punkte | Drei Würfe für alle gleichzeitig: Kraftbalken, Punkte nach Abstand zur Daube (5/3/2/1); Stöcke stoßen sich weg. | Zugefrorener Bergsee mit Stockschützenhütte und Glühweinstand |
+| Murmeltier-Klopfen | Punkte | Auf herausschauende Murmeltiere hauen (golden = 3); Steinbrocken kosten einen Punkt. | Bergwiese mit Felsbrocken, Almrosen und Murmeltierbauten |
+
+Wertung: **Punkte** – wer die meisten hat; **Überleben** – wer am längsten dabei bleibt; **Rennen** – wer zuerst
+ankommt, danach alle anderen nach der geschafften Strecke.
 
 Alle Menüs sind Truhen und gehen auch mit Bedrock (Geyser); auf Bedrock reicht ein Antippen statt Rechtsklick.
 
@@ -114,7 +121,9 @@ test/run.sh                      # echter Test: Paper-Server + Test-Spieler (min
 Bert spricht Englisch, Anna und Bert sind eine Party, alle Meldungen landen in `calls.log`), richtet einen
 Paper-26.1.2-Server ein (offline, Port 25770, RCON 25870) und schickt vier Test-Spieler durch drei Partien
 (`test/party-test.cjs`): Edelweiß-Jagd auf Schloss Weißenstein, Gipfelrennen auf dem Almsommer und eine lange
-Edelweiß-Jagd im Goldstollen – dabei kommt jedes der zwölf Minispiele einmal dran. `PARTS=1,2` spielt nur einen Teil.
+Edelweiß-Jagd im Goldstollen – dabei kommt jedes der zwölf ersten Minispiele einmal dran. Partie 4 spielt die neuen
+Minispiele (Paket 1: Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen). `PARTS=1,2` spielt nur
+einen Teil, `ONLY=lawinenhang,murmeltier` nur diese Minispiele aus Partie 4.
 
 ## Einstellungen
 

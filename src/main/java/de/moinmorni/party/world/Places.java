@@ -5,7 +5,8 @@ import de.moinmorni.party.mini.MiniType;
 
 /**
  * Wo was in der Welt steht. Mitte: der Festplatz (Wartebereich). Jeder Tisch (eine Partie gleichzeitig) hat seine
- * drei Spielbretter und zwölf Minispiel-Plätze, weit weg vom Festplatz und voneinander.
+ * drei Spielbretter und alle Minispiel-Plätze (vier nebeneinander, Reihe für Reihe), weit weg vom Festplatz und
+ * voneinander.
  */
 public final class Places {
 

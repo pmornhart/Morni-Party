@@ -31,6 +31,10 @@ final class MiniDecor {
             case HOLZHACKER -> sawmill(p, r);
             case REMPELEI -> gorge(p, r);
             case SCHEIBENSCHIESSEN -> fair(p, r);
+            case LAWINENHANG -> snowSlope(p, r);
+            case MAIBAUMKRAXELN -> village(p, r);
+            case EISSTOCKSCHIESSEN -> frozenLake(p, r);
+            case MURMELTIER -> marmotMeadow(p, r);
         }
     }
 
@@ -161,7 +165,53 @@ final class MiniDecor {
         }
     }
 
-    // ---------- Die zwölf Kulissen ----------
+    /** Einfaches Haus mit weißen Wänden, Holz-Obergeschoss und Blumenkästen (Satteldach entlang x). */
+    private static void alpineHouse(Plan p, int cx, int y, int cz, int hx, int hz, String roof, Random r) {
+        hut(p, cx, y, cz, hx, hz, "white_terracotta", roof + "_stairs", roof + "_slab");
+        for (int x = -hx; x <= hx; x++) {
+            for (int z : new int[] {-hz, hz}) {
+                if (Math.abs(x) < hx) {
+                    p.set(cx + x, y + 3, cz + z, "spruce_planks");
+                    int out = z < 0 ? -1 : 1;
+                    if (x != 0 && Math.floorMod(x, 2) == 0) {
+                        p.setIfEmpty(cx + x, y + 2, cz + z + out, "spruce_trapdoor[facing=" + (out < 0 ? "north" : "south")
+                                + ",half=top,open=false]");
+                        p.setIfEmpty(cx + x, y + 3, cz + z + out, Decor.pick(r, "potted_red_tulip", "potted_poppy",
+                                "potted_dandelion", "potted_azure_bluet"));
+                    }
+                }
+            }
+        }
+    }
+
+    /** Zwiebelturm (eigene Form): weißer Turm, grüne Kupferkuppel, goldene Kugel. */
+    private static void onionTower(Plan p, int cx, int y, int cz, int height) {
+        for (int h = 0; h < height; h++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    boolean edge = Math.abs(dx) == 2 || Math.abs(dz) == 2;
+                    boolean window = h >= height - 5 && h <= height - 4 && (dx == 0 || dz == 0);
+                    if (edge) {
+                        p.set(cx + dx, y + h, cz + dz, window ? "air" : h % 5 == 0 ? "smooth_quartz" : "white_terracotta");
+                    }
+                }
+            }
+        }
+        double[] profile = {2.6, 3.1, 3.2, 2.9, 2.3, 1.6, 1.0, 0.6};
+        for (int i = 0; i < profile.length; i++) {
+            for (int dx = -4; dx <= 4; dx++) {
+                for (int dz = -4; dz <= 4; dz++) {
+                    if (Math.hypot(dx, dz) <= profile[i]) {
+                        p.set(cx + dx, y + height + i, cz + dz, i % 3 == 2 ? "weathered_copper" : "oxidized_copper");
+                    }
+                }
+            }
+        }
+        p.set(cx, y + height + profile.length, cz, "gold_block");
+        p.set(cx, y + height + profile.length + 1, cz, "lightning_rod");
+    }
+
+    // ---------- Die Kulissen ----------
 
     /** Bröckelboden: Gletscher – Schneeplateau rundherum, Eiszacken, verschneite Gipfel dahinter. */
     private static void glacier(Plan p, Random r) {
@@ -727,5 +777,174 @@ final class MiniDecor {
         for (int[] c : new int[][] {{-12, -12}, {12, -12}, {-23, 14}, {23, -10}}) {
             Decor.lanternPost(p, c[0], 1, c[1], "spruce_fence");
         }
+    }
+
+    /** Lawinenhang: Bergflanken mit Lawinenzäunen und Fichten, Hütte am Start, Bergwacht-Hütte oben. */
+    private static void snowSlope(Plan p, Random r) {
+        for (int z = LawinenHang.START_Z - 10; z <= LawinenHang.BACK_Z + 8; z++) {
+            int base = (int) Math.floor(LawinenHang.surface(Math.max(LawinenHang.START_Z, Math.min(LawinenHang.BACK_Z, z))));
+            for (int side : new int[] {-1, 1}) {
+                for (int k = LawinenHang.HALF + 2; k <= LawinenHang.HALF + 20; k++) {
+                    int x = side * k;
+                    double far = (k - LawinenHang.HALF - 2) / 18.0;
+                    int top = base + (int) Math.round(far * (7 + 4 * Math.sin(z * 0.13 + side)));
+                    for (int y = top - 6; y <= top; y++) {
+                        p.setIfEmpty(x, y, z, y == top ? (r.nextInt(9) == 0 ? "stone" : "snow_block") : Decor.rock(r, top - y + 2));
+                    }
+                    if (k % 6 == 0 && Math.floorMod(z, 9) < 5) {
+                        p.setIfEmpty(x, top + 1, z, "spruce_fence"); // Lawinenverbauung
+                    } else if (r.nextInt(34) == 0 && k > LawinenHang.HALF + 4) {
+                        Decor.spruce(p, x, top + 1, z, 5 + r.nextInt(4), r);
+                    } else if (r.nextInt(3) == 0) {
+                        p.setIfEmpty(x, top + 1, z, "snow[layers=" + (1 + r.nextInt(2)) + "]");
+                    }
+                }
+            }
+        }
+        // Starthütte unten
+        pad(p, -7, LawinenHang.START_Z - 18, 7, LawinenHang.START_Z - 6, 0, "snow_block", r);
+        hut(p, 0, 0, LawinenHang.START_Z - 12, 4, 3, "spruce_planks", "dark_oak_stairs", "dark_oak_slab");
+        // Bergwacht-Hütte (orange Dach) oben hinter dem Ziel
+        int gt = LawinenHang.eighths(LawinenHang.GOAL_Z) / 8;
+        pad(p, -8, LawinenHang.BACK_Z + 2, 8, LawinenHang.BACK_Z + 14, gt, "snow_block", r);
+        hut(p, 0, gt, LawinenHang.BACK_Z + 8, 4, 3, "white_terracotta", "smooth_red_sandstone_stairs", "smooth_red_sandstone_slab");
+        flag(p, -6, gt + 1, LawinenHang.BACK_Z + 4, 6, 4);
+        flag(p, 6, gt + 1, LawinenHang.BACK_Z + 4, 6, 12);
+        Decor.mountain(p, 0, LawinenHang.BACK_Z + 34, gt - 8, 18, 46, r);
+        Decor.mountain(p, -30, LawinenHang.BACK_Z + 20, gt - 10, 13, 34, r);
+        Decor.mountain(p, 32, LawinenHang.BACK_Z + 22, gt - 10, 14, 36, r);
+    }
+
+    /** Maibaumkraxeln: Dorfplatz mit Häusern, Zwiebelturm, Wirtshaus-Bänken und Wimpeln. */
+    private static void village(Plan p, Random r) {
+        ring(p, MaibaumKraxeln.PLAZA + 1.5, 32, 0, GRASS, r);
+        for (int x = -16; x <= 16; x++) {
+            for (int z = -16; z <= 16; z++) {
+                double d = Math.hypot(x, z);
+                if (d > MaibaumKraxeln.PLAZA + 1.5 && d <= 13.5) {
+                    p.set(x, 0, z, r.nextInt(4) == 0 ? "mossy_cobblestone" : "cobblestone");
+                }
+            }
+        }
+        alpineHouse(p, -17, 0, 6, 4, 3, "dark_oak", r);
+        alpineHouse(p, 17, 0, 6, 4, 3, "spruce", r);
+        alpineHouse(p, -16, 0, -9, 3, 3, "spruce", r);
+        alpineHouse(p, 16, 0, -9, 3, 3, "dark_oak", r);
+        onionTower(p, 0, 1, 22, 16);
+        pad(p, -4, 18, 4, 26, 0, GRASS, r);
+        // Wirtshaus-Garten mit Bierbänken
+        for (int side : new int[] {-1, 1}) {
+            int x = side * 9;
+            for (int z = 15; z <= 21; z++) {
+                p.set(x, 1, z, "spruce_fence");
+                p.set(x, 2, z, "spruce_slab[type=bottom]");
+                p.set(x - 1, 1, z, "spruce_stairs[facing=east,half=bottom,shape=straight]");
+                p.set(x + 1, 1, z, "spruce_stairs[facing=west,half=bottom,shape=straight]");
+            }
+            p.set(x, 3, 18, "lantern[hanging=false]");
+            Decor.broadTree(p, side * 24, 1, 18, "oak_log", "oak_leaves", 4, 3, r);
+        }
+        String[] colours = {"white", "light_blue", "white", "blue"};
+        bunting(p, -13, 10, 13, 10, 7, colours);
+        bunting(p, -13, -10, -13, 10, 7, colours);
+        bunting(p, 13, -10, 13, 10, 7, colours);
+        for (int[] c : new int[][] {{-12, -12}, {12, -12}, {-12, 13}, {12, 13}}) {
+            Decor.lanternPost(p, c[0], 1, c[1], "spruce_fence");
+        }
+        flowers(p, -32, -32, 32, 32, 0, 10, r);
+        Decor.mountain(p, -22, 50, -12, 16, 46, r);
+        Decor.mountain(p, 26, 46, -12, 14, 40, r);
+    }
+
+    /** Eisstockschießen: zugefrorener Bergsee, verschneites Ufer, Hütte mit Glühweinstand, Bänke, Fichten. */
+    private static void frozenLake(Plan p, Random r) {
+        for (int x = -24; x <= 24; x++) {
+            for (int z = -26; z <= 36; z++) {
+                double e = Math.pow(x / 15.0, 2) + Math.pow((z - 4) / 26.0, 2);
+                if (e <= 1) {
+                    p.setIfEmpty(x, 0, z, r.nextInt(8) == 0 ? "packed_ice" : "ice");
+                    p.setIfEmpty(x, -1, z, "packed_ice");
+                    p.setIfEmpty(x, -2, z, Decor.rock(r, 3));
+                } else if (e <= 1.7) {
+                    p.setIfEmpty(x, 0, z, r.nextInt(6) == 0 ? "stone" : "snow_block");
+                    for (int k = 1; k <= 3 + r.nextInt(3); k++) {
+                        p.setIfEmpty(x, -k, z, Decor.rock(r, k + 2));
+                    }
+                    if (r.nextInt(3) == 0) {
+                        p.setIfEmpty(x, 1, z, "snow[layers=" + (1 + r.nextInt(3)) + "]");
+                    }
+                }
+            }
+        }
+        for (int k = 0; k < 16; k++) {
+            double a = Math.toRadians(k * 22.5 + r.nextInt(10));
+            int x = (int) Math.round(Math.sin(a) * 20);
+            int z = 4 + (int) Math.round(Math.cos(a) * 32);
+            if (z < -12 || Math.abs(x) < 8) {
+                continue;
+            }
+            Decor.spruce(p, x, 1, z, 6 + r.nextInt(4), r);
+        }
+        // Hütte der Stockschützen links, Glühweinstand rechts
+        hut(p, -19, 0, -4, 3, 4, "spruce_planks", "dark_oak_stairs", "dark_oak_slab");
+        stall(p, 18, 0, -4, false, "red", "barrel[facing=up]");
+        p.set(15, 1, -8, "campfire[lit=true]");
+        for (int z = 2; z <= 10; z += 4) {
+            p.set(-12, 1, z, "spruce_stairs[facing=east,half=bottom,shape=straight]");
+            p.set(-12, 1, z + 1, "spruce_stairs[facing=east,half=bottom,shape=straight]");
+            p.set(12, 1, z, "spruce_stairs[facing=west,half=bottom,shape=straight]");
+            p.set(12, 1, z + 1, "spruce_stairs[facing=west,half=bottom,shape=straight]");
+        }
+        for (int[] c : new int[][] {{-9, -12}, {9, -12}, {-9, 14}, {9, 14}}) {
+            Decor.lanternPost(p, c[0], 1, c[1], "spruce_fence");
+        }
+        Decor.mountain(p, 0, 62, -14, 18, 50, r);
+        Decor.mountain(p, -34, 44, -14, 14, 38, r);
+        Decor.mountain(p, 34, 48, -14, 14, 40, r);
+    }
+
+    /** Murmeltier-Klopfen: Bergwiese mit Felsbrocken, Almrosen, Geröll und einer kleinen Hütte. */
+    private static void marmotMeadow(Plan p, Random r) {
+        ring(p, MurmelTier.HALF + 3, 28, 0, GRASS, r);
+        for (int k = 0; k < 18; k++) {
+            double a = Math.toRadians(r.nextInt(360));
+            double rr = 14 + r.nextInt(12);
+            int x = (int) Math.round(Math.cos(a) * rr);
+            int z = (int) Math.round(Math.sin(a) * rr);
+            if (z < -12 && Math.abs(x) < 6) {
+                continue;
+            }
+            int size = 1 + r.nextInt(2);
+            for (int dx = -size; dx <= size; dx++) {
+                for (int dz = -size; dz <= size; dz++) {
+                    for (int dy = 1; dy <= size + 1; dy++) {
+                        if (dx * dx + dz * dz + (dy - 1) * (dy - 1) <= size * size + 1) {
+                            p.setIfEmpty(x + dx, dy, z + dz, Decor.pick(r, "mossy_cobblestone", "stone", "andesite",
+                                    "cobblestone"));
+                        }
+                    }
+                }
+            }
+        }
+        for (int k = 0; k < 14; k++) {
+            double a = Math.toRadians(r.nextInt(360));
+            int x = (int) Math.round(Math.cos(a) * (13 + r.nextInt(12)));
+            int z = (int) Math.round(Math.sin(a) * (13 + r.nextInt(12)));
+            if (p.get(x, 1, z) == null && p.get(x, 2, z) == null) {
+                p.set(x, 1, z, "rose_bush[half=lower]");
+                p.set(x, 2, z, "rose_bush[half=upper]");
+            }
+            // Bau eines Murmeltiers: Erdhügel mit Loch
+            int bx = (int) Math.round(Math.cos(a + 1) * (12 + r.nextInt(10)));
+            int bz = (int) Math.round(Math.sin(a + 1) * (12 + r.nextInt(10)));
+            p.setIfEmpty(bx, 1, bz, "coarse_dirt");
+            p.set(bx, 0, bz, "mud");
+        }
+        hut(p, 18, 0, 14, 3, 3, "spruce_planks", "spruce_stairs", "spruce_slab");
+        pad(p, 13, 9, 23, 19, 0, GRASS, r);
+        flowers(p, -28, -28, 28, 28, 0, 12, r);
+        Decor.mountain(p, -8, 46, -14, 16, 48, r);
+        Decor.mountain(p, -40, 22, -14, 12, 34, r);
+        Decor.mountain(p, 38, 30, -14, 13, 36, r);
     }
 }

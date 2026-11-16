@@ -1,16 +1,10 @@
 package de.moinmorni.party.mini;
 
-import de.moinmorni.party.Texts;
-import de.moinmorni.party.Ui;
 import de.moinmorni.party.world.Decor;
 import de.moinmorni.party.world.Plan;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -23,9 +17,6 @@ final class BergSprint extends MiniRun {
     static final int START_Z = -30;
     static final int GOAL_Z = 30;
     static final int HALF_WIDTH = 4;
-    private static final int FINISH_POINTS = 1000;
-    private final Set<UUID> finished = new HashSet<>();
-    private int order;
 
     BergSprint(Setup s) {
         super(s);
@@ -123,31 +114,16 @@ final class BergSprint extends MiniRun {
             return;
         }
         for (Player p : alivePlayers()) {
-            progress(p);
+            measure(p);
         }
     }
 
-    private void progress(Player p) {
-        UUID u = p.getUniqueId();
-        if (finished.contains(u) || !score.has(u)) {
-            return;
-        }
+    private void measure(Player p) {
         double z = p.getLocation().getZ() - oz;
         if (z >= GOAL_Z) {
-            finished.add(u);
-            order++;
-            score.set(u, FINISH_POINTS - order);
-            Ui.sound(p, "minecraft:entity.player.levelup", 1f);
-            say("mini.bergsprint.finish", Placeholder.unparsed("name", p.getName()),
-                    Placeholder.unparsed("pos", String.valueOf(order)));
-            Ui.title(p, Texts.text(plugin.lang(p), "mini.bergsprint.done"), net.kyori.adventure.text.Component.empty(), 1200);
+            arrive(p, "mini.race.finish");
         } else {
-            score.set(u, Math.max(score.points(u), (int) Math.floor(z - START_Z)));
+            progress(p, (int) Math.floor(z - START_Z));
         }
-    }
-
-    @Override
-    protected boolean complete() {
-        return !players.isEmpty() && players.stream().allMatch(p -> finished.contains(p.getUniqueId()));
     }
 }

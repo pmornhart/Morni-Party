@@ -4,7 +4,7 @@
 # Eigene, leere Welt für Festplatz, Spielbretter und Minispiel-Plätze. Das Plugin legt sie an und baut alles selbst.
 welt: party
 
-# So viele Partien können gleichzeitig laufen (jeder Tisch hat alle drei Bretter und alle zwölf Minispiele).
+# So viele Partien können gleichzeitig laufen (jeder Tisch hat alle drei Bretter und alle Minispiel-Plätze).
 # Ändern baut beim nächsten Start neu.
 tische: 2
 
@@ -35,7 +35,8 @@ zug:
 
 minispiele:
   # Welche Minispiele vorkommen (leer = alle): broeckelboden, talerregen, bergsprint, pfeilhagel, heisse-brezn,
-  # trachtenfarben, gipfelkoenig, kuhglocke, schaefchen, holzhacker, rempelei, scheibenschiessen
+  # trachtenfarben, gipfelkoenig, kuhglocke, schaefchen, holzhacker, rempelei, scheibenschiessen, lawinenhang,
+  # maibaumkraxeln, eisstockschiessen, murmeltier
   auswahl: []
   # zufall = gemischt, ohne Wiederholung bis alle dran waren; fest = der Reihe nach wie in „auswahl“.
   reihenfolge: zufall

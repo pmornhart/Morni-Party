@@ -5,7 +5,7 @@
 #   test/run.sh                       # alles
 #   KEEP=1 test/run.sh                # Server danach laufen lassen (zum Nachschauen)
 #   KEEP=1 SKIP_TEST=1 test/run.sh    # nur Server starten
-#   PARTS=1,2 test/run.sh             # nur Partie 1 und 2 (3 = die restlichen acht Minispiele)
+#   PARTS=1,2 test/run.sh             # nur Partie 1 und 2 (3 = die restlichen acht Minispiele, 4 = neue Minispiele)
 #
 # Erwartet (Vorgaben für die MoinMorni-Sandbox, alles per Umgebungsvariable änderbar):
 #   PARTY_JAVA    Java 25 (Ordner; sonst die JDK 25 aus dem Cache, sonst JAVA_HOME)
@@ -135,7 +135,7 @@ fi
 
 echo "== Test-Spieler"
 STATUS=0
-PARTS="${PARTS:-1,2,3}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
+PARTS="${PARTS:-1,2,3,4}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
 
 echo "== Fehler im Server-Log:"
 if grep -qE "ERROR|Exception" console.log; then

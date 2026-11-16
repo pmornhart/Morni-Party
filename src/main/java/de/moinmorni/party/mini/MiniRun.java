@@ -19,6 +19,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
@@ -135,7 +136,8 @@ public abstract class MiniRun {
         onTick();
         boolean lastStanding = type.kind() == Scoring.Kind.SURVIVAL && score.all().size() >= 2
                 && score.alive().size() <= 1;
-        if (ticks >= duration || lastStanding || complete()) {
+        boolean allHome = type.kind() == Scoring.Kind.RACE && score.allFinished();
+        if (ticks >= duration || lastStanding || allHome || complete()) {
             finish();
         }
     }
@@ -252,6 +254,49 @@ public abstract class MiniRun {
         e.setCancelled(true);
     }
 
+    /** Block setzen: Vorgabe – verboten. */
+    public void onPlace(Player p, BlockPlaceEvent e) {
+        e.setCancelled(true);
+    }
+
+    /** Klick (Schlag oder Rechtsklick) auf ein Wesen oder Anzeige-Objekt; der Klick selbst ist schon abgefangen. */
+    public void onEntityClick(Player p, Entity target) {
+    }
+
+    /** Ducken an/aus. */
+    public void onSneak(Player p, boolean sneaking) {
+    }
+
+    /** Gesprungen (der Server erkennt den Sprung an der Bewegung). */
+    public void onJump(Player p) {
+    }
+
+    // ---------- Ergebnis ----------
+
+    /** Text-Schlüssel der Ergebniszeile für diese Person. */
+    public String resultKey(java.util.UUID u) {
+        return switch (type.kind()) {
+            case POINTS -> "mini.line.points";
+            case SURVIVAL -> "mini.line";
+            case RACE -> score.finished(u) ? finishKey() : wayKey();
+        };
+    }
+
+    /** Zahl in der Ergebniszeile (Punkte, Strecke …). */
+    public int shownPoints(java.util.UUID u) {
+        return score.points(u);
+    }
+
+    /** Rennen: Ergebniszeile für alle, die angekommen sind. */
+    protected String finishKey() {
+        return "mini.line.finish";
+    }
+
+    /** Rennen: Ergebniszeile für alle, die nicht angekommen sind (Punkte = geschaffte Strecke). */
+    protected String wayKey() {
+        return "mini.line.way";
+    }
+
     // ---------- Helfer ----------
 
     /** Ausgeschieden: zuschauen. */
@@ -267,6 +312,26 @@ public abstract class MiniRun {
         Ui.title(p, Texts.text(plugin.lang(p), "mini.out.title"), Texts.text(plugin.lang(p), "mini.out.sub"), 1500);
         int left = score.alive().size();
         say("mini.out", Placeholder.unparsed("name", p.getName()), Placeholder.unparsed("n", String.valueOf(left)));
+    }
+
+    /** Rennen: angekommen (einmal). {@code key} ist die Meldung an alle („… ist im Ziel – Platz 2!“). */
+    protected boolean arrive(Player p, String key) {
+        if (!score.finish(p.getUniqueId(), ticks)) {
+            return false;
+        }
+        int pos = score.finishers();
+        Ui.sound(p, "minecraft:entity.player.levelup", 1f);
+        say(key, Placeholder.unparsed("name", p.getName()), Placeholder.unparsed("pos", String.valueOf(pos)));
+        Ui.title(p, Texts.text(plugin.lang(p), "mini.race.done"), net.kyori.adventure.text.Component.empty(), 1200);
+        return true;
+    }
+
+    /** Rennen: geschaffte Strecke (zählt nur, wenn sie weiter ist als bisher und noch niemand angekommen ist). */
+    protected void progress(Player p, int way) {
+        java.util.UUID u = p.getUniqueId();
+        if (score.has(u) && !score.finished(u) && way > score.points(u)) {
+            score.set(u, way);
+        }
     }
 
     protected void point(Player p, int n) {

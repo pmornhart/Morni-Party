@@ -8,22 +8,25 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Wertung eines Minispiels, ohne Minecraft. Zwei Arten:
+ * Wertung eines Minispiels, ohne Minecraft. Drei Arten:
  * <ul>
  * <li>{@link Kind#POINTS}: wer die meisten Punkte hat, ist vorn (gleich viele = gleicher Platz);</li>
  * <li>{@link Kind#SURVIVAL}: wer übrig bleibt, ist vorn (alle Übrigen teilen sich Platz 1); wer früher ausscheidet,
- * ist weiter hinten – wer im selben Augenblick ausscheidet, teilt sich den Platz.</li>
+ * ist weiter hinten – wer im selben Augenblick ausscheidet, teilt sich den Platz;</li>
+ * <li>{@link Kind#RACE}: wer zuerst im Ziel ist, ist vorn (im selben Augenblick = gleicher Platz); wer nicht ankommt,
+ * steht dahinter – geordnet nach der geschafften Strecke (die Punkte).</li>
  * </ul>
  */
 public final class Scoring {
 
     public enum Kind {
-        POINTS, SURVIVAL
+        POINTS, SURVIVAL, RACE
     }
 
     private final Kind kind;
     private final Map<UUID, Integer> points = new LinkedHashMap<>();
     private final Map<UUID, Long> out = new LinkedHashMap<>();
+    private final Map<UUID, Long> finished = new LinkedHashMap<>();
 
     public Scoring(Kind kind) {
         this.kind = kind;
@@ -41,6 +44,7 @@ public final class Scoring {
     public void drop(UUID u) {
         points.remove(u);
         out.remove(u);
+        finished.remove(u);
     }
 
     public boolean has(UUID u) {
@@ -72,6 +76,34 @@ public final class Scoring {
         return true;
     }
 
+    /** Rennen: im Ziel zum Zeitpunkt {@code tick}. false, wenn schon im Ziel (oder nicht dabei). */
+    public boolean finish(UUID u, long tick) {
+        if (!points.containsKey(u) || finished.containsKey(u)) {
+            return false;
+        }
+        finished.put(u, tick);
+        return true;
+    }
+
+    public boolean finished(UUID u) {
+        return finished.containsKey(u);
+    }
+
+    /** Zeitpunkt der Ankunft, -1 = (noch) nicht im Ziel. */
+    public long finishTick(UUID u) {
+        return finished.getOrDefault(u, -1L);
+    }
+
+    /** So viele sind schon im Ziel. */
+    public int finishers() {
+        return finished.size();
+    }
+
+    /** Alle (noch Dabeiseienden) im Ziel? */
+    public boolean allFinished() {
+        return !points.isEmpty() && finished.keySet().containsAll(points.keySet());
+    }
+
     public boolean alive(UUID u) {
         return points.containsKey(u) && !out.containsKey(u);
     }
@@ -90,6 +122,10 @@ public final class Scoring {
         Comparator<UUID> c;
         if (kind == Kind.POINTS) {
             c = Comparator.comparingInt((UUID u) -> -points.get(u));
+        } else if (kind == Kind.RACE) {
+            // Wer ankam, zuerst (früher = besser); dann alle anderen nach Strecke.
+            c = Comparator.comparingInt((UUID u) -> finished.containsKey(u) ? 0 : 1)
+                    .thenComparingLong(u -> finished.containsKey(u) ? finished.get(u) : -points.get(u));
         } else {
             // Übrige zuerst (Long.MAX), dann wer später ausgeschieden ist; Punkte entscheiden bei gleicher Zeit nicht.
             c = Comparator.comparingLong((UUID u) -> -out.getOrDefault(u, Long.MAX_VALUE));

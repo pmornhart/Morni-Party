@@ -49,6 +49,15 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
   Gleichgewicht der Minispiele, Tempo); Netzwerk mit echtem Hub; Paper 26.3 als Server (nur gebaut); mehr als ein
   Tisch gleichzeitig.
 
+- **Mehr Minispiele, Paket 1** (16.11., Branch `claude/mehr-minispiele`): Lawinenhang (Rennen den Schneehang hinauf,
+  Schneeschichten = ohne Springen begehbar, rollende Schneebrocken als Block-Anzeigen schieben 6 Blöcke zurück),
+  Maibaumkraxeln (12 Kletterspuren aus Leitern und Ranken, Stücke brechen nach Staub-Warnung weg und wachsen nach),
+  Eisstockschießen (alle werfen gleichzeitig, Kraftbalken in der Aktionsleiste, eigene Physik `mini/Eisbahn` mit
+  Zusammenstößen, Ringe 5/3/2/1), Murmeltier-Klopfen (Kaninchen als Murmeltiere, golden = 3, Steinbrocken = −1 über
+  Klickflächen). Neue Wertungsart **Rennen** in `Scoring` (Ankunft, sonst Strecke; Bergsprint nutzt sie jetzt,
+  Ergebniszeile „im Ziel nach 4,5 s“ / „46 Blöcke weit“). Bau-Version 3. 48 Unit-Tests, echt 135/136 (der eine Fehlschlag:
+  Trachtenfarben-Prüfung war zu streng – Carl stand zufällig richtig; Prüfung angepasst).
+
 ## Offen
 
 - Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann erstes Release v0.1.0).

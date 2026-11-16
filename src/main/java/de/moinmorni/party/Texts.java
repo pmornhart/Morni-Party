@@ -166,12 +166,12 @@ public final class Texts {
                 "<em>Gold Mine</em>");
         t("board.goldstollen.desc", "<gray>Ein offenes Bergwerk: der Weg führt vorbei an</gray>\n<gray>Erzadern hinab zur Goldkammer.</gray>",
                 "<gray>An open mine: the path leads past ore veins</gray>\n<gray>down to the gold chamber.</gray>");
-        t("goal.almsommer", "Gipfelkreuz",
-                "summit cross");
-        t("goal.schloss", "Turmplattform",
-                "tower platform");
-        t("goal.goldstollen", "Goldkammer",
-                "gold chamber");
+        t("goal.almsommer", "das Gipfelkreuz",
+                "the summit cross");
+        t("goal.schloss", "die Turmplattform",
+                "the tower platform");
+        t("goal.goldstollen", "die Goldkammer",
+                "the gold chamber");
 
         // ---------- Spielarten ----------
         t("mode.gipfelrennen", "<au>Gipfelrennen</au>",
@@ -287,8 +287,8 @@ public final class Texts {
                 "<white><name></white> <gray>finds by the path:</gray> <item>");
         t("land.summit", "<white><name></white> <gray>macht oben Brotzeit – schöne Aussicht!</gray>",
                 "<white><name></white> <gray>has a snack at the top – what a view!</gray>");
-        t("goal.reached", "<au><b><name></b></au> <gray>hat die <white><goal></white> erreicht und gewinnt das Gipfelrennen!</gray>",
-                "<au><b><name></b></au> <gray>reached the <white><goal></white> and wins the Summit Race!</gray>");
+        t("goal.reached", "<au><b><name></b></au> <gray>hat <white><goal></white> erreicht und gewinnt das Gipfelrennen!</gray>",
+                "<au><b><name></b></au> <gray>reached <white><goal></white> and wins the Summit Race!</gray>");
 
         // ---------- Glück und Pech ----------
         t("luck.geschenk", "<em>Glück!</em> <gray>Der Almwirt spendiert <white><name></white></gray> <au><n> Taler</au><gray>.</gray>",
@@ -464,6 +464,14 @@ public final class Texts {
                 "<au><pos>.</au> <white><name></white> <gray>→</gray> <au>+<taler> coins</au>");
         t("mini.line.points", "<au><pos>.</au> <white><name></white> <gray>(<points> Punkte) →</gray> <au>+<taler> Taler</au>",
                 "<au><pos>.</au> <white><name></white> <gray>(<points> points) →</gray> <au>+<taler> coins</au>");
+        t("mini.line.finish", "<au><pos>.</au> <white><name></white> <gray>(im Ziel nach <time> s) →</gray> <au>+<taler> Taler</au>",
+                "<au><pos>.</au> <white><name></white> <gray>(finished in <time> s) →</gray> <au>+<taler> coins</au>");
+        t("mini.line.way", "<au><pos>.</au> <white><name></white> <gray>(<points> Blöcke weit) →</gray> <au>+<taler> Taler</au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> blocks far) →</gray> <au>+<taler> coins</au>");
+        t("mini.line.top", "<au><pos>.</au> <white><name></white> <gray>(oben nach <time> s) →</gray> <au>+<taler> Taler</au>",
+                "<au><pos>.</au> <white><name></white> <gray>(at the top in <time> s) →</gray> <au>+<taler> coins</au>");
+        t("mini.line.height", "<au><pos>.</au> <white><name></white> <gray>(<points> Blöcke hoch) →</gray> <au>+<taler> Taler</au>",
+                "<au><pos>.</au> <white><name></white> <gray>(<points> blocks high) →</gray> <au>+<taler> coins</au>");
         t("mini.won", "<au>Gewonnen!</au>",
                 "<au>You won!</au>");
         t("mini.over", "<gray>Vorbei!</gray>",
@@ -520,9 +528,9 @@ public final class Texts {
                 "<au>Target Practice</au>");
         t("mini.scheibenschiessen.desc", "<gray>Wirf Schneebälle auf die Zielscheiben. Jeder Treffer ist ein Punkt!</gray>",
                 "<gray>Throw snowballs at the targets. Every hit is a point!</gray>");
-        t("mini.bergsprint.finish", "<white><name></white> <gray>ist im Ziel – Platz <au><pos></au>!</gray>",
+        t("mini.race.finish", "<white><name></white> <gray>ist im Ziel – Platz <au><pos></au>!</gray>",
                 "<white><name></white> <gray>crossed the finish line – place <au><pos></au>!</gray>");
-        t("mini.bergsprint.done", "<em>Im Ziel!</em>",
+        t("mini.race.done", "<em>Im Ziel!</em>",
                 "<em>Finished!</em>");
         t("mini.heissebrezn.item", "<gold>Heiße Brezn</gold>",
                 "<gold>Hot pretzel</gold>");
@@ -572,6 +580,50 @@ public final class Texts {
                 "<red>The edge is crumbling!</red>");
         t("mini.scheibenschiessen.item", "<em>Schneebälle</em>",
                 "<em>Snowballs</em>");
+
+        // ---------- Neue Minispiele (Paket 1) ----------
+        t("mini.lawinenhang", "<au>Lawinenhang</au>",
+                "<au>Avalanche Slope</au>");
+        t("mini.lawinenhang.desc", "<gray>Lauf den Schneehang hinauf! Von oben rollen Schneebrocken – wer getroffen wird, rutscht ein Stück zurück. Ausweichen oder drüberspringen!</gray>",
+                "<gray>Run up the snowy slope! Snowballs roll down from the top – if one hits you, you slide back a bit. Dodge or jump over them!</gray>");
+        t("mini.lawinenhang.hit", "<aqua>Erwischt! Ein Stück zurück …</aqua>",
+                "<aqua>Hit! Sliding back …</aqua>");
+        t("mini.maibaumkraxeln", "<au>Maibaumkraxeln</au>",
+                "<au>Maypole Climb</au>");
+        t("mini.maibaumkraxeln.desc", "<gray>Kletter an Leitern und Ranken den Maibaum hinauf bis zum Kranz! Wo es staubt, bricht gleich ein Stück weg – dann zur Seite ausweichen.</gray>",
+                "<gray>Climb the maypole on ladders and vines up to the wreath! Where it starts to crumble, a piece breaks away – step aside in time.</gray>");
+        t("mini.maibaumkraxeln.finish", "<white><name></white> <gray>hat den Kranz erreicht – Platz <au><pos></au>!</gray>",
+                "<white><name></white> <gray>reached the wreath – place <au><pos></au>!</gray>");
+        t("mini.eisstockschiessen", "<au>Eisstockschießen</au>",
+                "<au>Ice Stock Sport</au>");
+        t("mini.eisstockschiessen.desc", "<gray>Drei Würfe für alle gleichzeitig: schau zur Daube (dem kleinen Holzklotz) und klick, wenn der Kraftbalken passt – etwa zwei Drittel. Je näher dein Stock liegt, desto mehr Punkte. Stöcke der anderen kannst du wegschießen!</gray>",
+                "<gray>Three throws, everyone at once: look at the target block (the little wooden block) and click when the power bar is right – about two thirds. The closer your stone stops, the more points. You can knock the others' stones away!</gray>");
+        t("mini.eisstockschiessen.power", "<gray>Kraft</gray> <bar> <white><n> %</white>",
+                "<gray>Power</gray> <bar> <white><n> %</white>");
+        t("mini.eisstockschiessen.thrown", "<gray>Geworfen mit <white><n> %</white> Kraft!</gray>",
+                "<gray>Thrown with <white><n> %</white> power!</gray>");
+        t("mini.eisstockschiessen.colour", "<gray>Dein Eisstock hat die Farbe <colour><gray>.</gray></gray>",
+                "<gray>Your ice stock is <colour><gray>.</gray></gray>");
+        t("mini.eisstockschiessen.colour.short", "<gray>Dein Stock: <colour></gray>",
+                "<gray>Your stock: <colour></gray>");
+        t("mini.eisstockschiessen.round", "<au>Wurf <n> von <of></au>",
+                "<au>Throw <n> of <of></au>");
+        t("mini.eisstockschiessen.lead", "<gray>Nach Wurf <n> liegt <white><name></white> vorn: <au><points> Punkte</au>.</gray>",
+                "<gray>After throw <n>, <white><name></white> leads: <au><points> points</au>.</gray>");
+        t("mini.eisstockschiessen.nobody", "<gray>Nach Wurf <n> liegt noch kein Stock in den Ringen.</gray>",
+                "<gray>After throw <n>, no stone is inside the rings yet.</gray>");
+        t("mini.eisstockschiessen.item", "<em>Eisstock</em>",
+                "<em>Ice stock</em>");
+        t("mini.eisstockschiessen.item.lore", "<gray>Klicken, wenn der Kraftbalken passt!</gray>",
+                "<gray>Click when the power bar is right!</gray>");
+        t("mini.murmeltier", "<au>Murmeltier-Klopfen</au>",
+                "<au>Marmot Bonk</au>");
+        t("mini.murmeltier.desc", "<gray>Murmeltiere schauen aus den Löchern – schnell hin und draufhauen! Braun gibt einen Punkt, golden drei. Vorsicht vor Steinbrocken: die kosten einen Punkt.</gray>",
+                "<gray>Marmots peek out of their holes – run over and whack them! Brown ones give a point, golden ones three. Watch out for rocks: they cost a point.</gray>");
+        t("mini.murmeltier.item", "<em>Klopfhammer</em>",
+                "<em>Whacking hammer</em>");
+        t("mini.murmeltier.stone", "<red>Autsch, ein Stein! −1 Punkt</red>",
+                "<red>Ouch, a rock! −1 point</red>");
         t("colour.red", "<red><b>Rot</b></red>",
                 "<red><b>Red</b></red>");
         t("colour.yellow", "<yellow><b>Gelb</b></yellow>",

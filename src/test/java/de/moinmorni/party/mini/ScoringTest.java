@@ -60,4 +60,37 @@ class ScoringTest {
         assertFalse(s.has(a));
         assertEquals(3, s.places().getFirst().size(), "b, c, d gleichauf");
     }
+
+    @Test
+    void raceFirstArrivalWinsOthersByDistance() {
+        Scoring s = with(Scoring.Kind.RACE);
+        s.set(a, 40);
+        s.set(b, 12);
+        s.set(c, 30);
+        s.set(d, 30);
+        assertTrue(s.finish(c, 200));
+        assertFalse(s.finish(c, 210), "zweimal ankommen geht nicht");
+        assertTrue(s.finish(a, 260));
+        assertEquals(2, s.finishers());
+        assertEquals(200, s.finishTick(c));
+        assertEquals(-1, s.finishTick(d));
+        // c vor a (früher da), obwohl a mehr Strecke hat; dann d (30) vor b (12)
+        assertEquals(List.of(List.of(c), List.of(a), List.of(d), List.of(b)), s.places());
+        assertFalse(s.allFinished());
+        s.finish(b, 300);
+        s.finish(d, 300);
+        assertTrue(s.allFinished());
+        assertEquals(List.of(List.of(c), List.of(a), List.of(b, d)), s.places(), "gleichzeitig = gleicher Platz");
+    }
+
+    @Test
+    void raceWithoutFinishersSharesEqualDistance() {
+        Scoring s = with(Scoring.Kind.RACE);
+        s.set(a, 7);
+        s.set(b, 7);
+        s.set(c, 3);
+        assertEquals(List.of(List.of(a, b), List.of(c), List.of(d)), s.places());
+        s.drop(a);
+        assertFalse(s.finish(a, 5), "wer gegangen ist, kommt nicht mehr an");
+    }
 }

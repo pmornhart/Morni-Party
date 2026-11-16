@@ -30,7 +30,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Morni Party: ein Brettspiel-Abend für 2–8 – würfeln, ziehen, Taler sammeln, Edelweiß kaufen, nach jeder Runde ein
- * Minispiel. Festplatz mit Warteschlange und Abstimmung, drei Spielbretter, zwölf Minispiele. Spricht mit dem
+ * Minispiel. Festplatz mit Warteschlange und Abstimmung, drei Spielbretter, viele Minispiele. Spricht mit dem
  * MoinMorni-Netzwerk, wenn es da ist, und läuft sonst allein.
  */
 public final class PartyPlugin extends JavaPlugin {

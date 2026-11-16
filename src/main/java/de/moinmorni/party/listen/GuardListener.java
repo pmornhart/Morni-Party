@@ -47,7 +47,10 @@ public final class GuardListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlace(BlockPlaceEvent e) {
-        if (!plugin.builder(e.getPlayer())) {
+        Optional<MiniRun> m = mini(e.getPlayer());
+        if (m.isPresent() && m.get().score().alive(e.getPlayer().getUniqueId())) {
+            m.get().onPlace(e.getPlayer(), e);
+        } else if (!plugin.builder(e.getPlayer())) {
             e.setCancelled(true);
         }
     }
