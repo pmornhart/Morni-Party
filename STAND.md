@@ -30,11 +30,20 @@ Auszeichnungen am Ende.
 - `src/api/java/de/moinmorni/api/MoinMorni.java`: Kopie der Netzwerk-Schnittstelle (nicht in der Jar).
 - `test/`: `run.sh` (echter Server), `party-test.cjs` (mineflayer), `rcon.cjs`, `fake-network/` (Test-Netzwerk).
 
-## Stand (15.11.2026)
+## Stand (16.11.2026)
 
+- Version 0.2.1 (Branch `claude/moinmorni`, wartet auf Philips Go): **Name wieder MoinMorni** – 0.2.0 hatte Morni
+  Party kurz an einen neuen Netzwerk-Namen angepasst; der war nicht verfügbar, darum gilt wieder der alte Name
+  (Umbenennung per `git revert` zurückgenommen, alles Neue aus 0.2.0 bleibt): Paket `de.moinmorni.party`,
+  Schnittstelle `de.moinmorni.api.MoinMorni`, Netzwerk-Plugin „MoinMorni“, Recht `moinmorni.party.admin`,
+  Seitenleiste wieder moinmorni.net, „Zurück in die Lobby“ wieder MoinMorni. Spielerdaten und Einstellungen liegen
+  weiter in `plugins/MorniParty/` (kein Umzug, kein Neubau). `run.sh` entfernt alte Test-Netzwerk-Jars, damit nie
+  zwei Netzwerk-Plugins laden. Die Release-Notes v0.2.0 bleiben, wie sie veröffentlicht wurden. Geprüft: 130
+  Unit-Tests, Paper 26.1 übersetzt, echt mit Paper 26.1.2: Partien 1, 3, 7, 9, 12, 14, 15 **169/169**, Morni Party
+  meldet sich beim Test-Netzwerk „MoinMorni“, Server-Log ohne Fehler.
 - Version 0.1.0 (erster Stand, Branch `claude/erster-stand`): alles oben Genannte – **veröffentlicht** am 16.11. früh
   (PR #1, Release v0.1.0). Alles ab Paket 1 (Branch `claude/mehr-minispiele`) ist **Version 0.2.0**
-  (`docs/releases/v0.2.0.md`).
+  (`docs/releases/v0.2.0.md`), veröffentlicht am 16.11. (PR #3, Release v0.2.0).
 - Bau-Version 2 (15.11. abends): Schloss Weißenstein als echte Burg – Terrassen mit weißen Mauern und Zinnen,
   Brustwehr außen am Weg, Ecktürme mit blauen Spitzdächern und weiß-blauen Fahnen, Bergfried (Zinnenkranz, Kegeldach,
   Banner), Torhaus mit Fallgitter, Schlossgarten mit Hecken, Rosenbögen, zwei Brunnen, Tulpenbeeten, Formschnitt.
@@ -168,7 +177,7 @@ Auszeichnungen am Ende.
 
 ## Offen
 
-- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann Release v0.2.0).
+- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann Release v0.2.1).
 - Einstellungen (Rundenzahlen, Zeiten, Regeln, Minispiel-Auswahl) im Panel des Netzwerks (Einstellungs-Katalog) –
   gehört ins Netzwerk-Repo; neu seit 0.2.0: `minispiel-marathon`, `seilschaft`, `schnelle-partie`, `bergduell`,
   `huettenaufstieg`, `auszeichnungen`, `regeln.team-taler/team-unentschieden-taler/einzel-taler/einzel-faktor` und

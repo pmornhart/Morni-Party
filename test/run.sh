@@ -111,6 +111,8 @@ FAKE
 rm -f "$SERVER/plugins/MoinMorni/calls.log"
 rm -rf "$SERVER/plugins/MorniParty/spieler" "$SERVER/plugins/MorniParty/rangliste.yml"
 cp "$REPO/target/Morni-Party.jar" "$SERVER/plugins/"
+# Nie zwei Netzwerk-Plugins: alte Test-Jars (auch aus einer Fassung mit anderem Namen) vorher weg.
+rm -f "$SERVER"/plugins/*FakeNetwork*.jar
 cp "$REPO/test/fake-network/target/MoinMorni-FakeNetwork.jar" "$SERVER/plugins/"
 for jar in ${EXTRA_PLUGINS:-}; do
   cp "$jar" "$SERVER/plugins/"
