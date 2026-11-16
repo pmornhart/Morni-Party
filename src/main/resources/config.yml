@@ -4,7 +4,7 @@
 # Eigene, leere Welt für Festplatz, Spielbretter und Minispiel-Plätze. Das Plugin legt sie an und baut alles selbst.
 welt: party
 
-# So viele Partien können gleichzeitig laufen (jeder Tisch hat alle drei Bretter und alle zwölf Minispiele).
+# So viele Partien können gleichzeitig laufen (jeder Tisch hat alle sechs Bretter und alle Minispiel-Plätze).
 # Ändern baut beim nächsten Start neu.
 tische: 2
 
@@ -35,19 +35,64 @@ zug:
 
 minispiele:
   # Welche Minispiele vorkommen (leer = alle): broeckelboden, talerregen, bergsprint, pfeilhagel, heisse-brezn,
-  # trachtenfarben, gipfelkoenig, kuhglocke, schaefchen, holzhacker, rempelei, scheibenschiessen
+  # trachtenfarben, gipfelkoenig, kuhglocke, schaefchen, holzhacker, rempelei, scheibenschiessen, lawinenhang,
+  # maibaumkraxeln, eisstockschiessen, murmeltier, goldwaschen, schuhplattler, brueckenbau, schneeballschlacht,
+  # schlittenrennen, enzian-suche, musterweber, foehnsturm – und nur mit Seiten (2 gegen 2, 1 gegen 3, Duell):
+  # tauziehen, gamsjagd
   auswahl: []
   # zufall = gemischt, ohne Wiederholung bis alle dran waren; fest = der Reihe nach wie in „auswahl“.
   reihenfolge: zufall
   # Dauer der Minispiele × Faktor (0.5 = halb so lang).
   dauer-faktor: 1.0
 
+# Minispiel-Marathon: ohne Spielbrett, nur Minispiele (gemischt, ohne Wiederholung, aus „minispiele.auswahl“).
+minispiel-marathon:
+  # So viele Minispiele stehen zur Wahl.
+  runden: [6, 10, 15]
+  # Höchstens so viele Leute (bis 16). Minispiele mit weniger Plätzen (Eisstockschießen, Brückenbau: 8) fallen dann aus.
+  hoechstens: 16
+  # Punkte für Platz 1, 2, 3 … nach jedem Minispiel (alle weiteren bekommen den letzten Wert).
+  punkte: [10, 7, 5, 4, 3, 2, 1]
+
+# Seilschaft: Edelweiß-Jagd zu zweit (gerade Zahl, mindestens vier) – Taler und Edelweiß gehören beiden, Partys aus
+# zwei Leuten sind eine Seilschaft. Zu viert sind alle Minispiele 2 gegen 2.
+seilschaft:
+  # So viele Runden stehen zur Wahl.
+  runden: [10, 15]
+
+# Schnelle Partie: Edelweiß-Jagd in wenigen Runden, mit mehr Start-Talern, günstigerem Edelweiß und kürzeren
+# Minispielen (Dauer × Faktor, zusätzlich zu minispiele.dauer-faktor).
+schnelle-partie:
+  runden: 5
+  start-taler: 20
+  edelweiss-preis: 15
+  dauer-faktor: 0.75
+
+# Bergduell: zwei gegeneinander auf dem Brett, jedes Minispiel ist ein Duell (Tauziehen, Scheibenschießen …).
+bergduell:
+  runden: 8
+
+# Hüttenaufstieg: ohne Spielbrett, jeder hat Leben. Wer ein Minispiel in der unteren Hälfte beendet, verliert eins;
+# wer keine mehr hat, schaut zu. Wer zuletzt übrig ist, gewinnt.
+huettenaufstieg:
+  # Leben am Anfang (1–9).
+  leben: 3
+  # Spätestens nach so vielen Minispielen ist Schluss – dann gewinnt, wer die meisten Leben hat.
+  hoechstens-minispiele: 25
+
+# Auszeichnungen am Ende einer Brett-Partie (Edelweiß-Jagd, Seilschaft, Schnelle Partie, Bergduell): wer vorn liegt,
+# bekommt ein Edelweiß dazu. Zur Wahl: wanderer (meiste Felder), minispiel-meister (meiste Minispiel-Siege),
+# pechvogel (öfter auf roten Feldern – als Trost), duellkoenig (meiste Duell-Siege). Leer = alle.
+auszeichnungen:
+  an: true
+  welche: [wanderer, minispiel-meister, pechvogel, duellkoenig]
+
 regeln:
   start-taler: 10
   blaues-feld: 3
   rotes-feld: 3
   edelweiss-preis: 20
-  # Würfelduell: so viele Taler gehen an den Sieger.
+  # Duellfeld: so viele Taler gehen an den Sieger des Duell-Minispiels.
   duell-taler: 5
   # Talerklau: so viele Taler nimmt man jemandem ab.
   klau-taler: 7
@@ -63,3 +108,10 @@ regeln:
   gipfelrennen-max-runden: 20
   # Taler für Platz 1, 2, 3 … in den Minispielen.
   minispiel-taler: [10, 6, 4, 3, 2, 1, 1, 1]
+  # Team-Minispiele (nur zu viert: 2 gegen 2 bei zwei blauen und zwei roten Feldern, 1 gegen 3 bei einem anders
+  # farbigen Feld). Taler je Person der siegreichen Seite, Taler für alle bei Gleichstand.
+  team-taler: 8
+  team-unentschieden-taler: 3
+  # Einer gegen drei: Taler für den Einzelnen, wenn er gewinnt, und so oft zählen seine Punkte (sein Vorteil).
+  einzel-taler: 18
+  einzel-faktor: 4
