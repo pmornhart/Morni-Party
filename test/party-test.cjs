@@ -12,6 +12,7 @@
  *   Partie 4: neue Minispiele (Paket 1): Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen
  *   Partie 5: Paket 2 – Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht
  *   Partie 6: Paket 3 – Schlittenrennen, Enzian-Suche, Musterweber, Föhnsturm
+ *   Partie 7: Minispiel-Marathon mit drei Minispielen zu viert
  *
  * Verfasst mit Claude 🤖
  */
@@ -97,6 +98,9 @@ async function waitFor(cond, ms = 5000, step = 150) {
   }
   return Boolean(await cond());
 }
+
+/** Plätze im Menü „Welche Spielart?“ (je Spielart eine halbe Zeile, Testwerte: Jagd 2/8, Marathon 3/6). */
+const MODE = { gipfel: 0, jagd2: 5, jagd8: 6, marathon3: 9, marathon6: 10 };
 
 const bots = {};
 let lastJoin = 0;
@@ -337,11 +341,13 @@ async function part1() {
   await click(bert, 13);
   win = await openWithItem(anna, 3);
   check('Uhr öffnet „Welche Spielart?“ mit Gipfelrennen und Edelweiß-Jagd',
-    win && plain(win.slots[10]?.customName).includes('Gipfelrennen') && plain(win.slots[12]?.customName).includes('2 Runden'),
-    win && `${plain(win.slots[10]?.customName)} / ${plain(win.slots[12]?.customName)}`);
-  await click(anna, 12);
+    win && plain(win.slots[MODE.gipfel]?.customName).includes('Gipfelrennen') && plain(win.slots[MODE.jagd2]?.customName).includes('2 Runden'),
+    win && `${plain(win.slots[MODE.gipfel]?.customName)} / ${plain(win.slots[MODE.jagd2]?.customName)}`);
+  check('Uhr: auch der Minispiel-Marathon steht zur Wahl', win && plain(win.slots[MODE.marathon3]?.customName).includes('Minispiel-Marathon'),
+    win && plain(win.slots[MODE.marathon3]?.customName));
+  await click(anna, MODE.jagd2);
   win = await openWithItem(bert, 3);
-  await click(bert, 12);
+  await click(bert, MODE.jagd2);
 
   clear(carl);
   carl.chat('/mitspielen');
@@ -523,7 +529,7 @@ async function part2() {
     let w = await openWithItem(b, 2);
     if (w) await click(b, 11);
     w = await openWithItem(b, 3);
-    if (w) await click(b, 10);
+    if (w) await click(b, MODE.gipfel);
   }
   check('Abstimmen meldet auch gleich an', await waitFor(async () => (await state()).waiting === 4, 4000));
   let g = await phase((x) => x.phase === 'turn', 30000);
@@ -724,7 +730,7 @@ async function part3() {
     let w = await openWithItem(b, 2);
     if (w) await click(b, 15);
     w = await openWithItem(b, 3);
-    if (w) await click(b, 14);
+    if (w) await click(b, MODE.jagd8);
   }
   let g = await phase((x) => x.phase === 'turn', 30000);
   check('Goldstollen, Edelweiß-Jagd 8 Runden', g && g.board === 'goldstollen' && g.mode === 'edelweiss-jagd-8', g && `${g.board} ${g.mode}`);
@@ -1112,7 +1118,7 @@ async function newMinis(title, ids) {
     let w = await openWithItem(b, 2);
     if (w) await click(b, 15);
     w = await openWithItem(b, 3);
-    if (w) await click(b, 14);
+    if (w) await click(b, MODE.jagd8);
   }
   let g = await phase((x) => x.phase === 'turn', 30000);
   check(`${title}: Partie startet`, g != null);
@@ -1218,6 +1224,73 @@ const PAKET1 = ['lawinenhang', 'maibaumkraxeln', 'eisstockschiessen', 'murmeltie
 const PAKET2 = ['goldwaschen', 'schuhplattler', 'brueckenbau', 'schneeballschlacht'];
 const PAKET3 = ['schlittenrennen', 'enzian-suche', 'musterweber', 'foehnsturm'];
 
+// ------------------------------------------------------------------ Minispiel-Marathon
+
+async function marathon() {
+  console.log('\n— Partie 7: Minispiel-Marathon (3 Minispiele) zu viert —');
+  if (!bots.Dora) bots.Dora = await join('Dora');
+  bots.Dora.policy = defaultPolicy;
+  const { Anna: anna, Bert: bert, Carl: carl, Dora: dora } = bots;
+  const list = [anna, bert, carl, dora];
+  clear(...list);
+  for (const b of list) {
+    const w = await openWithItem(b, 3);
+    if (w) await click(b, MODE.marathon3);
+  }
+  let g = await phase((x) => x.phase !== 'end', 30000);
+  check('Marathon startet zu viert, ohne Spielbrett', g && g.mode === 'marathon-3' && g.players.length === 4, g && `${g.mode} ${g.players.length}`);
+  await cmd('mparty minispiel bergsprint');
+  check('Titel „Minispiel-Marathon“ (Englisch: „Minigame Marathon“)', await waitFor(() => sawTitle(anna, /Minispiel-Marathon/) && sawTitle(bert, /Minigame Marathon/), 5000));
+  check('Regeln: Platz-Punkte 10, 7, 5', sees(anna, /Platz-Punkte: 10 für Platz 1, 7 für Platz 2, 5 für Platz 3/), anna.chats.find((c) => /Platz-Punkte/.test(c)));
+  // 1. Bergsprint: Reihenfolge Anna, Bert, Carl, Dora
+  g = await waitMini('bergsprint', 30000);
+  check('Kein Brett: gleich das erste Minispiel', g != null && sees(anna, /Minispiel 1 von 3/));
+  const [mx, my, mz] = g.miniAt;
+  for (const [i, b] of [anna, bert, carl].entries()) {
+    await sleep(700);
+    await tpTo(b, mx + 0.5 - 2 + i * 2, my + 11, mz + 31.5);
+  }
+  await waitMiniEnd(60000);
+  check('Ergebnis mit Platz-Punkten', resultLines2(anna).some((l) => /^1\. Anna .*\+10 Punkte/.test(l)) && resultLines2(bert).some((l) => /\+7 points/.test(l)),
+    resultLines2(anna).join(' | '));
+  await cmd('mparty minispiel gipfelkoenig');
+  check('Zwischenstand nach dem Minispiel', await waitFor(() => sees(anna, /Zwischenstand nach 1 von 3/) && sees(anna, /1\. Anna – 10 Punkte/), 12000),
+    anna.chats.filter((c) => /Zwischenstand|Punkte$/.test(c)).join(' | '));
+  g = await game();
+  check('Punkte im Zustand: Anna 10, Bert 7, Carl 5, Dora 4', g && ['Anna:10', 'Bert:7', 'Carl:5', 'Dora:4'].every((x) => g.players.some((p) => `${p.name}:${p.points}` === x)),
+    g && JSON.stringify(g.players.map((p) => `${p.name}:${p.points}`)));
+  const side = Object.values(anna.scoreboards ?? {}).some((sb) => Object.values(sb.itemsMap ?? {}).some((it) => /Minispiel/.test(plain(it.displayName))));
+  check('Seitenleiste zeigt den Marathon', side || anna.scoreboard?.sidebar != null);
+  // 2. Gipfelkönig: Anna oben
+  clear(...list);
+  g = await waitMini('gipfelkoenig', 30000);
+  const stop2 = await playMini('gipfelkoenig', g, list);
+  await waitMiniEnd(60000);
+  stop2();
+  await cmd('mparty minispiel broeckelboden');
+  // 3. Bröckelboden: alle stehen still
+  g = await waitMini('broeckelboden', 30000);
+  check('Drittes Minispiel', g != null && sees(anna, /Minispiel 3 von 3/));
+  const done = await phase((x) => x.phase === 'end', 90000);
+  check('Nach drei Minispielen: Siegerehrung', done != null && await waitFor(() => sees(anna, /Die Partie ist vorbei/) && sees(bert, /The game is over/), 5000));
+  const line = anna.chats.find((c) => /^1\. Anna – \d+ Punkte · \d+ Minispiele gewonnen/.test(c));
+  check('Anna gewinnt mit Punkten und Minispiel-Siegen', line != null, anna.chats.filter((c) => /Punkte ·/.test(c)).join(' | '));
+  check('Titel Gewonnen!', sawTitle(anna, /Gewonnen/));
+  const log = calls().filter((c) => c.t === 'stats' && c.mode === 'party' && c.add.games_marathon === 1);
+  const a = log.find((c) => c.name === 'Anna');
+  check('Statistik ans Netzwerk: games_marathon, wins_marathon, marathon_points_best', log.length === 4 && a && a.add.wins_marathon === 1 &&
+    a.best.marathon_points_best >= 20, JSON.stringify(a));
+  check('Zurück auf den Festplatz', await waitFor(() => list.every(inHub), 25000));
+  clear(anna, bert);
+  anna.chat('/stats');
+  bert.chat('/stats');
+  check('/stats zeigt den Marathon (de/en)', await waitFor(() => sees(anna, /Minispiel-Marathon: 1 Partien · 1 Siege/) && sees(bert, /Minigame Marathon: 1 games/), 4000),
+    anna.chats.join(' | '));
+}
+
+/** Ergebniszeilen im Marathon („… → +10 Punkte“). */
+const resultLines2 = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Punkte|points)$/.test(c));
+
 async function main() {
   await join('Anna');
   await join('Bert');
@@ -1230,6 +1303,7 @@ async function main() {
   if (PARTS.includes(4)) await newMinis('Partie 4: neue Minispiele, Paket 1', PAKET1);
   if (PARTS.includes(5)) await newMinis('Partie 5: neue Minispiele, Paket 2', PAKET2);
   if (PARTS.includes(6)) await newMinis('Partie 6: neue Minispiele, Paket 3', PAKET3);
+  if (PARTS.includes(7)) await marathon();
   for (const b of Object.values(bots)) b.quit();
   await sleep(500);
   const failed = results.filter((r) => !r.ok).length;

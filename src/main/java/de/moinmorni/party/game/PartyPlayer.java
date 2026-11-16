@@ -87,6 +87,11 @@ public final class PartyPlayer {
         return finished;
     }
 
+    /** Minispiel-Marathon: Platz-Punkte. */
+    public int minigamePoints() {
+        return minigamePoints;
+    }
+
     public int minigamesWon() {
         return minigamesWon;
     }

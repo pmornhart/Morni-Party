@@ -471,18 +471,23 @@ public final class Engine {
     }
 
     /**
-     * Taler aus dem Minispiel verteilen. {@code places}: Plätze von vorn, jede Gruppe teilt sich einen Platz
-     * (Gleichstand). Gibt die Taler je Person zurück.
+     * Taler aus dem Minispiel verteilen (im Marathon: Platz-Punkte). {@code places}: Plätze von vorn, jede Gruppe teilt
+     * sich einen Platz (Gleichstand). Gibt die Taler bzw. Punkte je Person zurück.
      */
     public Map<UUID, Integer> awardMinigame(List<List<UUID>> places) {
         Map<UUID, Integer> got = new LinkedHashMap<>();
         int place = 0;
         for (List<UUID> group : places) {
-            int amount = rules.award(place);
+            int amount = mode == Mode.MARATHON ? Marathon.points(rules.marathonPoints(), place) : rules.award(place);
             for (UUID u : group) {
                 Optional<PartyPlayer> p = player(u).filter(x -> !x.left);
                 if (p.isPresent()) {
-                    got.put(u, p.get().addTaler(amount));
+                    if (mode == Mode.MARATHON) {
+                        p.get().minigamePoints += amount;
+                        got.put(u, amount);
+                    } else {
+                        got.put(u, p.get().addTaler(amount));
+                    }
                     if (place == 0) {
                         p.get().minigamesWon++;
                     }
@@ -522,6 +527,9 @@ public final class Engine {
         if (mode == Mode.GIPFELRENNEN) {
             return Comparator.comparingInt((PartyPlayer p) -> p.finished == 0 ? Integer.MAX_VALUE : p.finished)
                     .thenComparingInt(p -> -p.pos).thenComparing(byEdelweiss).thenComparing(byTaler);
+        }
+        if (mode == Mode.MARATHON) {
+            return Comparator.comparingInt((PartyPlayer p) -> -p.minigamePoints).thenComparingInt(p -> -p.minigamesWon);
         }
         return byEdelweiss.thenComparing(byTaler);
     }

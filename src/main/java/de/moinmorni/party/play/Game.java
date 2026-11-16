@@ -92,6 +92,9 @@ public final class Game {
     private Runnable onDeadline;
     private MiniRun mini;
     private MiniType forcedMini;
+    /** Zuletzt gespielt und dessen Blickpunkt (Marathon: Zuschauer zwischen zwei Minispielen). */
+    private MiniType lastMini;
+    private Location lastView;
     private final Map<String, BossBar> miniBars = new HashMap<>();
     private boolean closed;
     private boolean ended;
@@ -249,7 +252,16 @@ public final class Game {
 
     // ---------- Start ----------
 
+    /** Minispiel-Marathon (ohne Spielbrett)? */
+    public boolean marathon() {
+        return kind.mode() == Mode.MARATHON;
+    }
+
     public void start() {
+        if (marathon()) {
+            startMarathon();
+            return;
+        }
         spawnMarkers();
         for (PartyPlayer pp : engine.active()) {
             Player p = online(pp);
@@ -278,8 +290,62 @@ public final class Game {
     }
 
     private Component modeLine(String lang) {
-        return kind.mode() == Mode.GIPFELRENNEN ? Texts.text(lang, "mode.gipfelrennen.line")
-                : Texts.text(lang, "mode.edelweiss-jagd.line", Placeholder.unparsed("n", String.valueOf(kind.rounds())));
+        return switch (kind.mode()) {
+            case GIPFELRENNEN -> Texts.text(lang, "mode.gipfelrennen.line");
+            case EDELWEISS_JAGD -> Texts.text(lang, "mode.edelweiss-jagd.line", Placeholder.unparsed("n",
+                    String.valueOf(kind.rounds())));
+            case MARATHON -> Texts.text(lang, "mode.marathon.line", Placeholder.unparsed("n", String.valueOf(kind.rounds())));
+        };
+    }
+
+    /** Marathon: kein Brett – nach einer kurzen Ansage geht es gleich zum ersten Minispiel. */
+    private void startMarathon() {
+        for (PartyPlayer pp : engine.active()) {
+            Player p = online(pp);
+            if (p != null) {
+                plugin.lobby().leaveQueue(p.getUniqueId(), false);
+                p.closeInventory();
+                p.getInventory().clear();
+            }
+        }
+        String names = String.join(", ", engine.active().stream().map(PartyPlayer::name).toList());
+        int[] pts = engine.rules().marathonPoints();
+        for (Player p : audience()) {
+            String lang = plugin.lang(p);
+            Ui.title(p, Texts.text(lang, "mode.marathon"), modeLine(lang), 3500);
+            p.sendMessage(Texts.msg(lang, "game.goal.marathon", Placeholder.unparsed("n", String.valueOf(engine.rounds())),
+                    Placeholder.unparsed("first", String.valueOf(de.moinmorni.party.game.Marathon.points(pts, 0))),
+                    Placeholder.unparsed("second", String.valueOf(de.moinmorni.party.game.Marathon.points(pts, 1))),
+                    Placeholder.unparsed("third", String.valueOf(de.moinmorni.party.game.Marathon.points(pts, 2)))));
+            p.sendMessage(Texts.msg(lang, "game.players", Placeholder.unparsed("names", names)));
+            Ui.sound(p, "minecraft:ui.toast.challenge_complete", 1.2f);
+        }
+        refreshSidebar();
+        plugin.stateChanged();
+        later(4 * SECOND, this::startMinigame);
+    }
+
+    /** Marathon: Zwischenstand als kurze Tafel im Chat (die ersten fünf und die eigene Zeile). */
+    private void marathonStanding() {
+        List<List<PartyPlayer>> places = engine.places();
+        for (Player a : audience()) {
+            String lang = plugin.lang(a);
+            a.sendMessage(Texts.msg(lang, "marathon.standing", Placeholder.unparsed("n", String.valueOf(engine.round() - 1)),
+                    Placeholder.unparsed("of", String.valueOf(engine.rounds()))));
+            int place = 1;
+            int shown = 0;
+            for (List<PartyPlayer> g : places) {
+                for (PartyPlayer pp : g) {
+                    if (shown < 5 || pp.uuid().equals(a.getUniqueId())) {
+                        a.sendMessage(Texts.text(lang, "marathon.standing.line", Placeholder.unparsed("pos", String.valueOf(place)),
+                                Placeholder.unparsed("name", pp.name()),
+                                Placeholder.unparsed("points", String.valueOf(pp.minigamePoints()))));
+                    }
+                    shown++;
+                }
+                place += g.size();
+            }
+        }
     }
 
     private void prepareBoardPlayer(Player p) {
@@ -961,6 +1027,13 @@ public final class Game {
             forcedMini = null;
             return t;
         }
+        if (marathon()) {
+            // gemischt, ohne Wiederholung, nur Plätze, die so viele Leute aushalten
+            int n = players().size();
+            List<MiniType> all = plugin.settings().minigames();
+            MiniType t = de.moinmorni.party.game.Marathon.draw(miniOrder, all, lastMini, x -> x.maxPlayers() >= n, rng);
+            return t != null ? t : MiniType.BROECKELBODEN;
+        }
         if (miniOrder.isEmpty()) {
             miniOrder.addAll(plugin.settings().minigames());
             if (!plugin.settings().fixedOrder()) {
@@ -973,14 +1046,20 @@ public final class Game {
     private void startMinigame() {
         phase = Phase.MINI_INTRO;
         MiniType type = nextMini();
+        lastMini = type;
         int[] o = Places.mini(table, type);
         List<Player> ps = players();
         mini = type.create(new MiniRun.Setup(plugin, type, plugin.world(), o[0], o[1], o[2], ps, this::audience, rng,
                 plugin.settings().miniFactor()));
+        lastView = mini.viewPoint();
         for (Player a : audience()) {
             String lang = plugin.lang(a);
             Ui.title(a, Texts.text(lang, "mini.title"), Texts.text(lang, type.key()), 2500);
             a.sendMessage(Texts.msg(lang, "mini.announce", Placeholder.component("name", Texts.text(lang, type.key()))));
+            if (marathon()) {
+                a.sendMessage(Texts.msg(lang, "marathon.next", Placeholder.unparsed("n", String.valueOf(engine.round())),
+                        Placeholder.unparsed("of", String.valueOf(engine.rounds()))));
+            }
             a.sendMessage(Texts.msg(lang, type.key() + ".desc"));
             Ui.sound(a, "minecraft:block.note_block.flute", 1.2f);
             a.getInventory().clear();
@@ -1060,22 +1139,35 @@ public final class Game {
                 for (UUID u : g) {
                     String name = engine.player(u).map(PartyPlayer::name).orElse("?");
                     long at = run.score().finishTick(u);
+                    Component prize = Texts.text(lang, marathon() ? "mini.prize.points" : "mini.prize.taler",
+                            Placeholder.unparsed("n", String.valueOf(got.getOrDefault(u, 0))));
                     a.sendMessage(Texts.text(lang, run.resultKey(u), Placeholder.unparsed("pos", String.valueOf(place)),
                             Placeholder.unparsed("name", name), Placeholder.unparsed("points", String.valueOf(run.shownPoints(u))),
                             Placeholder.unparsed("time", Ui.seconds(Math.max(0, at) * 50, lang)),
-                            Placeholder.unparsed("taler", String.valueOf(got.getOrDefault(u, 0)))));
+                            Placeholder.component("prize", prize)));
                 }
                 place += g.size();
             }
             boolean won = winners.contains(a.getUniqueId());
             if (plays(a.getUniqueId())) {
-                Ui.title(a, Texts.text(lang, won ? "mini.won" : "mini.over"), Texts.text(lang, "mini.got",
-                        Placeholder.unparsed("n", String.valueOf(got.getOrDefault(a.getUniqueId(), 0)))), 2500);
+                Ui.title(a, Texts.text(lang, won ? "mini.won" : "mini.over"), Texts.text(lang, marathon() ? "mini.got.points"
+                        : "mini.got", Placeholder.unparsed("n", String.valueOf(got.getOrDefault(a.getUniqueId(), 0)))), 2500);
                 Ui.sound(a, won ? "minecraft:ui.toast.challenge_complete" : "minecraft:entity.experience_orb.pickup", 1f);
             }
         }
         later(RESULT_TICKS, () -> {
             mini = null;
+            if (marathon()) {
+                engine.nextRound();
+                if (engine.over()) {
+                    end();
+                    return;
+                }
+                marathonStanding();
+                refreshSidebar();
+                later(3 * SECOND, this::startMinigame);
+                return;
+            }
             backToBoard();
             engine.nextRound();
             if (engine.over()) {
@@ -1106,8 +1198,11 @@ public final class Game {
         refreshSidebar();
     }
 
-    /** Blick aufs ganze Brett (für Zuschauer). */
+    /** Blick aufs ganze Brett (für Zuschauer); im Marathon der Platz des letzten Minispiels. */
     public Location viewPoint() {
+        if (marathon()) {
+            return lastView == null ? plugin.lobby().spawn() : lastView.clone();
+        }
         double r = layout.shape().outer() + 12;
         double a = layout.shape().angle() - 0.4;
         Location l = new Location(plugin.world(), origin[0] + Math.cos(a) * r, origin[1] + layout.shape().height() + 14,
@@ -1158,10 +1253,13 @@ public final class Game {
             int place = 1;
             for (List<PartyPlayer> g : places) {
                 for (PartyPlayer pp : g) {
-                    a.sendMessage(Texts.text(lang, "end.line", Placeholder.unparsed("pos", String.valueOf(place)),
+                    a.sendMessage(Texts.text(lang, marathon() ? "end.line.marathon" : "end.line",
+                            Placeholder.unparsed("pos", String.valueOf(place)),
                             Placeholder.unparsed("name", pp.name()), Placeholder.unparsed("edelweiss", String.valueOf(pp.edelweiss())),
                             Placeholder.unparsed("taler", String.valueOf(pp.taler())),
-                            Placeholder.unparsed("field", String.valueOf(pp.pos()))));
+                            Placeholder.unparsed("field", String.valueOf(pp.pos())),
+                            Placeholder.unparsed("points", String.valueOf(pp.minigamePoints())),
+                            Placeholder.unparsed("minis", String.valueOf(pp.minigamesWon()))));
                 }
                 place += g.size();
             }
@@ -1176,17 +1274,19 @@ public final class Game {
             boolean won = winners.contains(pp);
             boolean summit = kind.mode() == Mode.GIPFELRENNEN && pp.finished() > 0;
             if (counts) {
-                plugin.store().record(pp.uuid(), pp.name(), won, pp.edelweiss(), pp.minigamesWon(), summit);
+                plugin.store().record(pp.uuid(), pp.name(), kind.mode().id(), won, pp.edelweiss(), pp.minigamesWon(), summit);
                 Map<String, Long> add = new HashMap<>();
                 add.put("games", 1L);
                 add.put("wins", won ? 1L : 0L);
                 add.put("edelweiss", (long) pp.edelweiss());
                 add.put("minigames_won", (long) pp.minigamesWon());
                 add.put("games_" + kind.mode().id().replace("-", "_"), 1L);
+                add.put("wins_" + kind.mode().id().replace("-", "_"), won ? 1L : 0L);
                 if (summit) {
                     add.put("summits", 1L);
                 }
-                plugin.net().stats(pp.uuid(), add, Map.of("edelweiss_best", (long) pp.edelweiss()));
+                plugin.net().stats(pp.uuid(), add, marathon() ? Map.of("marathon_points_best", (long) pp.minigamePoints())
+                        : Map.of("edelweiss_best", (long) pp.edelweiss()));
             }
             Player p = online(pp);
             if (won && p != null) {
@@ -1268,7 +1368,7 @@ public final class Game {
             later(SECOND, this::end);
             return;
         }
-        if (current && phase != Phase.MINI_INTRO && phase != Phase.MINI_COUNTDOWN && phase != Phase.MINI
+        if (!marathon() && current && phase != Phase.MINI_INTRO && phase != Phase.MINI_COUNTDOWN && phase != Phase.MINI
                 && phase != Phase.MINI_RESULT) {
             // Der Zug der gegangenen Person endet sofort.
             token++;
@@ -1299,6 +1399,10 @@ public final class Game {
         Map<UUID, Integer> places = engine.placeOf();
         List<PartyPlayer> sorted = new ArrayList<>(engine.active());
         sorted.sort((x, y) -> Integer.compare(places.getOrDefault(x.uuid(), 99), places.getOrDefault(y.uuid(), 99)));
+        if (marathon()) {
+            marathonSidebar(sorted, places);
+            return;
+        }
         for (Player a : audience()) {
             String lang = plugin.lang(a);
             List<Component> lines = new ArrayList<>();
@@ -1321,6 +1425,33 @@ public final class Game {
             }
             lines.add(Component.text(" "));
             lines.add(Texts.text(lang, "side.stand", Placeholder.unparsed("field", String.valueOf(engine.stand()))));
+            lines.add(Texts.text(lang, "side.address"));
+            plugin.sidebar().show(a, Texts.text(lang, "side.title"), lines);
+        }
+    }
+
+    /** Marathon: Minispiel r von n und die Punkte (höchstens zwölf Zeilen mit Namen). */
+    private void marathonSidebar(List<PartyPlayer> sorted, Map<UUID, Integer> places) {
+        for (Player a : audience()) {
+            String lang = plugin.lang(a);
+            List<Component> lines = new ArrayList<>();
+            lines.add(Texts.text(lang, "mode.marathon"));
+            lines.add(Texts.text(lang, "side.marathon", Placeholder.unparsed("round", String.valueOf(Math.min(engine.round(),
+                    engine.rounds()))), Placeholder.unparsed("rounds", String.valueOf(engine.rounds()))));
+            lines.add(Component.empty());
+            int shown = 0;
+            for (PartyPlayer pp : sorted) {
+                boolean me = pp.uuid().equals(a.getUniqueId());
+                if (shown >= 11 && !me) {
+                    continue;
+                }
+                Component name = Component.text(pp.name(), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
+                lines.add(Texts.text(lang, "side.player.marathon", Placeholder.unparsed("pos",
+                        String.valueOf(places.getOrDefault(pp.uuid(), 0))), Placeholder.component("name", name),
+                        Placeholder.unparsed("points", String.valueOf(pp.minigamePoints()))));
+                shown++;
+            }
+            lines.add(Component.text(" "));
             lines.add(Texts.text(lang, "side.address"));
             plugin.sidebar().show(a, Texts.text(lang, "side.title"), lines);
         }
@@ -1383,7 +1514,8 @@ public final class Game {
             b.append("{\"name\":\"").append(p.name()).append("\",\"pos\":").append(p.pos()).append(",\"taler\":")
                     .append(p.taler()).append(",\"edelweiss\":").append(p.edelweiss()).append(",\"items\":\"")
                     .append(String.join(" ", p.items().stream().map(ItemType::id).toList())).append("\",\"left\":")
-                    .append(p.left()).append(",\"minis\":").append(p.minigamesWon()).append(",\"shield\":")
+                    .append(p.left()).append(",\"minis\":").append(p.minigamesWon()).append(",\"points\":")
+                    .append(p.minigamePoints()).append(",\"shield\":")
                     .append(p.shield()).append('}');
         }
         b.append("],\"spectators\":").append(spectators.size()).append('}');

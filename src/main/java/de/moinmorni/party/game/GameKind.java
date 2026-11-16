@@ -1,10 +1,13 @@
 package de.moinmorni.party.game;
 
-/** Wahl im Wartebereich: Spielart samt Rundenzahl (nur Edelweiß-Jagd: 10, 15 oder 20 Runden). */
+/**
+ * Wahl im Wartebereich: Spielart samt Rundenzahl (Edelweiß-Jagd: 10, 15 oder 20 Runden; Marathon: so viele
+ * Minispiele).
+ */
 public record GameKind(Mode mode, int rounds) {
 
     public String id() {
-        return mode == Mode.GIPFELRENNEN ? mode.id() : mode.id() + "-" + rounds;
+        return mode.counted() ? mode.id() + "-" + rounds : mode.id();
     }
 
     public static GameKind parse(String s) {
@@ -16,7 +19,7 @@ public record GameKind(Mode mode, int rounds) {
             try {
                 int r = Integer.parseInt(s.substring(dash + 1));
                 Mode m = Mode.parse(s.substring(0, dash));
-                if (m == Mode.EDELWEISS_JAGD && r > 0) {
+                if (m != null && m.counted() && r > 0) {
                     return new GameKind(m, r);
                 }
             } catch (NumberFormatException e) {
@@ -24,6 +27,6 @@ public record GameKind(Mode mode, int rounds) {
             }
         }
         Mode m = Mode.parse(s);
-        return m == Mode.GIPFELRENNEN ? new GameKind(m, 0) : null;
+        return m != null && !m.counted() ? new GameKind(m, 0) : null;
     }
 }

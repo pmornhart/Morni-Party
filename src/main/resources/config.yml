@@ -44,6 +44,15 @@ minispiele:
   # Dauer der Minispiele × Faktor (0.5 = halb so lang).
   dauer-faktor: 1.0
 
+# Minispiel-Marathon: ohne Spielbrett, nur Minispiele (gemischt, ohne Wiederholung, aus „minispiele.auswahl“).
+minispiel-marathon:
+  # So viele Minispiele stehen zur Wahl.
+  runden: [6, 10, 15]
+  # Höchstens so viele Leute (bis 16). Minispiele mit weniger Plätzen (Eisstockschießen, Brückenbau: 8) fallen dann aus.
+  hoechstens: 16
+  # Punkte für Platz 1, 2, 3 … nach jedem Minispiel (alle weiteren bekommen den letzten Wert).
+  punkte: [10, 7, 5, 4, 3, 2, 1]
+
 regeln:
   start-taler: 10
   blaues-feld: 3

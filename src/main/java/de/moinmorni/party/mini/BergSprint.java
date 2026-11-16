@@ -90,9 +90,10 @@ final class BergSprint extends MiniRun {
     @Override
     protected List<Location> spawns(int n) {
         List<Location> out = new ArrayList<>();
+        // acht nebeneinander, bei mehr Leuten eine zweite Reihe dahinter (bis 16)
         for (int i = 0; i < Math.max(1, n); i++) {
-            double x = -HALF_WIDTH + 0.5 + (i * 2.0) % (2 * HALF_WIDTH);
-            out.add(facing(x, height(START_Z) + 1, START_Z - 2 + 0.5 - (i / HALF_WIDTH), x, 1, GOAL_Z));
+            double x = -HALF_WIDTH + 0.5 + (n <= HALF_WIDTH ? (i * 2.0) : (i % (2 * HALF_WIDTH)));
+            out.add(facing(x, height(START_Z) + 1, START_Z - 1.5 - (n <= HALF_WIDTH ? 0 : i / (2 * HALF_WIDTH)), x, 1, GOAL_Z));
         }
         return out;
     }

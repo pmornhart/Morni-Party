@@ -251,7 +251,7 @@ public final class PartyPlugin extends JavaPlugin {
         settings = new Settings(settings.world(), settings.tables(), fresh.minPlayers(), fresh.maxPlayers(),
                 fresh.countdown(), fresh.fullCountdown(), fresh.autoJoin(), fresh.huntRounds(), fresh.turnSeconds(),
                 fresh.menuSeconds(), fresh.stepTicks(), fresh.minigames(), fresh.fixedOrder(), fresh.miniFactor(),
-                fresh.rules());
+                fresh.rules(), fresh.marathonRounds(), fresh.marathonMax());
     }
 
     /** /mparty neubauen: alles abbrechen und frisch bauen. */

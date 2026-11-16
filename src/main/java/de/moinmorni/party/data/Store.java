@@ -70,10 +70,11 @@ public final class Store {
     }
 
     /** Partie für jemanden zählen (liest, ändert, schreibt – auf dem Hauptthread aufrufen). */
-    public PlayerStats record(UUID uuid, String name, boolean won, int edelweiss, int minigames, boolean summit) {
+    public PlayerStats record(UUID uuid, String name, String mode, boolean won, int edelweiss, int minigames,
+            boolean summit) {
         PlayerStats s = read(uuid).orElseGet(() -> new PlayerStats(uuid, name));
         s.name(name);
-        s.record(won, edelweiss, minigames, summit);
+        s.record(mode, won, edelweiss, minigames, summit);
         cache.put(uuid, s);
         write(dir.resolve(uuid + ".yml"), s.toYaml());
         ranking.put(uuid, new Entry(uuid, s.name(), s.wins(), s.edelweiss()));

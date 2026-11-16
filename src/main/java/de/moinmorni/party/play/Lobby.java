@@ -65,7 +65,41 @@ public final class Lobby {
         List<GameKind> out = new ArrayList<>();
         out.add(new GameKind(Mode.GIPFELRENNEN, 0));
         plugin.settings().huntRounds().forEach(r -> out.add(new GameKind(Mode.EDELWEISS_JAGD, r)));
+        plugin.settings().marathonRounds().forEach(r -> out.add(new GameKind(Mode.MARATHON, r)));
         return out;
+    }
+
+    /** Höchstzahl für eine Spielart (Bretter 8, Marathon bis 16). */
+    public int maxFor(Mode mode) {
+        return mode == Mode.MARATHON ? plugin.settings().marathonMax() : plugin.settings().maxPlayers();
+    }
+
+    /**
+     * Höchstzahl für die nächste Partie, nach dem Stand der Abstimmung: nur wenn der Marathon klar vorn liegt, dürfen
+     * mehr mit (bei Gleichstand entscheidet erst der Start – bis dahin gilt die kleinere Zahl).
+     */
+    public int maxNow() {
+        Map<GameKind, Integer> count = kindVotes.count(kinds(), queue.all());
+        int marathon = 0;
+        int other = 0;
+        for (var e : count.entrySet()) {
+            if (e.getKey().mode() == Mode.MARATHON) {
+                marathon = Math.max(marathon, e.getValue());
+            } else {
+                other = Math.max(other, e.getValue());
+            }
+        }
+        return marathon > other ? maxFor(Mode.MARATHON) : plugin.settings().maxPlayers();
+    }
+
+    /** Name einer Spielart mit Rundenzahl (für Menü und Seitenleiste). */
+    public static Component kindName(String lang, GameKind k) {
+        return switch (k.mode()) {
+            case GIPFELRENNEN -> Texts.text(lang, "mode.gipfelrennen");
+            case EDELWEISS_JAGD -> Texts.text(lang, "mode.edelweiss-jagd.rounds", Placeholder.unparsed("n",
+                    String.valueOf(k.rounds())));
+            case MARATHON -> Texts.text(lang, "mode.marathon.rounds", Placeholder.unparsed("n", String.valueOf(k.rounds())));
+        };
     }
 
     // ---------- Ankommen ----------
@@ -207,7 +241,8 @@ public final class Lobby {
                 queue.remove(u);
             }
         }
-        int fitting = queue.fitting(plugin.settings().maxPlayers());
+        int max = maxNow();
+        int fitting = queue.fitting(max);
         if (fitting < plugin.settings().minPlayers()) {
             if (countdown >= 0) {
                 countdown = -1;
@@ -224,7 +259,7 @@ public final class Lobby {
         if (countdown < 0) {
             countdown = plugin.settings().countdown();
         }
-        if (fitting >= plugin.settings().maxPlayers()) {
+        if (fitting >= max) {
             countdown = Math.min(countdown, plugin.settings().fullCountdown());
         }
         for (UUID u : queue.all()) {
@@ -262,7 +297,8 @@ public final class Lobby {
             }
             return false;
         }
-        List<UUID> ids = queue.take(plugin.settings().maxPlayers());
+        GameKind kind = kindVotes.winner(kinds(), queue.all(), rng);
+        List<UUID> ids = queue.take(maxFor(kind.mode()));
         List<Player> players = new ArrayList<>();
         for (UUID u : ids) {
             Player p = plugin.getServer().getPlayer(u);
@@ -277,7 +313,6 @@ public final class Lobby {
         }
         List<BoardId> boards = List.of(BoardId.values());
         BoardId board = boardVotes.winner(boards, ids, rng);
-        GameKind kind = kindVotes.winner(kinds(), ids, rng);
         ids.forEach(u -> {
             boardVotes.forget(u);
             kindVotes.forget(u);
@@ -310,24 +345,41 @@ public final class Lobby {
         m.open(p);
     }
 
+    /**
+     * Abstimmung über die Spielart: jede Spielart hat eine halbe Zeile (links oder rechts), daneben ihre Rundenzahlen –
+     * so passen auch viele Spielarten in ein Menü.
+     */
     private void openModeVote(Player p) {
         String lang = plugin.lang(p);
         List<GameKind> kinds = kinds();
-        Menu m = new Menu(3, Texts.text(lang, "vote.mode.title"));
+        List<Mode> modes = kinds.stream().map(GameKind::mode).distinct().toList();
+        int rows = Math.max(1, Math.min(6, (modes.size() + 1) / 2));
+        Menu m = new Menu(rows, Texts.text(lang, "vote.mode.title"));
         Map<GameKind, Integer> count = kindVotes.count(kinds, queue.all());
-        for (int i = 0; i < kinds.size() && i < 7; i++) {
-            GameKind k = kinds.get(i);
-            boolean mine = k.equals(kindVotes.of(p.getUniqueId()));
-            Component name = k.mode() == Mode.GIPFELRENNEN ? Texts.text(lang, "mode.gipfelrennen")
-                    : Texts.text(lang, "mode.edelweiss-jagd.rounds", Placeholder.unparsed("n", String.valueOf(k.rounds())));
-            List<Component> lore = new ArrayList<>(Texts.lines(lang, "mode." + k.mode().id() + ".desc"));
-            lore.add(Texts.text(lang, "vote.count", Placeholder.unparsed("n", String.valueOf(count.get(k)))));
-            lore.add(Texts.text(lang, mine ? "vote.mine" : "vote.click"));
-            Material icon = k.mode() == Mode.GIPFELRENNEN ? Material.LEATHER_BOOTS : Material.LILY_OF_THE_VALLEY;
-            m.set(10 + i * 2 - (i > 3 ? 7 : 0), Items.glow(Items.named(icon, Math.max(1, count.get(k)), name, lore), mine),
-                    who -> vote(who, () -> kindVotes.vote(who.getUniqueId(), k), name));
+        for (int mi = 0; mi < modes.size() && mi < 2 * rows; mi++) {
+            Mode mode = modes.get(mi);
+            int base = 9 * (mi / 2) + (mi % 2 == 0 ? 0 : 5);
+            List<GameKind> options = kinds.stream().filter(k -> k.mode() == mode).limit(4).toList();
+            for (int j = 0; j < options.size(); j++) {
+                GameKind k = options.get(j);
+                boolean mine = k.equals(kindVotes.of(p.getUniqueId()));
+                Component name = kindName(lang, k);
+                List<Component> lore = new ArrayList<>(Texts.lines(lang, "mode." + k.mode().id() + ".desc"));
+                lore.add(Texts.text(lang, "vote.count", Placeholder.unparsed("n", String.valueOf(count.get(k)))));
+                lore.add(Texts.text(lang, mine ? "vote.mine" : "vote.click"));
+                m.set(base + j, Items.glow(Items.named(icon(mode), Math.max(1, count.get(k)), name, lore), mine),
+                        who -> vote(who, () -> kindVotes.vote(who.getUniqueId(), k), name));
+            }
         }
         m.open(p);
+    }
+
+    private static Material icon(Mode mode) {
+        return switch (mode) {
+            case GIPFELRENNEN -> Material.LEATHER_BOOTS;
+            case EDELWEISS_JAGD -> Material.LILY_OF_THE_VALLEY;
+            case MARATHON -> Material.GOLDEN_BOOTS;
+        };
     }
 
     private void vote(Player p, Runnable doVote, Component what) {
@@ -391,12 +443,20 @@ public final class Lobby {
     }
 
     public List<Component> statLines(String lang, PlayerStats s) {
-        return Texts.lines(lang, "stats.lines", Placeholder.unparsed("games", String.valueOf(s.games())),
+        List<Component> out = new ArrayList<>(Texts.lines(lang, "stats.lines", Placeholder.unparsed("games", String.valueOf(s.games())),
                 Placeholder.unparsed("wins", String.valueOf(s.wins())),
                 Placeholder.unparsed("edelweiss", String.valueOf(s.edelweiss())),
                 Placeholder.unparsed("best", String.valueOf(s.bestEdelweiss())),
                 Placeholder.unparsed("minis", String.valueOf(s.minigamesWon())),
-                Placeholder.unparsed("summits", String.valueOf(s.summits())));
+                Placeholder.unparsed("summits", String.valueOf(s.summits()))));
+        for (Mode mode : Mode.values()) {
+            if (s.modeGames(mode.id()) > 0) {
+                out.add(Texts.text(lang, "stats.mode", Placeholder.component("mode", Texts.text(lang, "mode." + mode.id())),
+                        Placeholder.unparsed("games", String.valueOf(s.modeGames(mode.id()))),
+                        Placeholder.unparsed("wins", String.valueOf(s.modeWins(mode.id())))));
+            }
+        }
+        return out;
     }
 
     // ---------- Seitenleiste ----------
@@ -415,7 +475,7 @@ public final class Lobby {
         lines.add(Texts.text(lang, "hub.side.place"));
         lines.add(Component.empty());
         lines.add(Texts.text(lang, "hub.side.waiting", Placeholder.unparsed("n", String.valueOf(queue.size())),
-                Placeholder.unparsed("max", String.valueOf(plugin.settings().maxPlayers()))));
+                Placeholder.unparsed("max", String.valueOf(maxNow()))));
         lines.add(countdown >= 0 ? Texts.text(lang, "hub.side.countdown", Placeholder.unparsed("s", String.valueOf(countdown)))
                 : Texts.text(lang, "hub.side.need", Placeholder.unparsed("min", String.valueOf(plugin.settings().minPlayers()))));
         lines.add(Texts.text(lang, queue.contains(p.getUniqueId()) ? "hub.side.in" : "hub.side.out"));
@@ -424,9 +484,7 @@ public final class Lobby {
         GameKind k = kindVotes.of(p.getUniqueId());
         lines.add(Texts.text(lang, "hub.side.vote"));
         lines.add(b == null ? Texts.text(lang, "hub.side.novote") : Texts.text(lang, "board." + b.id() + ".short"));
-        lines.add(k == null ? Texts.text(lang, "hub.side.novote") : k.mode() == Mode.GIPFELRENNEN
-                ? Texts.text(lang, "mode.gipfelrennen") : Texts.text(lang, "mode.edelweiss-jagd.rounds",
-                        Placeholder.unparsed("n", String.valueOf(k.rounds()))));
+        lines.add(k == null ? Texts.text(lang, "hub.side.novote") : kindName(lang, k));
         lines.add(Component.empty());
         lines.add(Texts.text(lang, "hub.side.games", Placeholder.unparsed("n", String.valueOf(plugin.games().running()))));
         lines.add(Texts.text(lang, "side.address"));

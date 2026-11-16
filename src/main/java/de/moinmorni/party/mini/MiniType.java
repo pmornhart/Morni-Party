@@ -85,6 +85,14 @@ public enum MiniType {
         return kind;
     }
 
+    /**
+     * So viele Leute hält der Platz aus (Startplätze, Spuren). Die meisten gehen bis 16 (Minispiel-Marathon);
+     * Eisstockschießen und Brückenbau haben nur acht Plätze und fallen in größeren Runden aus.
+     */
+    public int maxPlayers() {
+        return this == EISSTOCKSCHIESSEN || this == BRUECKENBAU ? 8 : de.moinmorni.party.game.Marathon.MAX_PLAYERS;
+    }
+
     /** Text-Schlüssel des Namens („mini.broeckelboden“); Beschreibung: + „.desc“. */
     public String key() {
         return "mini." + name().toLowerCase(Locale.ROOT).replace("_", "");

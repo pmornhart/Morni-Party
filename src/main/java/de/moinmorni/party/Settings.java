@@ -24,10 +24,13 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param fixedOrder     Minispiele der Reihe nach statt zufällig
  * @param miniFactor     Dauer der Minispiele × Faktor
  * @param rules          Zahlen der Spielregeln
+ * @param marathonRounds Minispiel-Marathon: Zahl der Minispiele zur Wahl
+ * @param marathonMax    Minispiel-Marathon: höchstens so viele Leute (bis 16)
  */
 public record Settings(String world, int tables, int minPlayers, int maxPlayers, int countdown, int fullCountdown,
         boolean autoJoin, List<Integer> huntRounds, int turnSeconds, int menuSeconds, int stepTicks,
-        List<MiniType> minigames, boolean fixedOrder, double miniFactor, Rules rules) {
+        List<MiniType> minigames, boolean fixedOrder, double miniFactor, Rules rules, List<Integer> marathonRounds,
+        int marathonMax) {
 
     public static Settings load(FileConfiguration c) {
         List<Integer> rounds = new ArrayList<>();
@@ -38,6 +41,15 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
         }
         if (rounds.isEmpty()) {
             rounds.addAll(List.of(10, 15, 20));
+        }
+        List<Integer> marathon = new ArrayList<>();
+        for (Object o : c.getList("minispiel-marathon.runden", List.of(6, 10, 15))) {
+            if (o instanceof Number n && n.intValue() > 0) {
+                marathon.add(n.intValue());
+            }
+        }
+        if (marathon.isEmpty()) {
+            marathon.addAll(List.of(6, 10, 15));
         }
         List<MiniType> minis = new ArrayList<>();
         for (String s : c.getStringList("minispiele.auswahl")) {
@@ -52,6 +64,8 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
         Rules d = Rules.defaults();
         List<Integer> awards = c.getIntegerList("regeln.minispiel-taler");
         int[] aw = awards.isEmpty() ? d.awards() : awards.stream().mapToInt(Integer::intValue).toArray();
+        List<Integer> points = c.getIntegerList("minispiel-marathon.punkte");
+        int[] mp = points.isEmpty() ? d.marathonPoints() : points.stream().mapToInt(Integer::intValue).toArray();
         Rules rules = new Rules(
                 Math.max(0, c.getInt("regeln.start-taler", d.startTaler())),
                 Math.max(0, c.getInt("regeln.blaues-feld", d.fieldPlus())),
@@ -65,7 +79,7 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
                 Math.max(0, c.getInt("regeln.gipfel-bonus", d.summitBonus())),
                 Math.max(1, c.getInt("regeln.rucksack", d.maxItems())),
                 Math.max(1, c.getInt("regeln.gipfelrennen-max-runden", d.raceMaxRounds())),
-                aw);
+                aw, mp);
         int min = Math.max(2, c.getInt("spieler.mindestens", 2));
         return new Settings(
                 c.getString("welt", "party"),
@@ -82,6 +96,9 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
                 List.copyOf(minis),
                 "fest".equalsIgnoreCase(c.getString("minispiele.reihenfolge", "zufall")),
                 Math.max(0.2, Math.min(3.0, c.getDouble("minispiele.dauer-faktor", 1.0))),
-                rules);
+                rules,
+                List.copyOf(marathon),
+                Math.max(2, Math.min(de.moinmorni.party.game.Marathon.MAX_PLAYERS,
+                        c.getInt("minispiel-marathon.hoechstens", de.moinmorni.party.game.Marathon.MAX_PLAYERS))));
     }
 }

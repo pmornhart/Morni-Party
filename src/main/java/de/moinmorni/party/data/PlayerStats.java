@@ -1,6 +1,9 @@
 package de.moinmorni.party.data;
 
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -15,6 +18,8 @@ public final class PlayerStats {
     private int minigamesWon;
     private int bestEdelweiss;
     private int summits;
+    /** Je Spielart (Kennung wie „marathon“): {Partien, Siege}. */
+    private final Map<String, int[]> modes = new TreeMap<>();
 
     public PlayerStats(UUID uuid, String name) {
         this.uuid = uuid;
@@ -59,6 +64,26 @@ public final class PlayerStats {
         return summits;
     }
 
+    /** Partien in einer Spielart. */
+    public int modeGames(String mode) {
+        return modes.getOrDefault(mode, new int[2])[0];
+    }
+
+    /** Siege in einer Spielart. */
+    public int modeWins(String mode) {
+        return modes.getOrDefault(mode, new int[2])[1];
+    }
+
+    /** Eine Partie zählen (mit Spielart). */
+    public void record(String mode, boolean won, int edelweissCount, int minigames, boolean summit) {
+        int[] m = modes.computeIfAbsent(mode, k -> new int[2]);
+        m[0]++;
+        if (won) {
+            m[1]++;
+        }
+        record(won, edelweissCount, minigames, summit);
+    }
+
     /** Eine Partie zählen. */
     public void record(boolean won, int edelweissCount, int minigames, boolean summit) {
         games++;
@@ -82,6 +107,10 @@ public final class PlayerStats {
         y.set("minispiele-gewonnen", minigamesWon);
         y.set("edelweiss-bestwert", bestEdelweiss);
         y.set("gipfel", summits);
+        modes.forEach((k, v) -> {
+            y.set("spielarten." + k + ".partien", v[0]);
+            y.set("spielarten." + k + ".siege", v[1]);
+        });
         return y.saveToString();
     }
 
@@ -99,6 +128,12 @@ public final class PlayerStats {
         s.minigamesWon = y.getInt("minispiele-gewonnen");
         s.bestEdelweiss = y.getInt("edelweiss-bestwert");
         s.summits = y.getInt("gipfel");
+        ConfigurationSection m = y.getConfigurationSection("spielarten");
+        if (m != null) {
+            for (String k : m.getKeys(false)) {
+                s.modes.put(k, new int[] {m.getInt(k + ".partien"), m.getInt(k + ".siege")});
+            }
+        }
         return s;
     }
 }

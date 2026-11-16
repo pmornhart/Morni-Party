@@ -151,7 +151,8 @@ class TextsTest {
                             || k.endsWith(".properties") || k.endsWith(".net") || k.contains("block.")
                             || k.startsWith("entity.") || k.startsWith("ui.") || k.startsWith("item.armor")
                             || k.startsWith("regeln.") || k.startsWith("spieler.") || k.startsWith("warten.")
-                            || k.startsWith("zug.") || k.startsWith("minispiele.") || k.endsWith(".");
+                            || k.startsWith("zug.") || k.startsWith("minispiele.") || k.startsWith("minispiel-marathon.")
+                            || k.endsWith(".");
                     if (!code && !Texts.keys().contains(k)) {
                         missing.add(k + " (" + f.getFileName() + ")");
                     }

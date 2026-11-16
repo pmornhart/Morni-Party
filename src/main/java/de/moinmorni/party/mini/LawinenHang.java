@@ -120,9 +120,10 @@ final class LawinenHang extends MiniRun {
     @Override
     protected List<Location> spawns(int n) {
         List<Location> out = new ArrayList<>();
+        // acht nebeneinander (mit Lücken, solange es wenige sind), bei mehr Leuten eine zweite Reihe
         for (int i = 0; i < Math.max(1, n); i++) {
-            double x = -HALF + 0.5 + (i * 2.0 + (i / HALF)) % (2 * HALF);
-            out.add(facing(x, 1, START_Z - 1.5 - (i / (HALF + 1)), x, 6, GOAL_Z));
+            double x = -HALF + 0.5 + (n <= HALF ? i * 2.0 : i % (2 * HALF));
+            out.add(facing(x, 1, START_Z - 1.5 - (n <= HALF ? 0 : i / (2 * HALF)), x, 6, GOAL_Z));
         }
         return out;
     }
@@ -144,17 +145,16 @@ final class LawinenHang extends MiniRun {
             int gap = Math.max(7, 16 - ticks / (3 * SECOND));
             nextSpawn = ticks + gap + rng.nextInt(5);
         }
-        roll();
-        if (ticks % 2 == 0) {
-            for (Player p : alivePlayers()) {
-                double z = p.getLocation().getZ() - oz;
-                if (z >= GOAL_Z) {
-                    arrive(p, "mini.race.finish");
-                } else {
-                    progress(p, (int) Math.floor(z - START_Z));
-                }
+        // erst ankommen lassen, dann rollen – wer oben ist, kann nicht mehr getroffen werden
+        for (Player p : alivePlayers()) {
+            double z = p.getLocation().getZ() - oz;
+            if (z >= GOAL_Z) {
+                arrive(p, "mini.race.finish");
+            } else if (ticks % 2 == 0) {
+                progress(p, (int) Math.floor(z - START_Z));
             }
         }
+        roll();
     }
 
     private void spawnBoulder() {
@@ -217,7 +217,7 @@ final class LawinenHang extends MiniRun {
 
     private void hit(Boulder b, Player p) {
         UUID u = p.getUniqueId();
-        if (score.finished(u) || immune.getOrDefault(u, -1) > ticks) {
+        if (score.finished(u) || immune.getOrDefault(u, -1) > ticks || p.getLocation().getZ() - oz >= GOAL_Z) {
             return;
         }
         Location l = p.getLocation();

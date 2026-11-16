@@ -24,6 +24,7 @@ kurzes **Minispiel** für alle. Ein Paper-Plugin für Paper 26.x (Java 25). Es l
 |---|---|
 | **Gipfelrennen** | Wer zuerst das Ziel erreicht. Spätestens nach 20 Runden ist Schluss – dann zählt, wer am weitesten ist (danach Edelweiß, Taler). |
 | **Edelweiß-Jagd** (10, 15 oder 20 Runden) | Wer nach der letzten Runde die meisten Edelweiß hat (bei Gleichstand: mehr Taler). Wer über das Ziel hinauskommt, fährt mit der Seilbahn zurück ins Tal und bekommt 5 Taler Gipfelbonus. |
+| **Minispiel-Marathon** (6, 10 oder 15 Minispiele) | Ohne Spielbrett, **2 bis 16** Leute: ein Minispiel nach dem anderen (gemischt, ohne Wiederholung). Nach jedem gibt es Platz-Punkte (10, 7, 5, 4, 3, 2, 1 …), Zwischenstand im Chat und in der Seitenleiste; am Ende gewinnt, wer die meisten hat. Minispiele, die nur 8 Plätze haben (Eisstockschießen, Brückenbau), fallen in größeren Runden aus. |
 
 ### Spielbretter (aus dem Code gebaut, eigene Entwürfe)
 
@@ -108,9 +109,9 @@ Ohne Netzwerk: deutsche Texte, Statistik nur lokal, „zur Lobby“ trennt die V
 
 Statistik nach jeder Partie (`stats("party", …)`, nur wer bis zum Schluss dabei war):
 
-- hochgezählt: `games`, `wins`, `edelweiss`, `minigames_won`, je Spielart `games_gipfelrennen` /
-  `games_edelweiss_jagd`, im Gipfelrennen `summits` (Ziel erreicht)
-- Bestwert: `edelweiss_best`
+- hochgezählt: `games`, `wins`, `edelweiss`, `minigames_won`, je Spielart `games_<spielart>` und `wins_<spielart>`
+  (`gipfelrennen`, `edelweiss_jagd`, `marathon`), im Gipfelrennen `summits` (Ziel erreicht)
+- Bestwert: `edelweiss_best`, im Marathon `marathon_points_best`
 
 Zustand: `waiting` (keine Partie) oder `running`, dazu die Spielerzahl.
 
@@ -133,7 +134,8 @@ Edelweiß-Jagd im Goldstollen – dabei kommt jedes der zwölf ersten Minispiele
 Minispiele (Paket 1: Lawinenhang, Maibaumkraxeln, Eisstockschießen, Murmeltier-Klopfen), Partie 5 Paket 2
 (Goldwaschen, Schuhplattler, Brückenbau, Schneeballschlacht), Partie 6 Paket 3 (Schlittenrennen, Enzian-Suche,
 Musterweber, Föhnsturm). `PARTS=1,2` spielt nur einen Teil,
-`ONLY=lawinenhang,murmeltier` nur diese Minispiele aus den Partien 4 bis 6.
+`ONLY=lawinenhang,murmeltier` nur diese Minispiele aus den Partien 4 bis 6. Partie 7 ist ein Minispiel-Marathon
+zu viert (drei Minispiele, Zwischenstand, Siegerehrung, Statistik, Englisch).
 
 ## Einstellungen
 

@@ -79,6 +79,9 @@ warten:
   voll-sekunden: 4
   automatisch-mitspielen: false
 edelweiss-jagd-runden: [2, 8]
+minispiel-marathon:
+  runden: [3, 6]
+  hoechstens: 16
 zug:
   wuerfel-sekunden: 12
   menue-sekunden: 8
@@ -135,7 +138,7 @@ fi
 
 echo "== Test-Spieler"
 STATUS=0
-PARTS="${PARTS:-1,2,3,4}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
+PARTS="${PARTS:-1,2,3,4,5,6,7}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
 
 echo "== Fehler im Server-Log:"
 if grep -qE "ERROR|Exception" console.log; then

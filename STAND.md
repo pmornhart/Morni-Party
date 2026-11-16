@@ -70,6 +70,18 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
   Felsen, Büschen; Kornblume als blauer Enzian, sonst nichts Blaues), Musterweber (16 Webrahmen an vier Wänden, Muster
   4×4 in 2/3/4 Farben, Regeln in `mini/Webmuster`), Föhnsturm (acht Windrichtungen, Schutz hinter Felsen und Ducken in
   `mini/Wind`). Bau-Version 5. 63 Unit-Tests, echt Partie 6: 23/23.
+- **Paket 4: Minispiel-Marathon** (16.11.): neue Spielart `Mode.MARATHON` (6/10/15 Minispiele, `minispiel-marathon`
+  in der config.yml), ohne Brett, 2–16 Leute; Platz-Punkte in `game/Marathon` (10, 7, 5, 4, 3, 2, 1, alle weiteren 1),
+  Reihenfolge gemischt ohne Wiederholung, Minispiele mit 8 Plätzen (`MiniType.maxPlayers`: Eisstockschießen,
+  Brückenbau) fallen bei mehr Leuten aus; Bergsprint und Lawinenhang stellen bis 16 in zwei Reihen auf. Abstimmung:
+  Menü „Welche Spielart?“ jetzt je Spielart eine halbe Zeile (Platz für alle kommenden Spielarten); Festplatz nimmt 16
+  mit, wenn der Marathon in der Abstimmung vorn liegt. Zwischenstand im Chat und in der Seitenleiste, Siegerehrung,
+  Statistik je Spielart (`spielarten.<id>` in der Spielerdatei, `/stats`, Netzwerk `games_marathon`, `wins_marathon`,
+  `marathon_points_best`; `games_`/`wins_` jetzt für alle Spielarten). 70 Unit-Tests, echt Partie 7: 15/15.
+  Gesamttest Partien 1–7: 194/197 – Lawinenhang: Bert wurde oben noch von einem Brocken getroffen, bevor er als
+  angekommen zählte (behoben: erst Ankunft, dann Brocken; oben auf dem Plateau keine Treffer mehr, danach 8/8);
+  Trachtenfarben (2×): der Server hing 10 s (Watchdog, Sandbox überlastet durch andere Server), kein Fehler im Spiel.
+  Nicht echt geprüft: Runden mit mehr als vier Leuten (Speicher der Sandbox).
 
 ## Offen
 
