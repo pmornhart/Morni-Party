@@ -82,6 +82,9 @@ Mechanik großer Party-Spiele – eigene Namen und eigene Optik.
   angekommen zählte (behoben: erst Ankunft, dann Brocken; oben auf dem Plateau keine Treffer mehr, danach 8/8);
   Trachtenfarben (2×): der Server hing 10 s (Watchdog, Sandbox überlastet durch andere Server), kein Fehler im Spiel.
   Nicht echt geprüft: Runden mit mehr als vier Leuten (Speicher der Sandbox).
+- Bilder der zwölf neuen Plätze mit echtem Client 26.3, je „spiel“ (laufendes Minispiel) und „weit“ (Kulisse), nur lokal
+  unter `~/mm-cache/bilder-party-mehr/` (24 Bilder). Der Testserver wurde zweimal vom Speicherwächter der Sandbox
+  beendet (andere Server liefen daneben) – das Schuhplattler-Bild „spiel“ steht hinter einem Zeltpfosten.
 
 ## Offen
 
