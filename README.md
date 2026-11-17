@@ -132,13 +132,26 @@ Alle Menüs sind Truhen und gehen auch mit Bedrock (Geyser); auf Bedrock reicht 
 | `/verlassen` | Warteschlange, Partie oder Zuschauen verlassen (auch `/leave`) |
 | `/zuschauen [spieler]` | einer Partie zuschauen (ohne Namen: Menü) |
 | `/stats [spieler]` · `/top` | Statistik und Bestenliste |
-| `/mparty …` | Verwaltung (`moinmorni.party.admin`): `info`, `zustand` (JSON), `start`, `stopp`, `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `wurm <leben>`, `neubauen`, `neuladen` |
+| `/mparty …` | Verwaltung (`moinmorni.party.admin` – im Netzwerk Owner und Admin über „Spielmodi verwalten“): `info`, `zustand` (JSON), `start`, `stopp`, `geld <spieler> <betrag>` (Taler in der laufenden Partie dazugeben, zum Testen), `wuerfel/taler/edelweiss/feld <spieler> <zahl>`, `gegenstand <spieler> <gegenstand>`, `stand <feld>`, `minispiel <name>`, `seiten auto/frei/team/einzel`, `wurm <leben>`, `neubauen`, `neuladen` |
 
 ## Im Netzwerk
 
 Das Netzwerk-Plugin („MoinMorni“) stellt die Schnittstelle `de.moinmorni.api.MoinMorni` bereit; Morni Party nutzt
 sie, wenn sie da ist (`softdepend`): Sprache, Party, Statistik, Zustand für Lobby-Figur und Webseite, zurück zur Lobby.
 Ohne Netzwerk: deutsche Texte, Statistik nur lokal, „zur Lobby“ trennt die Verbindung mit einem Hinweis.
+
+Ab Schnittstelle 2 meldet Morni Party außerdem, wer gerade spielt (`playing`: vom Start der Partie bis zum Ausscheiden
+oder Ende), hält nach einem Verbindungsabbruch den Platz frei (`holdSlot`: die Lobby bietet „Zurück ins Spiel“ an, `0`
+nimmt das Angebot zurück) und schickt mit dem Bett auf dem Festplatz über `askToLobby`. Ein älteres Netzwerk-Plugin
+kennt das nicht; dann läuft alles wie bisher.
+
+### Zurück ins Spiel
+
+Verbindung mitten in der Partie weg (Spiel abgestürzt, Internet weg)? Der Platz bleibt 120 Sekunden frei
+(`rueckkehr-sekunden`): Figur, Taler, Edelweiß und Gegenstände bleiben. Ist die Person am Zug, würfelt das Spiel nach
+der Würfel-Zeit für sie; Minispiele laufen ohne sie (nicht angetreten, im Hüttenaufstieg letzter Platz). Wer
+rechtzeitig zurückkommt, steht wieder auf seinem Feld (oder schaut dem laufenden Minispiel zu und ist danach wieder
+dabei); wer nicht kommt, ist raus wie bisher. Sind alle weg, hält die Partie an.
 
 Statistik nach jeder Partie (`stats("party", …)`, nur wer bis zum Schluss dabei war):
 
@@ -149,8 +162,8 @@ Statistik nach jeder Partie (`stats("party", …)`, nur wer bis zum Schluss dabe
 Zustand: `waiting` (keine Partie) oder `running`, dazu die Spielerzahl.
 
 Bei jedem Push auf `main` baut GitHub ein Release mit `Morni-Party.jar` (Version aus `pom.xml`); das Netzwerk holt sich
-das neueste. Aktuell ist **0.2.1** (Name wieder MoinMorni; mit 0.2.0 kamen neue Spielarten, Bretter und
-Minispiele) – was sich je Version geändert hat, steht in `docs/releases/`.
+das neueste. Aktuell ist **0.2.2** (Zurück ins Spiel; mit 0.2.0 kamen neue Spielarten, Bretter und Minispiele) – was
+sich je Version geändert hat, steht in `docs/releases/`.
 
 ## Bauen und testen
 
@@ -175,11 +188,12 @@ eine Seilschaft zu viert (die Party Anna + Bert als Seilschaft, gemeinsame Taler
 Partie, Partie 11 ein Bergduell, Partie 12 ein Hüttenaufstieg (Leben, Ausscheiden, Gleichstand), Partie 13 ein
 Gipfel-Turnier zu viert (Turnierbaum, Halbfinale, Finale), Partie 14 der Tatzelwurm zu zweit (drei Abschnitte,
 Treffer, Sterne) und Partie 15 die drei neuen Bretter (Fähre am Königssee, Riesenrad und Fahrgeschäft auf der Wiesn,
-Lawine und Eis zur Wintersonnwende). Ohne `PARTS` laufen alle 15 Partien (knapp eine Stunde).
+Lawine und Eis zur Wintersonnwende), Partie 16 „Zurück ins Spiel“ (Verbindung weg und rechtzeitig zurück, zu lange
+weg, Bett auf dem Festplatz, älteres Netzwerk-Plugin). Ohne `PARTS` laufen alle 16 Partien (gut eine Stunde).
 
 ## Einstellungen
 
-`plugins/MorniParty/config.yml`: Welt, Zahl der Spieltische, Spielerzahl, Countdown, automatisch mitspielen,
+`plugins/MorniParty/config.yml`: Rückkehr nach Verbindungsabbruch, Welt, Zahl der Spieltische, Spielerzahl, Countdown, automatisch mitspielen,
 Rundenzahlen der Edelweiß-Jagd, Zug- und Menü-Zeiten, Tempo der Figur, welche Minispiele (und ob zufällig), Dauer der
 Minispiele und alle Zahlen der Spielregeln, Team-/Einzel-Taler, Seilschaft, Schnelle Partie, Bergduell, Hüttenaufstieg
 (Leben, höchstens Minispiele) und Auszeichnungen – mit Erklärungen in der Datei.

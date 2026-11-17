@@ -1,15 +1,26 @@
 package de.moinmorni.party.play;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.Location;
 
 /** Alle laufenden Partien (eine pro Tisch). */
 public final class Games {
 
+    /** So lange erfährt jemand beim nächsten Betreten noch, dass die Partie ohne ihn weiterging. */
+    private static final long MISSED_MS = 15 * 60_000L;
+
     private final List<Game> games = new ArrayList<>();
     private final int tables;
+    /** Wo jemand stand, dessen Platz frei ist – Ort beim Betreten (wird außerhalb des Server-Takts gelesen). */
+    private final Map<UUID, Location> spots = new ConcurrentHashMap<>();
+    /** Wer zu spät kam (Zeitpunkt): Hinweis beim nächsten Betreten. */
+    private final Map<UUID, Long> missed = new HashMap<>();
 
     public Games(int tables) {
         this.tables = tables;
@@ -55,6 +66,34 @@ public final class Games {
     /** Spielt mit oder schaut zu. */
     public Optional<Game> involved(UUID u) {
         return games.stream().filter(g -> g.plays(u) || g.watches(u)).findFirst();
+    }
+
+    /** Platz frei: hier stand die Person, als die Verbindung abriss. */
+    void holdSpot(UUID u, Location at) {
+        spots.put(u, at.clone());
+    }
+
+    void releaseSpot(UUID u) {
+        spots.remove(u);
+    }
+
+    /** Ort beim Betreten für jemanden, dessen Platz frei ist (sonst null). Darf von überall gerufen werden. */
+    public Location returnSpot(UUID u) {
+        Location l = spots.get(u);
+        return l == null ? null : l.clone();
+    }
+
+    /** Die Partie ging ohne {@code u} weiter (Frist um oder vorbei). */
+    void missed(UUID u) {
+        long now = System.currentTimeMillis();
+        missed.values().removeIf(at -> now - at > MISSED_MS);
+        missed.put(u, now);
+    }
+
+    /** Kam {@code u} zu spät zurück? Gibt es nur einmal. */
+    public boolean wasMissed(UUID u) {
+        Long at = missed.remove(u);
+        return at != null && System.currentTimeMillis() - at <= MISSED_MS;
     }
 
     public void tick() {

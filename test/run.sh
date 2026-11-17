@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Echter Test von Morni Party: baut das Plugin und das Test-Netzwerk, richtet einen Paper-Server ein (offline, eigener
-# Port, RCON an), startet ihn, schickt Test-Spieler (mineflayer) durch bis zu 15 Partien und hält ihn wieder an.
+# Port, RCON an), startet ihn, schickt Test-Spieler (mineflayer) durch bis zu 16 Partien und hält ihn wieder an.
 #
 #   test/run.sh                       # alles
 #   KEEP=1 test/run.sh                # Server danach laufen lassen (zum Nachschauen)
 #   KEEP=1 SKIP_TEST=1 test/run.sh    # nur Server starten
 #   PARTS=1,2 test/run.sh             # nur Partie 1 und 2 (3 = die restlichen acht Minispiele, 4–6 = neue Minispiele,
-#                                     # 7–14 = Spielarten, 15 = neue Bretter – Liste oben in party-test.cjs)
+#                                     # 7–14 = Spielarten, 15 = neue Bretter, 16 = Zurück ins Spiel – Liste oben in
+#                                     # party-test.cjs)
 #
 # Erwartet (Vorgaben für die MoinMorni-Sandbox, alles per Umgebungsvariable änderbar):
 #   PARTY_JAVA    Java 25 (Ordner; sonst die JDK 25 aus dem Cache, sonst JAVA_HOME)
@@ -15,6 +16,7 @@
 #                 damit nichts heruntergeladen werden muss) – optional
 #   PARTY_NODE_MODULES  node_modules mit mineflayer
 #   EXTRA_PLUGINS weitere Jars für den Server (z. B. ViaVersion + ViaBackwards)
+#   PAPER_XMS / PAPER_XMX  Speicher des Test-Servers (Vorgabe 1G / 2G; auf einem vollen Rechner z. B. 256M / 1536M)
 #
 # Verfasst mit Claude 🤖
 set -euo pipefail
@@ -68,8 +70,10 @@ enforce-whitelist=false
 motd=Morni Party Test
 allow-flight=true
 PROPS
-# Testwerte: ein Tisch, kurze Wartezeiten, kurze Minispiele, Edelweiß-Jagd mit 2 oder 8 Runden.
+# Testwerte: ein Tisch, kurze Wartezeiten, kurze Minispiele, Edelweiß-Jagd mit 2 oder 8 Runden, Platz nach
+# Verbindungsabbruch 40 Sekunden frei.
 cat > "$SERVER/plugins/MorniParty/config.yml" <<'CONF'
+rueckkehr-sekunden: 40
 welt: party
 tische: 1
 spieler:
@@ -121,7 +125,7 @@ done
 echo "== Server starten (Port $PORT, RCON $RCON_PORT)"
 cd "$SERVER"
 : > console.log
-"$JAVA" -Xms1G -Xmx2G -jar paper.jar --nogui < /dev/null > console.log 2>&1 &
+"$JAVA" -Xms"${PAPER_XMS:-1G}" -Xmx"${PAPER_XMX:-2G}" -jar paper.jar --nogui < /dev/null > console.log 2>&1 &
 PID=$!
 stop_server() {
   if kill -0 "$PID" 2>/dev/null; then
@@ -149,7 +153,7 @@ fi
 
 echo "== Test-Spieler"
 STATUS=0
-PARTS="${PARTS:-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
+PARTS="${PARTS:-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}" node "$HERE/party-test.cjs" 127.0.0.1 "$PORT" "127.0.0.1:$RCON_PORT" "$SERVER/.rcon-pass" "$SERVER" || STATUS=$?
 
 echo "== Fehler im Server-Log:"
 if grep -qE "ERROR|Exception" console.log; then

@@ -436,6 +436,24 @@ public final class Texts {
                 "<gray>Turn order: <white><names></white></gray>");
         t("game.left", "<gray><white><name></white> hat die Partie verlassen.</gray>",
                 "<gray><white><name></white> left the game.</gray>");
+        t("game.away", "<gray><white><name></white> hat die Verbindung verloren – Figur, Taler und Edelweiß bleiben, der Platz ist <white><n></white> Sekunden frei.</gray>",
+                "<gray><white><name></white> lost the connection – their piece, coins and edelweiss stay, the place is kept for <white><n></white> seconds.</gray>");
+        t("game.away.gone", "<gray><white><name></white> ist nicht rechtzeitig zurückgekommen und ist raus.</gray>",
+                "<gray><white><name></white> didn't make it back in time and is out.</gray>");
+        t("game.returned", "<gray><white><name></white> ist wieder da.</gray>",
+                "<gray><white><name></white> is back.</gray>");
+        t("game.back.title", "<em>Willkommen zurück!</em>",
+                "<em>Welcome back!</em>");
+        t("game.back.sub", "<gray>Deine Partie geht weiter.</gray>",
+                "<gray>Your game goes on.</gray>");
+        t("game.back", "<gray>Willkommen zurück! Du stehst wieder auf deinem Feld – Taler, Edelweiß und Gegenstände sind alle noch da.</gray>",
+                "<gray>Welcome back! You're on your field again – coins, edelweiss and items are all still there.</gray>");
+        t("game.back.mini", "<gray>Willkommen zurück! Das Minispiel läuft schon – schau zu, danach bist du wieder dabei.</gray>",
+                "<gray>Welcome back! The minigame is already running – watch it, you're back in afterwards.</gray>");
+        t("game.back.out", "<gray>Willkommen zurück! Während du weg warst, bist du ausgeschieden – du schaust jetzt zu.</gray>",
+                "<gray>Welcome back! You were knocked out while you were away – you're watching now.</gray>");
+        t("game.missed", "<gray>Willkommen zurück! Deine Partie ging ohne dich weiter.</gray>",
+                "<gray>Welcome back! Your game went on without you.</gray>");
         t("turn.start", "<gray>Runde <white><round></white>/<rounds>: <white><name></white> ist dran.</gray>",
                 "<gray>Round <white><round></white>/<rounds>: it's <white><name></white>'s turn.</gray>");
         t("turn.you", "<au>Du bist dran!</au>",
@@ -1113,14 +1131,20 @@ public final class Texts {
                 "<au><b>★ The best ★</b></au>");
 
         // ---------- Verwaltung ----------
-        t("admin.usage", "<gray>/mparty info · zustand · start · stopp · wuerfel|taler|edelweiss|feld \\<spieler> \\<zahl> · gegenstand \\<spieler> \\<gegenstand> · stand \\<feld> · minispiel \\<name> · neubauen · neuladen</gray>",
-                "<gray>/mparty info · zustand (state) · start · stopp (stop) · wuerfel|taler|edelweiss|feld \\<player> \\<number> · gegenstand \\<player> \\<item> · stand \\<field> · minispiel \\<name> · neubauen (rebuild) · neuladen (reload)</gray>");
+        t("admin.usage", "<gray>/mparty info · zustand · start · stopp · geld \\<spieler> \\<betrag> · wuerfel|taler|edelweiss|feld \\<spieler> \\<zahl> · gegenstand \\<spieler> \\<gegenstand> · stand \\<feld> · minispiel \\<name> · neubauen · neuladen</gray>",
+                "<gray>/mparty info · zustand (state) · start · stopp (stop) · geld (money) \\<player> \\<amount> · wuerfel|taler|edelweiss|feld \\<player> \\<number> · gegenstand \\<player> \\<item> · stand \\<field> · minispiel \\<name> · neubauen (rebuild) · neuladen (reload)</gray>");
         t("admin.info", "<gray>Partien: <white><games></white> · Wartend: <white><waiting></white> · Bereit: <white><ready></white> · Netzwerk: <white><net></white></gray>",
                 "<gray>Games: <white><games></white> · Waiting: <white><waiting></white> · Ready: <white><ready></white> · Network: <white><net></white></gray>");
         t("admin.sides", "<gray>/mparty seiten auto|frei|team|einzel – Seiten fürs nächste Minispiel (nur zu viert).</gray>",
                 "<gray>/mparty seiten auto|frei|team|einzel – sides for the next minigame (four players only).</gray>");
         t("admin.ok", "<em>Erledigt.</em>",
                 "<em>Done.</em>");
+        t("admin.money", "<em>✔</em> <white><name></white> <gray>bekommt</gray> <au><n> Taler</au><gray> – jetzt</gray> <au><total></au><gray>.</gray>",
+                "<em>✔</em> <white><name></white> <gray>gets</gray> <au><n> <n_pl:'0#coins|1#coin|1<coins'/></au><gray> – now</gray> <au><total></au><gray>.</gray>");
+        t("admin.money.usage", "<gray>So geht's: <white>/mparty geld \\<spieler> \\<betrag></white> – gibt Taler in der laufenden Partie (zum Testen).</gray>",
+                "<gray>Usage: <white>/mparty geld \\<player> \\<amount></white> – gives coins in the running game (for testing).</gray>");
+        t("money.got", "<gray>Vom Team zum Testen:</gray> <au>+<n> Taler</au><gray>.</gray>",
+                "<gray>From the team for testing:</gray> <au>+<n> <n_pl:'0#coins|1#coin|1<coins'/></au><gray>.</gray>");
         t("admin.started", "<em>Partie gestartet.</em>",
                 "<em>Game started.</em>");
         t("admin.notstarted", "<gray>Keine Partie gestartet (zu wenige oder kein Tisch frei).</gray>",
