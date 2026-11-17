@@ -31,7 +31,7 @@ commands:
     aliases: [bestenliste, rangliste]
   mparty:
     description: Verwaltung von Morni Party
-    usage: /mparty <info|zustand|start|stopp|wuerfel|taler|edelweiss|feld|stand|gegenstand|minispiel|neubauen|neuladen>
+    usage: /mparty <info|zustand|start|stopp|geld|wuerfel|taler|edelweiss|feld|stand|gegenstand|minispiel|neubauen|neuladen>
     permission: moinmorni.party.admin
 
 permissions:

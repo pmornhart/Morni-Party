@@ -18,6 +18,8 @@
  *   Partie 10: Schnelle Partie zu dritt · Partie 11: Bergduell zu zweit
  *   Partie 12: Hüttenaufstieg (Leben) zu viert · Partie 13: Gipfel-Turnier zu viert
  *   Partie 14: Der Tatzelwurm zu zweit · Partie 15: die drei neuen Bretter zu dritt
+ *   Partie 16: Zurück ins Spiel – Verbindung weg und rechtzeitig zurück, zu lange weg, „zur Lobby“ (askToLobby),
+ *              älteres Netzwerk-Plugin (Platz 40 s frei, rueckkehr-sekunden im Test)
  *
  * Verfasst mit Claude 🤖
  */
@@ -404,9 +406,12 @@ async function part1() {
     anna.chats.filter((c) => /Edelwei/.test(c)).join(' | '));
   check('Der Stand zieht weiter', after && after.stand !== 4, after && String(after.stand));
 
-  // ---- Zug 2: Doppelwürfel aus dem Rucksack
+  // ---- Zug 2: Doppelwürfel aus dem Rucksack (vorher auf ein Feld, von dem aus 2 bis 12 kein Duellfeld trifft – ein
+  // Duell bringt ein eigenes Minispiel, das den Zug weit über die Wartezeit hinaus verlängert)
   const second = after.current;
   cur = currentBot(after);
+  const calm = [...Array(after.fields.length - 13).keys()].find((x) => !after.fields.slice(x + 2, x + 13).includes('D'));
+  if (calm !== undefined) await cmd(`mparty feld ${second} ${calm}`);
   await cmd(`mparty gegenstand ${second} doppelwuerfel`);
   await sleep(300);
   win = await openWithItem(cur, 1);
@@ -612,8 +617,11 @@ async function part2() {
   check('Ausgeschiedene schauen zu (Zuschauermodus)', ['spectator', 'adventure'].includes(bert.game.gameMode));
 
   g = await phase((x) => x.phase === 'turn' && x.round === 3, 20000);
-  // Dora geht mitten in der Partie
+  // Dora geht mitten in der Partie (mit /verlassen – nur die Verbindung zu trennen hält seit 0.2.2 ihren Platz frei,
+  // das prüft Partie 16)
   clear(anna);
+  dora.chat('/verlassen');
+  await sleep(400);
   dora.quit();
   delete bots.Dora;
   check('Dora geht: alle lesen es', await waitFor(() => sees(anna, /Dora hat die Partie verlassen/), 4000), anna.chats.join(' | '));
@@ -1881,6 +1889,155 @@ async function newBoards() {
 /** Ergebniszeilen im Marathon („… → +10 Punkte“). */
 const resultLines2 = (bot) => bot.chats.filter((c) => /^\d+\. \S+ .*(Punkte?|points?)$/.test(c));
 
+// ------------------------------------------------------------------ Partie 16: Zurück ins Spiel
+
+const RETURN_S = 40; // rueckkehr-sekunden im Test
+
+/** Partie gerade an einer Stelle, an der es weitergeht: jemand ist am Zug, ein Minispiel kommt oder es ist vorbei. */
+const settled = (x) => x.phase === 'turn' || x.phase.startsWith('mini') || x.phase === 'end';
+
+/**
+ * Würfelt für alle, die da sind, bis ein Minispiel kommt oder die Partie vorbei ist (wer weg ist, bekommt den Würfel vom
+ * Zeitablauf – dann wird nur gewartet, bis sein Zug ganz vorbei ist).
+ */
+async function rollUntilMini(away = []) {
+  let g = null;
+  for (let i = 0; i < 8; i++) {
+    g = await phase(settled, 45000);
+    if (!g || g.phase !== 'turn') return g;
+    const cur = g.current;
+    const round = g.round;
+    if (away.includes(cur)) {
+      g = await phase((x) => (x.current !== cur || x.round !== round || x.phase !== 'turn') && settled(x), 60000);
+      continue;
+    }
+    await cmd(`mparty wuerfel ${cur} ${safeDie(g, 1)}`);
+    await playTurn(g);
+  }
+  return g;
+}
+
+async function rueckkehr() {
+  console.log('\n— Partie 16: Zurück ins Spiel (Verbindung weg) zu dritt —');
+  const list = [bots.Anna, bots.Bert, bots.Carl];
+  const mark = calls().length;
+  const since = () => calls().slice(mark);
+  let g = await startWith(list, MODE.jagd2);
+  g = await phase((x) => x.phase === 'turn', 30000);
+  check('Partie startet zu dritt', g && g.players.length === 3, g && g.mode);
+  check('Netzwerk: alle drei „spielen gerade“', ['Anna', 'Bert', 'Carl'].every((n) =>
+    since().some((c) => c.t === 'playing' && c.name === n && c.playing === true)),
+    JSON.stringify(since().filter((c) => c.t === 'playing')));
+  // ---- Geld zum Testen (Owner/Admin über das Verwaltungsrecht): /mparty geld
+  const annaTaler = pl(g, 'Anna').taler;
+  const bertTaler = pl(g, 'Bert').taler;
+  const [money] = await cmd('mparty geld Anna 25');
+  g = await game();
+  check('/mparty geld Anna 25: +25 Taler in der laufenden Partie, mit Bestätigung',
+    pl(g, 'Anna').taler === annaTaler + 25 && /Anna bekommt 25 Taler – jetzt \d+/.test(money.replace(/§./g, '')),
+    `${annaTaler} → ${pl(g, 'Anna').taler}: ${money.replace(/§./g, '')}`);
+  check('Anna liest „Vom Team zum Testen: +25 Taler“', await waitFor(() => sees(bots.Anna, /Vom Team zum Testen: \+25 Taler/), 3000),
+    bots.Anna.chats.slice(-3).join(' | '));
+  bots.Bert.chat('/mparty geld Bert 100');
+  await sleep(800);
+  g = await game();
+  check('Ohne Verwaltungsrecht (Bert) gibt es kein Geld', pl(g, 'Bert').taler === bertTaler, `${bertTaler} → ${pl(g, 'Bert').taler}`);
+  const order = g.players.map((p) => p.name);
+  const first = order[0]; // ist zuerst am Zug – geht gleich und kommt rechtzeitig zurück
+  const last = order[2]; // geht in Runde 2 und bleibt zu lange weg
+  const watcher = (not) => bots[['Anna', 'Carl'].find((n) => n !== not)]; // liest Deutsch
+  await cmd('mparty minispiel bergsprint');
+
+  // ---- Runde 1: wer am Zug ist, verliert die Verbindung und kommt rechtzeitig zurück
+  check(`${first} ist am Zug`, g.current === first, g.current);
+  const before = pl(g, first);
+  await cmd(`mparty wuerfel ${first} ${safeDie(g, 2)}`);
+  let w = watcher(first);
+  clear(w);
+  bots[first].quit();
+  check(`${first} weg: die anderen erfahren es (Platz ${RETURN_S} s frei)`, await waitFor(() =>
+    sees(w, new RegExp(`${first} hat die Verbindung verloren – Figur, Taler und Edelweiß bleiben, der Platz ist ${RETURN_S} Sekunden frei`)), 4000),
+  w.chats.join(' | '));
+  check(`Netzwerk: Platz für ${first} frei (holdSlot ${RETURN_S})`,
+    since().some((c) => c.t === 'hold-slot' && c.name === first && c.seconds === RETURN_S));
+  g = await game();
+  check(`${first} bleibt in der Partie: Figur und Taler bleiben (Sanduhr in der Leiste)`,
+    g && !pl(g, first).left && pl(g, first).away && pl(g, first).taler === before.taler && pl(g, first).pos === before.pos,
+    g && JSON.stringify(pl(g, first)));
+  // Würfel-Zeit (12 s) um → das Spiel würfelt; erst prüfen, wenn der Zug ganz vorbei ist (Figur gezogen, Feld erledigt)
+  g = await phase((x) => (x.current !== first || x.phase !== 'turn') && settled(x), 60000);
+  check(`Am Zug, aber weg: nach der Würfel-Zeit würfelt das Spiel für ${first}`,
+    g && pl(g, first).pos !== before.pos && sees(w, new RegExp(`${first} würfelt`)), g && `${before.pos} → ${pl(g, first).pos}`);
+  const landed = pl(g, first);
+  clear(w);
+  const back = await join(first);
+  back.policy = defaultPolicy;
+  check(`${first} ist rechtzeitig zurück: wieder auf dem Brett (nicht auf dem Festplatz)`,
+    !inHub(back) && back.game.gameMode === 'adventure', `${JSON.stringify(back.entity.position)} ${back.game.gameMode}`);
+  check(`${first}: „Willkommen zurück“ – wieder auf dem eigenen Feld`, await waitFor(() =>
+    sees(back, /Du stehst wieder auf deinem Feld|You're on your field again/), 3000), back.chats.join(' | '));
+  check(`Die anderen: „${first} ist wieder da“`, await waitFor(() => sees(w, new RegExp(`${first} ist wieder da`)), 3000),
+    w.chats.join(' | '));
+  g = await game();
+  check(`${first}: Taler, Edelweiß und Feld wie vor dem Wiederkommen`, g && !pl(g, first).away &&
+    pl(g, first).taler === landed.taler && pl(g, first).edelweiss === landed.edelweiss && pl(g, first).pos === landed.pos,
+    g && JSON.stringify(pl(g, first)));
+  check(`Netzwerk: Platz wieder zu (0), ${first} „spielt“ wieder`,
+    since().some((c) => c.t === 'hold-slot' && c.name === first && c.seconds === 0) &&
+      since().filter((c) => c.t === 'playing' && c.name === first).slice(-1)[0]?.playing === true);
+  g = await rollUntilMini();
+  g = await waitMini('bergsprint', 40000);
+  check('Minispiel nach Runde 1 mit allen dreien', g && g.miniPlayers === 3, g && String(g.miniPlayers));
+  await waitMiniEnd(60000);
+
+  // ---- Runde 2: einer geht und bleibt zu lange weg
+  g = await phase((x) => x.phase === 'turn' && x.round === 2, 40000);
+  await cmd('mparty minispiel bergsprint');
+  w = watcher(last);
+  clear(w);
+  bots[last].quit();
+  check(`${last} weg: Platz ${RETURN_S} s frei`, await waitFor(() => sees(w, new RegExp(`${last} hat die Verbindung verloren`)), 4000),
+    w.chats.join(' | '));
+  g = await rollUntilMini([last]);
+  g = await waitMini('bergsprint', 40000);
+  check(`Minispiel ohne ${last} (nicht angetreten): 2 Leute`, g && g.miniPlayers === 2, g && String(g.miniPlayers));
+  await waitMiniEnd(60000);
+  check(`Kein Ergebnis für ${last} im Minispiel`, resultLines(w).length >= 2 && !resultLines(w).some((l) => l.includes(last)),
+    resultLines(w).join(' | '));
+  check(`Zu lange weg (über ${RETURN_S} s): ${last} ist raus wie bisher`, await waitFor(() =>
+    sees(w, new RegExp(`${last} ist nicht rechtzeitig zurückgekommen und ist raus`)), RETURN_S * 1000 + 10000), w.chats.join(' | '));
+  check(`Netzwerk: Platz für ${last} erst frei, dann zu (holdSlot ${RETURN_S}, dann 0)`,
+    since().filter((c) => c.t === 'hold-slot' && c.name === last).map((c) => c.seconds).join(',') === `${RETURN_S},0`,
+    since().filter((c) => c.t === 'hold-slot' && c.name === last).map((c) => c.seconds).join(','));
+  const done = await phase((x) => x.phase === 'end', 120000);
+  check('Partie vorbei', done != null);
+  check('Zurück auf den Festplatz', await waitFor(() => list.filter((b) => b.username !== last).every((b) => inHub(bots[b.username])), 40000));
+  const stats = since().filter((c) => c.t === 'stats' && c.add && c.add.games_edelweiss_jagd === 1).map((c) => c.name).sort();
+  check(`Statistik nur für die, die bis zum Schluss dabei waren (nicht ${last})`,
+    stats.length === 2 && !stats.includes(last), stats.join(','));
+  const ends = order.filter((n) => n !== last).map((n) => since().filter((c) => c.t === 'playing' && c.name === n).slice(-1)[0]?.playing);
+  check('Netzwerk: nach dem Ende „spielt“ niemand mehr', ends.every((v) => v === false), ends.join(','));
+  const late = await join(last);
+  late.policy = defaultPolicy;
+  check(`${last} kommt zu spät: auf dem Festplatz mit Hinweis`, inHub(late) && (await waitFor(() =>
+    sees(late, /Deine Partie ging ohne dich weiter|Your game went on without you/), 3000)), late.chats.join(' | '));
+
+  // ---- „Zurück zur Lobby“ auf dem Festplatz: das Netzwerk fragt (askToLobby); wer nicht spielt, geht sofort
+  const dora = bots.Dora;
+  await use(dora, 8);
+  check('Bett „Zurück zur Lobby“ → askToLobby, Dora spielt nicht → gleich in die Lobby',
+    await waitFor(() => dora.kickReason != null, 4000) &&
+      since().some((c) => c.t === 'ask-to-lobby' && c.name === 'Dora' && c.playing === false) &&
+      !since().some((c) => c.t === 'to-lobby' && c.name === 'Dora'), dora.kickReason ?? 'nicht gekickt');
+
+  // ---- Älteres Netzwerk-Plugin (ohne Methoden ab Version 2): „zur Lobby“ geht wie bisher sofort
+  fs.appendFileSync(path.join(SERVER, 'plugins/MoinMorni/fake.properties'), 'api=1\n');
+  await use(late, 8);
+  check('Älteres Netzwerk-Plugin: Bett schickt wie bisher sofort in die Lobby (toLobby)',
+    await waitFor(() => late.kickReason != null, 4000) && since().some((c) => c.t === 'old-api' && c.method === 'askToLobby') &&
+      since().some((c) => c.t === 'to-lobby' && c.name === last), late.kickReason ?? 'nicht gekickt');
+}
+
 async function main() {
   await join('Anna');
   await join('Bert');
@@ -1902,6 +2059,7 @@ async function main() {
   if (PARTS.includes(13)) await turnier();
   if (PARTS.includes(14)) await tatzelwurm();
   if (PARTS.includes(15)) await newBoards();
+  if (PARTS.includes(16)) await rueckkehr();
   for (const b of Object.values(bots)) b.quit();
   await sleep(500);
   const failed = results.filter((r) => !r.ok).length;

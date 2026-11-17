@@ -187,8 +187,9 @@ public final class Lobby {
             case "spectate" -> openSpectate(p);
             case "stats" -> openStats(p);
             case "lobby" -> {
+                // Eigener Wunsch: das Netzwerk fragt nach, wenn jemand gerade spielt (auf dem Festplatz spielt niemand).
                 p.sendMessage(Texts.msg(plugin.lang(p), "lobby.going"));
-                plugin.net().toLobby(p, Texts.text(plugin.lang(p), "lobby.kick"));
+                plugin.net().askToLobby(p, Texts.text(plugin.lang(p), "lobby.kick"));
             }
             default -> {
             }

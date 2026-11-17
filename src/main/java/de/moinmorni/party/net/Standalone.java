@@ -7,7 +7,11 @@ import java.util.concurrent.CompletableFuture;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
-/** Morni Party ohne Netzwerk: deutsch, keine Party, keine Statistik nach außen (lokal zählt Morni Party trotzdem). */
+/**
+ * Morni Party ohne Netzwerk: deutsch, keine Party, keine Statistik nach außen (lokal zählt Morni Party trotzdem).
+ * Niemand fragt nach „spielt gerade“ oder einem freien Platz – wer die Verbindung verliert, kann trotzdem rechtzeitig
+ * auf diesen Server zurückkommen und weiterspielen (das regelt Morni Party selbst).
+ */
 final class Standalone implements Network {
 
     @Override
@@ -33,6 +37,26 @@ final class Standalone implements Network {
     @Override
     public void toLobby(Player player, Component message) {
         player.kick(message);
+    }
+
+    @Override
+    public void askToLobby(Player player, Component message) {
+        player.kick(message);
+    }
+
+    @Override
+    public void playing(Player player, boolean playing) {
+        // kein Netzwerk, das nachfragen könnte
+    }
+
+    @Override
+    public void holdSlot(UUID player, int seconds) {
+        // keine Lobby, die „Zurück ins Spiel“ anbietet
+    }
+
+    @Override
+    public void forget(UUID player) {
+        // nichts gemerkt
     }
 
     @Override

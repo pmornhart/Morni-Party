@@ -55,6 +55,11 @@ import org.joml.Vector3f;
  * Eine laufende Partie an einem Tisch: Spielbrett, Züge (Würfeln, Ziehen, Felder, Edelweiß-Stand, Laden,
  * Gegenstände, Duell), nach jeder Runde ein Minispiel, am Ende Siegerehrung und Statistik. Die Regeln selbst stecken
  * in {@link Engine}; hier geht es um Anzeige, Menüs, Zeit und Bewegung.
+ *
+ * <p>Verbindung weg mitten in der Partie: Der Platz bleibt {@code rueckkehr-sekunden} frei – Figur, Taler, Edelweiß
+ * und Gegenstände bleiben. Ist die Person am Zug, würfelt das Spiel nach der Würfel-Zeit für sie; Minispiele laufen ohne
+ * sie (nicht angetreten, im Hüttenaufstieg letzter Platz). Kommt sie rechtzeitig zurück, steht sie wieder auf ihrem Feld
+ * (bzw. schaut dem laufenden Minispiel zu); sonst ist sie raus wie beim Verlassen. Sind alle weg, hält die Partie an.
  */
 public final class Game {
 
@@ -116,6 +121,8 @@ public final class Game {
     private final Map<String, BossBar> miniBars = new HashMap<>();
     private boolean closed;
     private boolean ended;
+    /** Verbindung weg, Platz frei bis … (Millisekunden). */
+    private final Map<UUID, Long> away = new java.util.LinkedHashMap<>();
 
     public Game(PartyPlugin plugin, int table, BoardId boardId, GameKind kind, List<Player> players) {
         this(plugin, table, boardId, kind, players, players.stream().map(p -> List.of(p.getUniqueId())).toList());
@@ -198,6 +205,21 @@ public final class Game {
         return spectators.contains(u);
     }
 
+    /** Ist {@code u} noch im Wettbewerb (dabei, nicht ausgeschieden, Partie nicht vorbei)? */
+    public boolean competing(UUID u) {
+        return !ended && !closed && engine.player(u).filter(p -> !p.left() && !p.out()).isPresent();
+    }
+
+    /** Hat {@code u} die Verbindung verloren und darf noch zurückkommen? */
+    public boolean isAway(UUID u) {
+        return away.containsKey(u);
+    }
+
+    /** Da (online) und nicht nur „Platz frei“. */
+    private boolean present(PartyPlayer pp) {
+        return !away.containsKey(pp.uuid()) && online(pp) != null;
+    }
+
     /** Mitspielende, die gerade da sind. */
     public List<Player> players() {
         List<Player> out = new ArrayList<>();
@@ -273,6 +295,10 @@ public final class Game {
     public void tick() {
         if (closed) {
             return;
+        }
+        checkAway();
+        if (closed || (!away.isEmpty() && players().isEmpty())) {
+            return; // alle haben die Verbindung verloren: die Partie hält an, bis jemand zurückkommt (oder die Frist um ist)
         }
         now++;
         if (now % SECOND == 0) {
@@ -364,6 +390,7 @@ public final class Game {
             plugin.lobby().leaveQueue(p.getUniqueId(), false);
             prepareBoardPlayer(p);
             p.teleport(spot(pp));
+            plugin.net().playing(p, true);
         }
         String names = String.join(", ", engine.active().stream().map(PartyPlayer::name).toList());
         for (Player p : audience()) {
@@ -412,6 +439,7 @@ public final class Game {
                 plugin.lobby().leaveQueue(p.getUniqueId(), false);
                 p.closeInventory();
                 p.getInventory().clear();
+                plugin.net().playing(p, true);
             }
         }
         String names = String.join(", ", engine.active().stream().map(PartyPlayer::name).toList());
@@ -593,6 +621,10 @@ public final class Game {
         boolean finale = bracket.left() == 1;
         bracket.report(winner);
         engine.knockOut(winner, loser, roundNo);
+        Player knockedOut = plugin.getServer().getPlayer(loser);
+        if (knockedOut != null) {
+            plugin.net().playing(knockedOut, false);
+        }
         for (Player x : audience()) {
             String lang = plugin.lang(x);
             x.sendMessage(Texts.msg(lang, "duel.result", Placeholder.component("name", Texts.text(lang, run.type().key())),
@@ -710,6 +742,7 @@ public final class Game {
         for (UUID u : climb.out()) {
             Player p = plugin.getServer().getPlayer(u);
             if (p != null) {
+                plugin.net().playing(p, false);
                 p.getInventory().clear();
                 p.setGameMode(GameMode.SPECTATOR);
                 Ui.title(p, Texts.text(plugin.lang(p), "huette.out.title"), Texts.text(plugin.lang(p), "huette.out.sub"), 3000);
@@ -895,10 +928,11 @@ public final class Game {
         }
         PartyPlayer cur = engine.current();
         Player p = online(cur);
-        if (cur.left() || p == null) {
+        if (cur.left() || (p == null && !away.containsKey(cur.uuid()))) {
             finishTurn();
             return;
         }
+        // Ist die Person am Zug gerade weg (Platz frei), würfelt das Spiel nach der Würfel-Zeit für sie.
         phase = Phase.TURN;
         refreshItems();
         for (Player a : audience()) {
@@ -1281,7 +1315,8 @@ public final class Game {
 
     private void chooseDuel(PartyPlayer pp) {
         Player p = online(pp);
-        List<PartyPlayer> others = engine.active().stream().filter(o -> o != pp && !engine.mates(o, pp)).toList();
+        List<PartyPlayer> others = engine.active().stream().filter(o -> o != pp && !engine.mates(o, pp) && present(o))
+                .toList();
         if (p == null || others.isEmpty()) {
             laterFinish();
             return;
@@ -1662,7 +1697,8 @@ public final class Game {
         Teams.Split split = Teams.Split.FREE;
         MiniType type = null;
         if (!boardless()) {
-            List<UUID> order = engine.active().stream().map(PartyPlayer::uuid).toList();
+            // Seiten nur aus denen, die gerade da sind – wer weg ist, tritt nicht an.
+            List<UUID> order = engine.active().stream().filter(this::present).map(PartyPlayer::uuid).toList();
             split = roped() ? ropeSplit() : kind.mode() == Mode.BERGDUELL && order.size() == 2
                     ? Teams.Split.duel(order.get(0), order.get(1)) : Teams.decide(order, lastField);
             if (forcedFormat != null) {
@@ -1685,7 +1721,8 @@ public final class Game {
     /** Seilschaft: genau zwei Seilschaften zu zweit → 2 gegen 2, sonst jeder gegen jeden. */
     private Teams.Split ropeSplit() {
         List<List<PartyPlayer>> t = engine.teams();
-        if (t.size() != 2 || t.get(0).size() != 2 || t.get(1).size() != 2) {
+        if (t.size() != 2 || t.get(0).size() != 2 || t.get(1).size() != 2
+                || engine.active().stream().anyMatch(pp -> !present(pp))) {
             return Teams.Split.FREE;
         }
         return new Teams.Split(Teams.Format.TEAM, t.get(0).stream().map(PartyPlayer::uuid).toList(),
@@ -1831,7 +1868,7 @@ public final class Game {
         List<List<UUID>> places = run.score().places();
         Teams.Split split = run.split();
         Teams.Outcome outcome = split.sides() ? run.teamOutcome() : null;
-        Engine.Climb climb = huette() ? engine.climb(places) : null;
+        Engine.Climb climb = huette() ? engine.climb(withAbsent(places)) : null;
         Map<UUID, Integer> got = climb != null ? Map.of() : split.sides() ? engine.awardTeams(split, outcome)
                 : engine.awardMinigame(places);
         List<UUID> winners = split.sides() ? split.winners(outcome) : places.isEmpty() ? List.of() : places.getFirst();
@@ -1903,6 +1940,17 @@ public final class Game {
         });
     }
 
+    /** Hüttenaufstieg: wer gerade weg ist, ist nicht angetreten – zählt als letzter Platz. */
+    private List<List<UUID>> withAbsent(List<List<UUID>> places) {
+        List<UUID> missing = engine.climbing().stream().map(PartyPlayer::uuid).filter(away::containsKey).toList();
+        if (missing.isEmpty()) {
+            return places;
+        }
+        List<List<UUID>> out = new ArrayList<>(places);
+        out.add(missing);
+        return out;
+    }
+
     private void backToBoard() {
         for (PartyPlayer pp : engine.active()) {
             Player p = online(pp);
@@ -1970,6 +2018,10 @@ public final class Game {
             mini.finish();
         }
         hideBars();
+        releaseAway();
+        for (Player p : players()) {
+            plugin.net().playing(p, false);
+        }
         List<List<PartyPlayer>> places = engine.places();
         List<PartyPlayer> winners = places.isEmpty() || (wurm() && (wurmResult == null || !wurmResult.won())) ? List.of()
                 : places.getFirst();
@@ -2050,6 +2102,7 @@ public final class Game {
         }
         closed = true;
         token++;
+        releaseAway();
         closeMenus();
         tasks.forEach(BukkitTask::cancel);
         tasks.clear();
@@ -2066,12 +2119,119 @@ public final class Game {
         spectators.clear();
         plugin.games().remove(this);
         for (Player p : back) {
+            plugin.net().playing(p, false);
             plugin.lobby().enterHub(p, true);
         }
         plugin.stateChanged();
     }
 
     // ---------- Gehen und Zuschauen ----------
+
+    /**
+     * Verbindung weg. Spielt die Person mit und ist die Rückkehr an ({@code rueckkehr-sekunden}), bleibt ihr Platz frei
+     * (true): Figur, Taler und Gegenstände bleiben, aus einem laufenden Minispiel scheidet sie aus (nicht angetreten).
+     * Sonst wie Verlassen (false).
+     */
+    public boolean quit(Player p) {
+        UUID u = p.getUniqueId();
+        int seconds = plugin.settings().returnSeconds();
+        if (seconds <= 0 || !competing(u) || away.containsKey(u)) {
+            leave(p, false);
+            return false;
+        }
+        away.put(u, System.currentTimeMillis() + seconds * 1000L);
+        plugin.games().holdSpot(u, p.getLocation());
+        plugin.net().holdSlot(u, seconds);
+        if (menus.containsKey(u)) {
+            menus.remove(u).closeQuietly(p);
+        }
+        if (mini != null && !mini.done() && mini.score().has(u)) {
+            mini.leave(p);
+        }
+        miniBars.values().forEach(p::hideBossBar);
+        plugin.sidebar().hide(p);
+        say("game.away", Placeholder.unparsed("name", p.getName()), Placeholder.unparsed("n", String.valueOf(seconds)));
+        refreshSidebar();
+        plugin.stateChanged();
+        return true;
+    }
+
+    /**
+     * Beim Betreten: Ist der Platz noch frei, geht es weiter – auf dem eigenen Feld, oder (läuft gerade ein Minispiel,
+     * ohne Brett) als Zuschauer bis zum nächsten. false = kein Platz frei.
+     */
+    public boolean rejoin(Player p) {
+        UUID u = p.getUniqueId();
+        PartyPlayer pp = engine.player(u).orElse(null);
+        if (away.remove(u) == null || pp == null || closed) {
+            return false;
+        }
+        plugin.games().releaseSpot(u);
+        plugin.net().holdSlot(u, 0);
+        // Ist die Person in der Zeit ausgeschieden (Turnier, Hüttenaufstieg), schaut sie nur noch zu.
+        boolean stillIn = !pp.out() && !pp.left();
+        plugin.net().playing(p, stillIn);
+        String lang = plugin.lang(p);
+        boolean miniPhase = phase == Phase.MINI_INTRO || phase == Phase.MINI_COUNTDOWN || phase == Phase.MINI
+                || phase == Phase.MINI_RESULT;
+        p.closeInventory();
+        p.setGlowing(false);
+        p.setFireTicks(0);
+        p.setFallDistance(0);
+        if (miniPhase || boardless()) {
+            p.getInventory().clear();
+            p.setGameMode(GameMode.SPECTATOR);
+            p.teleport(mini != null && phase != Phase.MINI_RESULT ? mini.viewPoint() : viewPoint());
+            if (!miniBars.isEmpty()) {
+                p.showBossBar(bar(lang));
+            }
+            p.sendMessage(Texts.msg(lang, stillIn ? "game.back.mini" : "game.back.out"));
+        } else {
+            prepareBoardPlayer(p);
+            p.teleport(spot(pp));
+            p.sendMessage(Texts.msg(lang, "game.back"));
+        }
+        Ui.title(p, Texts.text(lang, "game.back.title"), Texts.text(lang, "game.back.sub"), 2500);
+        Ui.sound(p, "minecraft:block.note_block.chime", 1.2f);
+        for (Player a : audience()) {
+            if (!a.equals(p)) {
+                a.sendMessage(Texts.msg(plugin.lang(a), "game.returned", Placeholder.unparsed("name", p.getName())));
+            }
+        }
+        refreshSidebar();
+        plugin.stateChanged();
+        return true;
+    }
+
+    /** Frist um: wer nicht zurückkam, ist raus – wie beim Verlassen. */
+    private void checkAway() {
+        if (away.isEmpty()) {
+            return;
+        }
+        long t = System.currentTimeMillis();
+        for (UUID u : List.copyOf(away.keySet())) {
+            Long until = away.get(u);
+            if (until == null || until > t || closed) {
+                continue;
+            }
+            away.remove(u);
+            plugin.games().releaseSpot(u);
+            plugin.games().missed(u);
+            plugin.net().holdSlot(u, 0);
+            String name = engine.player(u).map(PartyPlayer::name).orElse("?");
+            drop(u, null, "game.away.gone", name);
+        }
+    }
+
+    /** Partie vorbei: niemandem mehr einen Platz frei halten. */
+    private void releaseAway() {
+        for (UUID u : List.copyOf(away.keySet())) {
+            away.remove(u);
+            plugin.games().releaseSpot(u);
+            plugin.games().missed(u);
+            plugin.net().holdSlot(u, 0);
+        }
+    }
 
     /** Jemand verlässt die Partie (Verbindung weg oder /verlassen). */
     public void leave(Player p, boolean online) {
@@ -2084,21 +2244,35 @@ public final class Game {
         if (!plays(u)) {
             return;
         }
+        if (away.remove(u) != null) {
+            plugin.games().releaseSpot(u);
+            plugin.net().holdSlot(u, 0);
+        }
+        plugin.net().playing(p, false);
+        drop(u, p, "game.left", p.getName());
+    }
+
+    /** Raus aus der Partie ({@code p} null: nicht mehr da – Frist nach Verbindungsabbruch um). */
+    private void drop(UUID u, Player p, String key, String name) {
         boolean current = engine.current().uuid().equals(u);
         engine.remove(u);
-        if (menus.containsKey(u)) {
-            menus.remove(u).closeQuietly(p);
+        Menu menu = menus.remove(u);
+        if (menu != null && p != null) {
+            menu.closeQuietly(p);
         }
         boolean inMatch = mini != null && !mini.done() && mini.score().has(u);
-        if (mini != null && !mini.done()) {
+        if (mini != null && !mini.done() && p != null) {
             mini.leave(p);
         }
         if (turnier() && bracket != null && !inMatch) {
             bracket.forfeit(u); // wartete noch: der nächste Gegner kommt kampflos weiter
         }
-        miniBars.values().forEach(p::hideBossBar);
-        plugin.sidebar().hide(p);
-        say("game.left", Placeholder.unparsed("name", p.getName()));
+        if (p != null) {
+            miniBars.values().forEach(p::hideBossBar);
+            plugin.sidebar().hide(p);
+        }
+        say(key, Placeholder.unparsed("name", name));
+        refreshSidebar();
         plugin.stateChanged();
         if (ended) {
             return;
@@ -2163,7 +2337,7 @@ public final class Game {
                         if (k > 0) {
                             names = names.append(Component.text(" & ", TextColor.color(0xAAAAAA)));
                         }
-                        names = names.append(Component.text((cur ? "▶" : "") + pp.name(),
+                        names = names.append(Component.text((cur ? "▶" : "") + pp.name() + gone(pp),
                                 TextColor.color(COLOURS[pp.colour() % COLOURS.length])));
                     }
                     lines.add(Texts.text(lang, "side.rope", Placeholder.unparsed("pos",
@@ -2174,7 +2348,7 @@ public final class Game {
             }
             for (PartyPlayer pp : roped() ? List.<PartyPlayer>of() : sorted) {
                 boolean cur = !ended && engine.current() == pp && phase.ordinal() <= Phase.LANDING.ordinal();
-                Component name = Component.text(pp.name(), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
+                Component name = Component.text(pp.name() + gone(pp), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
                 lines.add(Texts.text(lang, kind.mode() == Mode.GIPFELRENNEN ? "side.player.race" : "side.player",
                         Placeholder.unparsed("pos", String.valueOf(places.getOrDefault(pp.uuid(), 0))),
                         Placeholder.unparsed("turn", cur ? "▶" : " "),
@@ -2208,7 +2382,7 @@ public final class Game {
                 if (shown >= 11 && !me) {
                     continue;
                 }
-                Component name = Component.text(pp.name(), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
+                Component name = Component.text(pp.name() + gone(pp), TextColor.color(COLOURS[pp.colour() % COLOURS.length]));
                 lines.add(turnier() ? Texts.text(lang, pp.out() ? "side.player.huette.out" : "side.player.turnier",
                         Placeholder.component("name", name), Placeholder.unparsed("wins", String.valueOf(pp.minigamesWon())))
                         : huette() ? Texts.text(lang, pp.out() ? "side.player.huette.out" : "side.player.huette",
@@ -2226,6 +2400,11 @@ public final class Game {
     }
 
     // ---------- Kleinkram ----------
+
+    /** Sanduhr hinter dem Namen, solange jemand weg ist (Platz frei). */
+    private String gone(PartyPlayer pp) {
+        return away.containsKey(pp.uuid()) ? " ⏳" : "";
+    }
 
     private void say(String key, TagResolver... r) {
         for (Player a : audience()) {
@@ -2299,7 +2478,7 @@ public final class Game {
                     .append(p.left()).append(",\"minis\":").append(p.minigamesWon()).append(",\"points\":")
                     .append(p.minigamePoints()).append(",\"shield\":")
                     .append(p.shield()).append(",\"team\":").append(p.team()).append(",\"lives\":").append(p.lives())
-                    .append(",\"out\":").append(p.out()).append('}');
+                    .append(",\"out\":").append(p.out()).append(",\"away\":").append(away.containsKey(p.uuid())).append('}');
         }
         b.append("],\"spectators\":").append(spectators.size()).append('}');
         return b.toString();

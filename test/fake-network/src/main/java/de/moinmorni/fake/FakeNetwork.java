@@ -12,31 +12,50 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Test-Ersatz für das Netzwerk-Plugin: stellt die Schnittstelle {@link MoinMorni} bereit. Sprache und Partys kommen
  * aus {@code plugins/MoinMorni/fake.properties} (bei jedem Aufruf neu gelesen), alle Meldungen (Statistik, Zustand,
- * Lobby) landen als JSON-Zeilen in {@code plugins/MoinMorni/calls.log}.
+ * Lobby, „spielt gerade“, freier Platz) landen als JSON-Zeilen in {@code plugins/MoinMorni/calls.log}.
  *
  * <pre>
  * lang.Bert=en
  * party.Anna=Anna,Bert      # Anführerin Anna, Mitglieder Anna und Bert
+ * api=1                     # tut so, als wäre es ein älteres Netzwerk-Plugin (ohne Methoden ab Version 2)
  * </pre>
+ *
+ * <p>„zur Lobby“ auf eigenen Wunsch ({@link #askToLobby}) fragt wie das echte Netzwerk nur nach, wenn der Modus den
+ * Spieler als „spielt gerade“ gemeldet hat – sonst geht es sofort (Verbindung trennen).
  */
-public final class FakeNetwork extends JavaPlugin implements MoinMorni {
+public final class FakeNetwork extends JavaPlugin implements MoinMorni, Listener {
+
+    /** Wer laut Modus gerade spielt – wie im echten Netzwerk beim Verlassen des Servers vergessen. */
+    private final Set<UUID> playing = ConcurrentHashMap.newKeySet();
 
     @Override
     public void onEnable() {
         getDataFolder().mkdirs();
         getServer().getServicesManager().register(MoinMorni.class, this, this, ServicePriority.Normal);
+        getServer().getPluginManager().registerEvents(this, this);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent e) {
+        playing.remove(e.getPlayer().getUniqueId());
     }
 
     private Properties props() {
@@ -50,6 +69,14 @@ public final class FakeNetwork extends JavaPlugin implements MoinMorni {
             }
         }
         return p;
+    }
+
+    /** Älteres Netzwerk-Plugin spielen: die Methoden ab Version 2 gibt es dann „nicht“. */
+    private void version2(String method) {
+        if ("1".equals(props().getProperty("api"))) {
+            log("{\"t\":\"old-api\",\"method\":\"" + method + "\"}");
+            throw new NoSuchMethodError("de.moinmorni.api.MoinMorni." + method + " (Test: älteres Netzwerk-Plugin)");
+        }
     }
 
     private synchronized void log(String json) {
@@ -149,5 +176,35 @@ public final class FakeNetwork extends JavaPlugin implements MoinMorni {
     public void toLobby(Player player) {
         log("{\"t\":\"to-lobby\",\"name\":\"" + player.getName() + "\"}");
         player.kick(Component.text("Test-Netzwerk: ab in die Lobby"));
+    }
+
+    @Override
+    public void askToLobby(Player player) {
+        version2("askToLobby");
+        boolean now = playing.contains(player.getUniqueId());
+        log("{\"t\":\"ask-to-lobby\",\"name\":\"" + player.getName() + "\",\"playing\":" + now + "}");
+        if (now) {
+            player.sendMessage(Component.text("Test-Netzwerk: Wirklich zurück in die Lobby? Du bist mitten im Spiel."));
+        } else {
+            player.kick(Component.text("Test-Netzwerk: ab in die Lobby"));
+        }
+    }
+
+    @Override
+    public void playing(Player player, boolean now) {
+        version2("playing");
+        if (now) {
+            playing.add(player.getUniqueId());
+        } else {
+            playing.remove(player.getUniqueId());
+        }
+        log("{\"t\":\"playing\",\"name\":\"" + player.getName() + "\",\"playing\":" + now + "}");
+    }
+
+    @Override
+    public void holdSlot(UUID player, int seconds) {
+        version2("holdSlot");
+        log("{\"t\":\"hold-slot\",\"name\":\"" + nameOf(player) + "\",\"uuid\":\"" + player + "\",\"seconds\":" + seconds
+                + "}");
     }
 }

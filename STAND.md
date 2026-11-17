@@ -32,7 +32,34 @@ Auszeichnungen am Ende.
 
 ## Stand (16.11.2026)
 
-- Version 0.2.1 (Branch `claude/moinmorni`, wartet auf Philips Go): **Name wieder MoinMorni** – 0.2.0 hatte Morni
+- Version 0.2.2 (Branch `claude/zurueck-ins-spiel`, wartet auf Philips Go): **Zurück ins Spiel** (Philip: „Wenn das Game
+  crasht, soll man zurück zum Spiel können“ und vor der Lobby nachfragen, solange man spielt). Netzwerk-Schnittstelle 2
+  (Kopie byte-gleich): `playing` vom Start der Partie bis zum Ausscheiden (Turnier, Hüttenaufstieg) bzw. Ende, das Bett
+  „Zurück zur Lobby“ auf dem Festplatz ruft `askToLobby`, Verbindung mitten in der Partie weg → Platz
+  `rueckkehr-sekunden` frei (oben in der config.yml, Vorgabe 120, 0 = aus) und `holdSlot(uuid, s)`: Figur, Taler,
+  Edelweiß und Gegenstände bleiben, Sanduhr ⏳ hinter dem Namen in der Leiste. Ist die Person am Zug, würfelt das Spiel
+  nach der Würfel-Zeit für sie (wie sonst auch); kein Duell gegen Abwesende; Minispiele laufen ohne sie (nicht
+  angetreten, keine Taler; im Hüttenaufstieg letzter Platz), Seiten (2 gegen 2, 1 gegen 3, Seilschaft, Bergduell) nur aus
+  denen, die da sind. Rechtzeitig zurück (`AsyncPlayerSpawnLocationEvent` gleich am alten Ort) → wieder auf dem eigenen
+  Feld bzw. im laufenden Minispiel/ohne Brett als Zuschauer bis zum nächsten, „Willkommen zurück!“, die anderen lesen
+  „… ist wieder da“, `holdSlot(uuid, 0)`. Sind alle weg, hält die Partie an. Zu spät → raus wie bisher (keine
+  Statistik), Hinweis beim nächsten Betreten; Ende der Partie → `holdSlot(uuid, 0)`. Älteres Netzwerk-Plugin
+  (`LinkageError`) → einmal Hinweis im Log, alles wie bisher. `/mparty geld <spieler> <betrag>` (Philip: Owner und Admins
+  sollen sich zum Testen Geld geben können): Taler in der laufenden Partie, Recht `moinmorni.party.admin`, Bestätigung
+  de/en. `/mparty zustand` zeigt je Person `away`. Test-Netzwerk schreibt `playing`, `ask-to-lobby` (fragt nur, solange
+  „spielt“), `hold-slot` mit und spielt mit `api=1` ein älteres Netzwerk-Plugin. Partie 2 geht jetzt mit `/verlassen`
+  (nur trennen hält den Platz frei). Geprüft: 133 Unit-Tests (neu `SettingsTest`; JUnit 6.1.3, Issue #2), Paper 26.1 übersetzt, echt mit Paper
+  26.1.2 (`test/run.sh`, `rueckkehr-sekunden: 40`, Server mit 1,4 GB): alle 16 Partien **336/336** (in Paketen –
+  der Rechner war voll, abgebrochene Läufe wiederholt), Log ohne Fehler – neu in Partie 16 (**28/28**): alle drei
+  „spielen“; `/mparty geld Anna 25` (+25, Bestätigung, Anna liest es, Bert ohne Recht bekommt nichts); Bert am Zug
+  trennt → die anderen erfahren es, holdSlot 40, Figur und Taler bleiben, nach der Würfel-Zeit würfelt das Spiel für
+  ihn (Feld 0 → 1); zurück → auf dem Brett, „Welcome back“, „Bert ist wieder da“, Taler/Edelweiß/Feld wie vorher,
+  holdSlot 0, „spielt“ wieder; Minispiel mit allen dreien; Anna trennt in Runde 2 → Minispiel ohne sie (2 Leute, kein
+  Ergebnis für sie), nach 40 s „nicht rechtzeitig zurückgekommen“, holdSlot 40 → 0, Statistik nur für Bert und Carl,
+  nach dem Ende „spielt“ niemand, Anna kommt zu spät → Festplatz mit Hinweis; Bett → `askToLobby`, älteres
+  Netzwerk-Plugin → wie bisher `toLobby`. Wer in der Zeit ausgeschieden ist (Turnier, Hüttenaufstieg), schaut nach der
+  Rückkehr zu und „spielt“ nicht mehr. `test/run.sh`: Speicher per `PAPER_XMS`/`PAPER_XMX`.
+- Version 0.2.1 (16.11. veröffentlicht, Release v0.2.1): **Name wieder MoinMorni** – 0.2.0 hatte Morni
   Party kurz an einen neuen Netzwerk-Namen angepasst; der war nicht verfügbar, darum gilt wieder der alte Name
   (Umbenennung per `git revert` zurückgenommen, alles Neue aus 0.2.0 bleibt): Paket `de.moinmorni.party`,
   Schnittstelle `de.moinmorni.api.MoinMorni`, Netzwerk-Plugin „MoinMorni“, Recht `moinmorni.party.admin`,
@@ -177,7 +204,10 @@ Auszeichnungen am Ende.
 
 ## Offen
 
-- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` (dann Release v0.2.1).
+- Philip: Bilder ansehen, Spielbretter und Minispiele ausprobieren; Go für `main` mit 0.2.2 (Zurück ins Spiel).
+  Netzwerk-Repo: Einstellungs-Katalog um `rueckkehr-sekunden` ergänzen (0–600, Vorgabe 120); Nachfrage vor der Lobby
+  und „Zurück ins Spiel“ baut das Netzwerk-Plugin.
+- Nicht echt geprüft: Rückkehr mit echtem Client über das echte Netzwerk (Lobby-Angebot).
 - Einstellungen (Rundenzahlen, Zeiten, Regeln, Minispiel-Auswahl) im Panel des Netzwerks (Einstellungs-Katalog) –
   gehört ins Netzwerk-Repo; neu seit 0.2.0: `minispiel-marathon`, `seilschaft`, `schnelle-partie`, `bergduell`,
   `huettenaufstieg`, `auszeichnungen`, `regeln.team-taler/team-unentschieden-taler/einzel-taler/einzel-faktor` und

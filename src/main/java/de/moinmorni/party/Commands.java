@@ -24,7 +24,9 @@ import org.bukkit.entity.Player;
 final class Commands implements TabExecutor {
 
     private static final String ADMIN = "moinmorni.party.admin";
-    private static final List<String> ADMIN_SUB = List.of("info", "zustand", "start", "stopp", "wuerfel", "taler",
+    /** Höchstens so viel Geld auf einmal (zum Testen reicht das allemal). */
+    private static final int MAX_MONEY = 100_000;
+    private static final List<String> ADMIN_SUB = List.of("info", "zustand", "start", "stopp", "geld", "wuerfel", "taler",
             "edelweiss", "feld", "stand", "gegenstand", "minispiel", "seiten", "wurm", "neubauen", "neuladen");
     private final PartyPlugin plugin;
 
@@ -169,6 +171,7 @@ final class Commands implements TabExecutor {
                 s.sendMessage(Texts.msg(lang, "admin.stopped"));
             }
             case "wuerfel", "taler", "edelweiss", "feld", "gegenstand" -> playerValue(s, sub, args);
+            case "geld", "money" -> money(s, args);
             case "stand" -> {
                 Integer n = args.length > 1 ? number(args[1]) : null;
                 Game g = plugin.games().all().stream().findFirst().orElse(null);
@@ -266,6 +269,33 @@ final class Commands implements TabExecutor {
         }
         game.respot();
         s.sendMessage(Texts.msg(lang, "admin.ok"));
+    }
+
+    /** /mparty geld <spieler> <betrag>: Taler in der laufenden Partie dazugeben – zum Testen (Owner/Admin). */
+    private void money(CommandSender s, String[] args) {
+        String lang = lang(s);
+        Integer n = args.length > 2 ? number(args[2]) : null;
+        if (n == null || n <= 0 || n > MAX_MONEY) {
+            s.sendMessage(Texts.msg(lang, "admin.money.usage"));
+            return;
+        }
+        for (Game g : plugin.games().all()) {
+            Optional<PartyPlayer> found = g.find(args[1]).filter(pp -> !pp.left());
+            if (found.isEmpty()) {
+                continue;
+            }
+            PartyPlayer p = found.get();
+            p.setTaler(p.taler() + n);
+            g.refreshSidebar();
+            s.sendMessage(Texts.msg(lang, "admin.money", Placeholder.unparsed("name", p.name()), Texts.count("n", n),
+                    Placeholder.unparsed("total", String.valueOf(p.taler()))));
+            Player target = plugin.getServer().getPlayer(p.uuid());
+            if (target != null && !target.equals(s)) {
+                target.sendMessage(Texts.msg(plugin.lang(target), "money.got", Texts.count("n", n)));
+            }
+            return;
+        }
+        s.sendMessage(Texts.msg(lang, "admin.noplayer", Placeholder.unparsed("name", args[1])));
     }
 
     private static Integer number(String s) {

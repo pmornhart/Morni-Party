@@ -31,11 +31,16 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param duelRounds     Bergduell: Runden
  * @param hutMax         Hüttenaufstieg: spätestens nach so vielen Minispielen ist Schluss
  * @param awards         Auszeichnungen am Ende einer Brett-Partie (leer = aus)
+ * @param returnSeconds  Verbindung weg mitten in der Partie: so lange bleibt der Platz frei (0 = aus)
  */
 public record Settings(String world, int tables, int minPlayers, int maxPlayers, int countdown, int fullCountdown,
         boolean autoJoin, List<Integer> huntRounds, int turnSeconds, int menuSeconds, int stepTicks,
         List<MiniType> minigames, boolean fixedOrder, double miniFactor, Rules rules, List<Integer> marathonRounds,
-        int marathonMax, List<Integer> seilschaftRounds, Quick quick, int duelRounds, int hutMax, List<de.moinmorni.party.game.Awards.Type> awards) {
+        int marathonMax, List<Integer> seilschaftRounds, Quick quick, int duelRounds, int hutMax, List<de.moinmorni.party.game.Awards.Type> awards,
+        int returnSeconds) {
+
+    /** Höchstens so lange bleibt ein Platz frei. */
+    private static final int MAX_RETURN_SECONDS = 600;
 
     /** Schnelle Partie: kurz und mit mehr Geld. */
     public record Quick(int rounds, int startTaler, int edelweissPrice, double miniFactor) {
@@ -45,7 +50,7 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
     public Settings withPlace(String world, int tables) {
         return new Settings(world, tables, minPlayers, maxPlayers, countdown, fullCountdown, autoJoin, huntRounds,
                 turnSeconds, menuSeconds, stepTicks, minigames, fixedOrder, miniFactor, rules, marathonRounds, marathonMax,
-                seilschaftRounds, quick, duelRounds, hutMax, awards);
+                seilschaftRounds, quick, duelRounds, hutMax, awards, returnSeconds);
     }
 
     /** Liste positiver Zahlen aus der config.yml (leer oder kaputt = Vorgabe). */
@@ -139,7 +144,8 @@ public record Settings(String world, int tables, int minPlayers, int maxPlayers,
                         Math.max(0.2, Math.min(3.0, c.getDouble("schnelle-partie.dauer-faktor", 0.75)))),
                 Math.max(1, c.getInt("bergduell.runden", 8)),
                 Math.max(2, c.getInt("huettenaufstieg.hoechstens-minispiele", de.moinmorni.party.game.Huette.DEFAULT_MAX)),
-                awards(c));
+                awards(c),
+                Math.max(0, Math.min(MAX_RETURN_SECONDS, c.getInt("rueckkehr-sekunden", 120))));
     }
 
     private static List<de.moinmorni.party.game.Awards.Type> awards(FileConfiguration c) {

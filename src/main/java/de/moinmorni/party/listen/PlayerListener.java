@@ -53,16 +53,23 @@ public final class PlayerListener implements Listener {
 
     // ---------- Kommen und Gehen ----------
 
+    /** Auf dem Festplatz ankommen – oder, wenn der Platz in der Partie noch frei ist, dort, wo man war. */
     @EventHandler
     public void onSpawnLocation(AsyncPlayerSpawnLocationEvent e) {
-        e.setSpawnLocation(new Location(plugin.world(), Places.SPAWN_X, Places.FLOOR_Y + 1, Places.SPAWN_Z,
-                Places.SPAWN_YAW, 0f));
+        Location back = plugin.games().returnSpot(e.getConnection().getProfile().getId());
+        e.setSpawnLocation(back != null ? back : new Location(plugin.world(), Places.SPAWN_X, Places.FLOOR_Y + 1,
+                Places.SPAWN_Z, Places.SPAWN_YAW, 0f));
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         e.joinMessage(null);
         Player p = e.getPlayer();
+        Optional<Game> running = plugin.games().of(p.getUniqueId());
+        if (running.isPresent() && running.get().rejoin(p)) {
+            plugin.stateChanged();
+            return;
+        }
         plugin.lobby().enterHub(p, true);
         plugin.stateChanged();
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
@@ -75,6 +82,9 @@ public final class PlayerListener implements Listener {
             plugin.signs().update();
             Ui.title(p, Texts.text(lang, "join.title"), Texts.text(lang, "join.subtitle"), 2500);
             p.sendMessage(Texts.msg(lang, "join.welcome"));
+            if (plugin.games().wasMissed(p.getUniqueId())) {
+                p.sendMessage(Texts.msg(lang, "game.missed"));
+            }
             if (!plugin.ready()) {
                 p.sendMessage(Texts.msg(lang, "not-ready"));
             }
@@ -86,7 +96,8 @@ public final class PlayerListener implements Listener {
         e.quitMessage(null);
         Player p = e.getPlayer();
         UUID u = p.getUniqueId();
-        plugin.games().involved(u).ifPresent(g -> g.leave(p, false));
+        plugin.games().involved(u).ifPresent(g -> g.quit(p));
+        plugin.net().forget(u);
         plugin.lobby().forget(u);
         plugin.sidebar().forget(u);
         lastClick.remove(u);
